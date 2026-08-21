@@ -1,0 +1,32 @@
+export function joinPath(base: string, name: string): string {
+  if (!base) return name
+  return `${base}/${name}`
+}
+
+export function splitPath(path: string): string[] {
+  if (!path) return []
+  return path.split('/')
+}
+
+export function parentPath(path: string): string {
+  const segments = splitPath(path)
+  segments.pop()
+  return segments.join('/')
+}
+
+export function pathName(path: string): string {
+  const segments = splitPath(path)
+  return segments[segments.length - 1] ?? ''
+}
+
+export function pathExtension(name: string): string {
+  const dot = name.lastIndexOf('.')
+  if (dot <= 0) return ''
+  return name.slice(dot + 1).toLowerCase()
+}
+
+export function pathWithoutExtension(name: string): string {
+  const dot = name.lastIndexOf('.')
+  if (dot <= 0) return name
+  return name.slice(0, dot)
+}
