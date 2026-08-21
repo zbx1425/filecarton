@@ -24,13 +24,10 @@ $failed = [];
 foreach ($input['items'] as $name) {
     if (!is_string($name) || $name === '') continue;
 
-    $sanitized = $pathSec->sanitizeFileName($name);
-    $itemPath = $basePath . '/' . $sanitized;
-
     try {
-        $pathSec->assertWithinRoot($itemPath);
+        $itemPath = $pathSec->resolveItemIn($basePath, $name);
     } catch (\Throwable $e) {
-        $failed[] = ['name' => $name, 'error' => 'Invalid path'];
+        $failed[] = ['name' => $name, 'error' => 'Invalid item name'];
         continue;
     }
 

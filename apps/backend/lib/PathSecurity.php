@@ -97,7 +97,7 @@ class PathSecurity {
     }
 
     /**
-     * Check whether a filename is valid (no dangerous characters, not empty).
+     * Check whether a filename is valid for creation (no dangerous characters, not empty).
      */
     public function isValidFileName(string $name): bool {
         if ($name === '' || $name === '.' || $name === '..') return false;
@@ -105,6 +105,56 @@ class PathSecurity {
         if (preg_match('#[/\\\\:*?"<>|]#', $name)) return false;
         if (trim($name, '. ') === '') return false;
         return true;
+    }
+
+    /**
+     * Safely resolve an item name within a known-good base directory.
+     * Unlike sanitizeFileName, this does NOT strip characters — it validates
+     * that the name is a single path segment (no traversal), then returns the
+     * canonical absolute path if the item exists, or the logical path if not.
+     *
+     * Use this for referencing existing files by user-supplied name.
+     */
+    public function resolveItemIn(string $baseAbs, string $itemName): string {
+        if ($itemName === '' || $itemName === '.' || $itemName === '..') {
+            throw new \InvalidArgumentException('Invalid item name');
+        }
+        if (str_contains($itemName, "\0") || str_contains($itemName, '/') || str_contains($itemName, '\\')) {
+            throw new \InvalidArgumentException('Invalid item name: contains path separators');
+        }
+
+        $target = $baseAbs . '/' . $itemName;
+
+        if (file_exists($target) || is_link($target)) {
+            $real = realpath($target);
+            if ($real !== false) {
+                $real = str_replace('\\', '/', $real);
+                $this->assertWithinRoot($real);
+                return $real;
+            }
+        }
+
+        $this->assertWithinRoot(str_replace('\\', '/', $target));
+        return str_replace('\\', '/', $target);
+    }
+
+    /**
+     * Normalize a path logically (resolve . and .. segments) without requiring existence.
+     * Used for zip slip detection on archive entry paths.
+     */
+    public function normalizePath(string $path): string {
+        $path = str_replace('\\', '/', $path);
+        $parts = explode('/', $path);
+        $result = [];
+        foreach ($parts as $part) {
+            if ($part === '' || $part === '.') continue;
+            if ($part === '..') {
+                array_pop($result);
+            } else {
+                $result[] = $part;
+            }
+        }
+        return implode('/', $result);
     }
 
     private function rejectNullBytes(string $path): void {

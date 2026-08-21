@@ -6,9 +6,8 @@
  *
  * Create: { operation, format: "zip"|"tar", path, items: string[], archiveName? }
  * Extract: { operation, path (archive file), targetPath, createSubdir? }
- *
- * Archive name conflict returns 409.
  */
+
 
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input || !isset($input['operation'])) {
@@ -49,6 +48,17 @@ function archiveCreate(array $input, PathSecurity $pathSec, FileOps $fileOps): n
         Response::error('Archive name already exists', 409);
     }
 
+    $fileCount = 0;
+    $totalSize = 0;
+    countItemsForArchive($dirAbs, $input['items'], $pathSec, $fileCount, $totalSize);
+
+    if ($fileCount > FILECARTON_ARCHIVE_MAX_FILES) {
+        Response::error('Too many files to archive (limit: ' . FILECARTON_ARCHIVE_MAX_FILES . ')', 400);
+    }
+    if ($totalSize > FILECARTON_ARCHIVE_MAX_SIZE) {
+        Response::error('Total size too large to archive (limit: ' . round(FILECARTON_ARCHIVE_MAX_SIZE / 1024 / 1024 / 1024, 1) . ' GB)', 400);
+    }
+
     if ($format === 'zip') {
         createZip($dirAbs, $input['items'], $archivePath, $pathSec);
     } else {
@@ -80,61 +90,22 @@ function archiveExtract(array $input, PathSecurity $pathSec): never {
 
     $createSubdir = !empty($input['createSubdir']);
     if ($createSubdir) {
-        $baseName = pathinfo($archiveAbs, PATHINFO_FILENAME);
+        $baseName = $pathSec->sanitizeFileName(pathinfo($archiveAbs, PATHINFO_FILENAME));
         $targetAbs .= '/' . $baseName;
+        $pathSec->assertWithinRoot($targetAbs);
         if (!is_dir($targetAbs)) {
             mkdir($targetAbs, 0755, true);
         }
-        $pathSec->assertWithinRoot($targetAbs);
     }
 
+    $normalizedTarget = str_replace('\\', '/', $targetAbs);
     $ext = strtolower(pathinfo($archiveAbs, PATHINFO_EXTENSION));
     $extracted = 0;
 
     if ($ext === 'zip') {
-        $zip = new ZipArchive();
-        if ($zip->open($archiveAbs) !== true) {
-            Response::error('Cannot open ZIP archive', 400);
-        }
-
-        for ($i = 0; $i < $zip->numFiles; $i++) {
-            $entryName = $zip->getNameIndex($i);
-            $entryPath = str_replace('\\', '/', $entryName);
-            $destPath = $targetAbs . '/' . $entryPath;
-
-            $realDest = realpath(dirname($destPath));
-            if ($realDest !== false) {
-                $normalizedDest = str_replace('\\', '/', $realDest);
-                $normalizedTarget = str_replace('\\', '/', $targetAbs);
-                if ($normalizedDest !== $normalizedTarget && !str_starts_with($normalizedDest, $normalizedTarget . '/')) {
-                    continue;
-                }
-            }
-
-            if (str_ends_with($entryPath, '/')) {
-                if (!is_dir($destPath)) mkdir($destPath, 0755, true);
-            } else {
-                $parentDir = dirname($destPath);
-                if (!is_dir($parentDir)) mkdir($parentDir, 0755, true);
-                $zip->extractTo($targetAbs, $entryName);
-                $extracted++;
-            }
-        }
-        $zip->close();
+        $extracted = extractZipSafe($archiveAbs, $targetAbs, $normalizedTarget, $pathSec);
     } elseif ($ext === 'tar' || $ext === 'gz' || $ext === 'tgz') {
-        try {
-            $phar = new PharData($archiveAbs);
-            $phar->extractTo($targetAbs, null, true);
-            $iter = new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator($targetAbs, RecursiveDirectoryIterator::SKIP_DOTS),
-                RecursiveIteratorIterator::SELF_FIRST
-            );
-            foreach ($iter as $item) {
-                if ($item->isFile()) $extracted++;
-            }
-        } catch (\Throwable $e) {
-            Response::error('Extract failed: ' . $e->getMessage(), 500);
-        }
+        $extracted = extractTarSafe($archiveAbs, $targetAbs, $normalizedTarget, $pathSec);
     } else {
         Response::error('Unsupported archive format', 400);
     }
@@ -145,6 +116,110 @@ function archiveExtract(array $input, PathSecurity $pathSec): never {
         'extracted'  => $extracted,
         'targetPath' => $relTarget ?: '',
     ]);
+}
+
+function extractZipSafe(string $archiveAbs, string $targetAbs, string $normalizedTarget, PathSecurity $pathSec): int {
+    $zip = new ZipArchive();
+    if ($zip->open($archiveAbs) !== true) {
+        Response::error('Cannot open ZIP archive', 400);
+    }
+
+    $extracted = 0;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $entryName = $zip->getNameIndex($i);
+        $entryPath = str_replace('\\', '/', $entryName);
+
+        $normalized = $pathSec->normalizePath($entryPath);
+        if ($normalized === '') continue;
+
+        $destPath = $normalizedTarget . '/' . $normalized;
+
+        if (!str_starts_with($destPath, $normalizedTarget . '/')) {
+            continue;
+        }
+
+        if (str_ends_with($entryPath, '/')) {
+            if (!is_dir($destPath)) mkdir($destPath, 0755, true);
+        } else {
+            $parentDir = dirname($destPath);
+            if (!is_dir($parentDir)) mkdir($parentDir, 0755, true);
+
+            $stream = $zip->getStream($entryName);
+            if ($stream === false) continue;
+            $outFile = fopen($destPath, 'wb');
+            if ($outFile === false) { fclose($stream); continue; }
+            stream_copy_to_stream($stream, $outFile);
+            fclose($stream);
+            fclose($outFile);
+            $extracted++;
+        }
+    }
+    $zip->close();
+    return $extracted;
+}
+
+function extractTarSafe(string $archiveAbs, string $targetAbs, string $normalizedTarget, PathSecurity $pathSec): int {
+    try {
+        $phar = new PharData($archiveAbs);
+    } catch (\Throwable $e) {
+        Response::error('Cannot open TAR archive: ' . $e->getMessage(), 400);
+    }
+
+    $extracted = 0;
+    $iter = new RecursiveIteratorIterator($phar, RecursiveIteratorIterator::SELF_FIRST);
+
+    foreach ($iter as $item) {
+        $entryPath = $item->getPathname();
+        $entryPath = preg_replace('#^phar://.*?\.tar(?:\.gz)?/#', '', $entryPath);
+        $entryPath = str_replace('\\', '/', $entryPath);
+
+        $normalized = $pathSec->normalizePath($entryPath);
+        if ($normalized === '') continue;
+
+        $destPath = $normalizedTarget . '/' . $normalized;
+
+        if (!str_starts_with($destPath, $normalizedTarget . '/')) {
+            continue;
+        }
+
+        if ($item->isDir()) {
+            if (!is_dir($destPath)) mkdir($destPath, 0755, true);
+        } else {
+            $parentDir = dirname($destPath);
+            if (!is_dir($parentDir)) mkdir($parentDir, 0755, true);
+
+            $content = $item->getContent();
+            file_put_contents($destPath, $content);
+            $extracted++;
+        }
+    }
+
+    return $extracted;
+}
+
+function countItemsForArchive(string $baseDir, array $items, PathSecurity $pathSec, int &$fileCount, int &$totalSize): void {
+    foreach ($items as $name) {
+        $sanitized = $pathSec->sanitizeFileName($name);
+        $itemPath = $baseDir . '/' . $sanitized;
+        if (!file_exists($itemPath)) continue;
+
+        if (is_file($itemPath)) {
+            $fileCount++;
+            $totalSize += filesize($itemPath);
+        } elseif (is_dir($itemPath)) {
+            $iter = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($itemPath, RecursiveDirectoryIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::SELF_FIRST
+            );
+            foreach ($iter as $item) {
+                if ($item->isFile()) {
+                    $fileCount++;
+                    $totalSize += $item->getSize();
+                }
+                if ($fileCount > FILECARTON_ARCHIVE_MAX_FILES || $totalSize > FILECARTON_ARCHIVE_MAX_SIZE) return;
+            }
+        }
+    }
 }
 
 function createZip(string $baseDir, array $items, string $archivePath, PathSecurity $pathSec): void {

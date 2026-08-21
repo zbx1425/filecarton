@@ -8,6 +8,7 @@
  * Overwrites existing files silently.
  */
 
+
 $targetDir = $_POST['path'] ?? '';
 $targetAbs = $pathSec->resolve($targetDir);
 
@@ -43,6 +44,12 @@ for ($i = 0; $i < $count; $i++) {
     if ($relPath !== '') {
         $relParts = explode('/', str_replace('\\', '/', $relPath));
         array_pop($relParts);
+
+        if (count($relParts) > FILECARTON_UPLOAD_MAX_DEPTH) {
+            $failed[] = ['name' => $name, 'error' => 'Path too deep (max ' . FILECARTON_UPLOAD_MAX_DEPTH . ' levels)'];
+            continue;
+        }
+
         if (!empty($relParts)) {
             $subDir = $targetAbs;
             foreach ($relParts as $part) {

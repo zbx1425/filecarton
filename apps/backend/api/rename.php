@@ -21,23 +21,26 @@ if (!is_dir($dirAbs)) {
 
 $sanitizedNew = $pathSec->sanitizeFileName($newName);
 
-if ($oldName === $sanitizedNew) {
-    $relativePath = ($dirPath === '' ? '' : $dirPath . '/') . $sanitizedNew;
-    Response::ok(['renamed' => $relativePath]);
-}
-
-$oldAbs = $dirAbs . '/' . $pathSec->sanitizeFileName($oldName);
-$newAbs = $dirAbs . '/' . $sanitizedNew;
-
-$pathSec->assertWithinRoot($oldAbs);
-$pathSec->assertWithinRoot($newAbs);
+$oldAbs = $pathSec->resolveItemIn($dirAbs, $oldName);
 
 if (!file_exists($oldAbs)) {
     Response::error('Source not found', 404);
 }
 
+$newAbs = $dirAbs . '/' . $sanitizedNew;
+$pathSec->assertWithinRoot($newAbs);
+
+if (basename($oldAbs) === $sanitizedNew) {
+    $relativePath = ($dirPath === '' ? '' : $dirPath . '/') . $sanitizedNew;
+    Response::ok(['renamed' => $relativePath]);
+}
+
 if (file_exists($newAbs)) {
-    Response::error('Name already exists', 409);
+    $oldReal = realpath($oldAbs);
+    $newReal = realpath($newAbs);
+    if ($oldReal === false || $newReal === false || $oldReal !== $newReal) {
+        Response::error('Name already exists', 409);
+    }
 }
 
 $fileOps->moveItem($oldAbs, $newAbs);

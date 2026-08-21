@@ -1,7 +1,5 @@
 <?php
 
-require_once __DIR__ . '/../../platform.php';
-
 class FileOps {
 
     /**
@@ -76,10 +74,7 @@ class FileOps {
                 throw new \RuntimeException('Failed to copy file: ' . basename($src));
             }
         } elseif (is_dir($src)) {
-            if (!is_dir($dst)) {
-                mkdir($dst, 0755, true);
-            }
-            if (!copy_recursive_contents($src, $dst)) {
+            if (!Platform::copyRecursive($src, $dst)) {
                 throw new \RuntimeException('Failed to copy directory: ' . basename($src));
             }
         } else {
@@ -101,7 +96,7 @@ class FileOps {
         if (!file_exists($absPath) && !is_link($absPath)) {
             return;
         }
-        if (!delete_recursive($absPath)) {
+        if (!Platform::deleteRecursive($absPath)) {
             throw new \RuntimeException('Failed to delete: ' . basename($absPath));
         }
     }

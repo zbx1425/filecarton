@@ -4,7 +4,7 @@
  * POST ?api=1&action=upload_complete
  * Body: { uploadId, targetPath, fileName, totalChunks }
  *
- * Overwrites existing files silently.
+ * Overwrites existing files silently. Uses file locking to prevent concurrent merges.
  */
 
 $input = json_decode(file_get_contents('php://input'), true);
@@ -34,35 +34,52 @@ if (!is_dir($tempDir)) {
     Response::error('Upload session not found', 404);
 }
 
-for ($i = 0; $i < $totalChunks; $i++) {
-    if (!is_file($tempDir . '/chunk_' . $i)) {
-        Response::error('Missing chunk: ' . $i, 400);
-    }
+$lockFile = $tempDir . '/.merge_lock';
+$lockFp = fopen($lockFile, 'c');
+if ($lockFp === false) {
+    Response::error('Cannot acquire merge lock', 500);
+}
+if (!flock($lockFp, LOCK_EX | LOCK_NB)) {
+    fclose($lockFp);
+    Response::error('Merge already in progress for this upload', 409);
 }
 
-$outFile = fopen($finalPath, 'wb');
-if ($outFile === false) {
-    Response::error('Cannot create target file', 500);
+try {
+    for ($i = 0; $i < $totalChunks; $i++) {
+        if (!is_file($tempDir . '/chunk_' . $i)) {
+            Response::error('Missing chunk: ' . $i, 400);
+        }
+    }
+
+    $outFile = fopen($finalPath, 'wb');
+    if ($outFile === false) {
+        Response::error('Cannot create target file', 500);
+    }
+
+    for ($i = 0; $i < $totalChunks; $i++) {
+        $chunkPath = $tempDir . '/chunk_' . $i;
+        $chunkFp = fopen($chunkPath, 'rb');
+        if ($chunkFp === false) {
+            fclose($outFile);
+            Response::error('Failed to read chunk: ' . $i, 500);
+        }
+        stream_copy_to_stream($chunkFp, $outFile);
+        fclose($chunkFp);
+    }
+    fclose($outFile);
+
+    $chunkFiles = glob($tempDir . '/chunk_*');
+    if ($chunkFiles) {
+        foreach ($chunkFiles as $f) {
+            @unlink($f);
+        }
+    }
+    @unlink($lockFile);
+} finally {
+    flock($lockFp, LOCK_UN);
+    fclose($lockFp);
 }
 
-for ($i = 0; $i < $totalChunks; $i++) {
-    $chunkPath = $tempDir . '/chunk_' . $i;
-    $chunkContent = file_get_contents($chunkPath);
-    if ($chunkContent === false) {
-        fclose($outFile);
-        Response::error('Failed to read chunk: ' . $i, 500);
-    }
-    fwrite($outFile, $chunkContent);
-}
-fclose($outFile);
-
-// Clean up temp directory
-$chunkFiles = glob($tempDir . '/chunk_*');
-if ($chunkFiles) {
-    foreach ($chunkFiles as $f) {
-        @unlink($f);
-    }
-}
 @rmdir($tempDir);
 
 Response::ok([

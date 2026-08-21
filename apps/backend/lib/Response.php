@@ -3,12 +3,14 @@
 class Response {
 
     public static function ok(mixed $data = null): never {
+        if (ob_get_level()) ob_end_clean();
         http_response_code(200);
         echo json_encode(['ok' => true, 'data' => $data], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
 
     public static function error(string $msg, int $code = 400): never {
+        if (ob_get_level()) ob_end_clean();
         http_response_code($code);
         echo json_encode(['ok' => false, 'error' => $msg], JSON_UNESCAPED_UNICODE);
         exit;
@@ -19,6 +21,7 @@ class Response {
      * Used by the `raw` endpoint for image/audio preview.
      */
     public static function stream(string $absPath, string $mime): never {
+        if (ob_get_level()) ob_end_clean();
         $mtime = filemtime($absPath);
         $size = filesize($absPath);
         $etag = '"' . dechex($mtime) . '-' . dechex($size) . '"';
@@ -40,6 +43,7 @@ class Response {
      * Force-download a file (Content-Disposition: attachment).
      */
     public static function file(string $absPath, ?string $filename = null): never {
+        if (ob_get_level()) ob_end_clean();
         $filename = $filename ?? basename($absPath);
         $size = filesize($absPath);
 

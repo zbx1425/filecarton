@@ -13,9 +13,8 @@ if (!is_file($absPath)) {
     Response::error('Not a file', 404);
 }
 
-$maxSize = 5 * 1024 * 1024;
 $size = filesize($absPath);
-if ($size > $maxSize) {
+if ($size > FILECARTON_MAX_EDIT_SIZE) {
     Response::error('File too large to edit (' . round($size / 1024 / 1024, 1) . ' MB). Please download instead.', 413);
 }
 

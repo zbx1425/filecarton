@@ -8,17 +8,24 @@
  * Available from parent scope: $auCrntRepo, $auRepos, FM_ROOT_PATH, etc.
  */
 
+require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/lib/Platform.php';
 require_once __DIR__ . '/lib/PathSecurity.php';
 require_once __DIR__ . '/lib/FileOps.php';
 require_once __DIR__ . '/lib/MimeType.php';
 require_once __DIR__ . '/lib/Csrf.php';
 require_once __DIR__ . '/lib/Response.php';
 
-header('Content-Type: application/json; charset=utf-8');
-
 $action = $_GET['action'] ?? '';
 $pathSec = new PathSecurity(FM_ROOT_PATH);
 $fileOps = new FileOps();
+
+$binaryActions = ['raw', 'download'];
+if (!in_array($action, $binaryActions, true)) {
+    header('Content-Type: application/json; charset=utf-8');
+}
+
+ob_start();
 
 $validActions = [
     'list', 'tree_node', 'read', 'write', 'raw', 'download',

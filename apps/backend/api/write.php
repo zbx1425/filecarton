@@ -13,6 +13,14 @@ if (!$input || !isset($input['path'], $input['content'])) {
     Response::error('Missing required fields: path, content', 400);
 }
 
+if (!is_string($input['content'])) {
+    Response::error('Field "content" must be a string', 400);
+}
+
+if (strlen($input['content']) > FILECARTON_MAX_EDIT_SIZE) {
+    Response::error('Content too large (max ' . round(FILECARTON_MAX_EDIT_SIZE / 1024 / 1024) . ' MB)', 413);
+}
+
 $absPath = $pathSec->resolve($input['path']);
 if (!is_file($absPath)) {
     Response::error('Not a file', 404);

@@ -12,6 +12,8 @@
  *   FM_GLOBAL_READONLY - boolean
  */
 
+require_once __DIR__ . '/config.php';
+
 $pathInfo = $_SERVER['PATH_INFO'] ?? '';
 $repoPrefix = '/' . $auCrntRepo;
 $remainingPath = substr($pathInfo, strlen($repoPrefix));

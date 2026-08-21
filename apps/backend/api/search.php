@@ -6,7 +6,7 @@
 
 $basePath = $_GET['path'] ?? '';
 $query = $_GET['q'] ?? '';
-$limit = max(1, min(1000, (int)($_GET['limit'] ?? 200)));
+$limit = max(1, min(FILECARTON_SEARCH_MAX_LIMIT, (int)($_GET['limit'] ?? FILECARTON_SEARCH_DEFAULT_LIMIT)));
 
 if ($query === '') {
     Response::error('Search query required', 400);
@@ -21,7 +21,6 @@ if (!is_dir($absBase)) {
 $rootPath = $pathSec->getRootPath();
 $results = [];
 $truncated = false;
-$queryLower = mb_strtolower($query, 'UTF-8');
 
 $iterator = new RecursiveIteratorIterator(
     new RecursiveDirectoryIterator($absBase, RecursiveDirectoryIterator::SKIP_DOTS),
