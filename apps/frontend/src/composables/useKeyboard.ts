@@ -1,8 +1,9 @@
-import { onMounted, onBeforeUnmount, watch } from 'vue'
+import { onMounted, onBeforeUnmount } from 'vue'
 import { useNavigationStore } from '@/stores/navigation'
 import { useFileListStore } from '@/stores/fileList'
 import { useUiStore } from '@/stores/ui'
 import { dialogState } from '@/composables/useDialogs'
+import { lightboxState, closeLightbox } from '@/composables/useLightbox'
 import {
   copySelected,
   cutSelected,
@@ -36,6 +37,15 @@ export function useKeyboard() {
 
   function handleKeyDown(e: KeyboardEvent) {
     if (isAnyDialogOpen()) return
+
+    if (lightboxState.open) {
+      if (e.key === 'Escape') {
+        closeLightbox()
+        e.preventDefault()
+      }
+      return
+    }
+
     if (navigation.viewMode === 'editor') return
 
     if (navigation.viewMode !== 'list') {

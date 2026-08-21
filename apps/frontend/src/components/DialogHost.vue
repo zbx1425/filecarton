@@ -106,7 +106,7 @@ function handleEditorConflictOpenChange(open: boolean) {
 
   <!-- Prompt (Dialog) -->
   <Dialog :open="dialogState.prompt.open" @update:open="handlePromptOpenChange">
-    <DialogContent @escape-key-down.prevent>
+      <DialogContent>
       <DialogHeader>
         <DialogTitle>{{ dialogState.prompt.title }}</DialogTitle>
         <DialogDescription class="sr-only">Enter a value</DialogDescription>

@@ -5,6 +5,10 @@ interface FileCartonConfig {
   repoName: string
 }
 
-interface Window {
-  __FILECARTON__: FileCartonConfig
+declare global {
+  interface Window {
+    __FILECARTON__: FileCartonConfig
+  }
 }
+
+export {}

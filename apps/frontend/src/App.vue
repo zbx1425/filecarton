@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { watch } from 'vue'
 import { useUiStore } from '@/stores/ui'
+import { useNavigationStore } from '@/stores/navigation'
+import { useFileListStore } from '@/stores/fileList'
 import { Toaster } from '@/components/ui/sonner'
 import {
   ResizableHandle,
@@ -13,9 +16,18 @@ import DialogHost from '@/components/DialogHost.vue'
 import Lightbox from '@/components/Lightbox.vue'
 import DropOverlay from '@/components/upload/DropOverlay.vue'
 import { useKeyboard } from '@/composables/useKeyboard'
+import 'vue-sonner/style.css'
 
 const ui = useUiStore()
+const navigation = useNavigationStore()
+const fileList = useFileListStore()
 useKeyboard()
+
+watch(
+  () => navigation.currentPathStr,
+  (path) => fileList.fetchDir(path),
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -39,7 +51,7 @@ useKeyboard()
       </ResizablePanel>
     </ResizablePanelGroup>
 
-    <Toaster position="bottom-right" :duration="4000" />
+    <Toaster position="bottom-right" :duration="4000" rich-colors />
     <DialogHost />
     <Lightbox />
     <DropOverlay />

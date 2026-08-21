@@ -4,6 +4,7 @@ import { useDebounceFn } from '@vueuse/core'
 import { EDITABLE_EXTENSIONS } from '@/utils/constants'
 import { pathExtension, joinPath } from '@/utils/path'
 import { confirm } from '@/composables/useDialogs'
+import { useUiStore } from '@/stores/ui'
 
 export const useNavigationStore = defineStore('navigation', () => {
   const currentPath = ref<string[]>([])
@@ -48,8 +49,9 @@ export const useNavigationStore = defineStore('navigation', () => {
     activeFile.value = fileName
     const ext = pathExtension(fileName)
     const editable = EDITABLE_EXTENSIONS.has(ext)
-      || fileName === 'Makefile' || fileName === 'Dockerfile'
-    viewMode.value = editable ? 'editor' : 'preview'
+      || fileName.toLowerCase() === 'makefile' || fileName.toLowerCase() === 'dockerfile'
+    const ui = useUiStore()
+    viewMode.value = (editable && !ui.readonly) ? 'editor' : 'preview'
     editDirty.value = false
   }
 
@@ -69,9 +71,10 @@ export const useNavigationStore = defineStore('navigation', () => {
 
   function syncToHash() {
     if (suppressHashSync) return
-    let hash = '#/' + currentPath.value.join('/')
+    const encodedSegments = currentPath.value.map(s => encodeURIComponent(s))
+    let hash = '#/' + encodedSegments.join('/')
     if (activeFile.value) {
-      hash += (currentPath.value.length > 0 ? '/' : '') + activeFile.value
+      hash += (currentPath.value.length > 0 ? '/' : '') + encodeURIComponent(activeFile.value)
       if (viewMode.value === 'preview' || viewMode.value === 'editor') {
         hash += '?view=' + viewMode.value
       }
@@ -81,10 +84,15 @@ export const useNavigationStore = defineStore('navigation', () => {
     }
   }
 
-  function syncFromHash() {
+  async function syncFromHash() {
     const hash = location.hash
     if (!hash || hash === '#' || hash === '#/') {
-      navigateTo([])
+      suppressHashSync = true
+      try {
+        await navigateTo([])
+      } finally {
+        suppressHashSync = false
+      }
       return
     }
 
@@ -93,7 +101,7 @@ export const useNavigationStore = defineStore('navigation', () => {
     const pathPart = qIndex >= 0 ? raw.slice(0, qIndex) : raw
     const queryPart = qIndex >= 0 ? raw.slice(qIndex + 1) : ''
 
-    const segments = pathPart.split('/').filter(Boolean)
+    const segments = pathPart.split('/').filter(Boolean).map(s => decodeURIComponent(s))
 
     const params = new URLSearchParams(queryPart)
     const view = params.get('view')
@@ -108,8 +116,11 @@ export const useNavigationStore = defineStore('navigation', () => {
       suppressHashSync = false
     } else {
       suppressHashSync = true
-      navigateTo(segments)
-      suppressHashSync = false
+      try {
+        await navigateTo(segments)
+      } finally {
+        suppressHashSync = false
+      }
     }
   }
 

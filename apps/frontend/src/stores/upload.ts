@@ -107,12 +107,13 @@ export const useUploadStore = defineStore('upload', () => {
 
   async function uploadSingle(task: UploadTask) {
     const formData = new FormData()
-    formData.append('path', task.targetDir)
 
+    let targetPath = task.targetDir
     if (task.relativePath) {
       const dir = task.relativePath.split('/').slice(0, -1).join('/')
-      formData.append('path', joinPath(task.targetDir, dir))
+      if (dir) targetPath = joinPath(task.targetDir, dir)
     }
+    formData.append('path', targetPath)
 
     formData.append('files[]', task.file)
     await apiUpload<UploadResponse>('upload', formData)

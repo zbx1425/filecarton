@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { ChevronRight, Loader2, Copy, Scissors, ClipboardPaste, Pencil, Trash2, FolderPlus } from '@lucide/vue'
+import { ChevronRight, Loader2, Copy, Scissors, ClipboardPaste, Pencil, Trash2, FolderPlus, FolderOpen, Eye } from '@lucide/vue'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -41,6 +41,11 @@ const isExpanded = computed(() => isDir.value && tree.isExpanded(props.path))
 const isLoading = computed(() => tree.isLoading(props.path))
 const children = computed(() => tree.getChildren(props.path) ?? [])
 
+const isCut = computed(() => {
+  const dirPath = isDir.value ? parentPath(props.path) : (props.path.includes('/') ? props.path.slice(0, props.path.lastIndexOf('/')) : '')
+  return clipboard.isCutItem(dirPath, props.name)
+})
+
 const isActive = computed(() => {
   if (isDir.value) {
     return navigation.currentPathStr === props.path
@@ -56,25 +61,29 @@ const icon = computed(() => getFileIcon(props.name, isDir.value, isExpanded.valu
 const dropHover = ref(false)
 let expandTimer: ReturnType<typeof setTimeout> | null = null
 
-function handleClick() {
+function handleChevronClick(e: Event) {
+  e.stopPropagation()
+  tree.toggleExpand(props.path)
+}
+
+async function handleClick() {
   if (isDir.value) {
-    const isCurrentDir = navigation.currentPathStr === props.path
-    if (isCurrentDir) {
-      tree.toggleExpand(props.path)
-    } else {
-      const segments = props.path ? props.path.split('/') : []
-      navigation.navigateTo(segments)
-    }
+    const segments = props.path ? props.path.split('/') : []
+    await navigation.navigateTo(segments)
   } else {
     const parent = props.path.includes('/')
       ? props.path.slice(0, props.path.lastIndexOf('/'))
       : ''
     const segments = parent ? parent.split('/') : []
     if (navigation.currentPathStr !== parent) {
-      navigation.navigateTo(segments)
+      await navigation.navigateTo(segments)
     }
-    navigation.openFile(props.name)
+    await navigation.openFile(props.name)
   }
+}
+
+function handleOpen() {
+  handleClick()
 }
 
 function handleDragOver(e: DragEvent) {
@@ -169,6 +178,7 @@ async function handleNewFolder() {
           :class="[
             dropHover ? 'bg-primary/10' :
             isActive ? 'bg-accent text-accent-foreground font-medium' : 'hover:bg-muted/50',
+            isCut ? 'opacity-50' : '',
           ]"
           :style="{ paddingLeft: `${depth * 16 + 4}px` }"
           @click="handleClick"
@@ -177,7 +187,11 @@ async function handleNewFolder() {
           @dragleave="handleDragLeave"
           @drop="handleDrop"
         >
-          <span v-if="isDir" class="flex items-center justify-center w-4 h-4 shrink-0">
+          <span
+            v-if="isDir"
+            class="flex items-center justify-center w-4 h-4 shrink-0"
+            @click.stop="handleChevronClick"
+          >
             <Loader2 v-if="isLoading" class="size-3 animate-spin text-muted-foreground" />
             <ChevronRight
               v-else
@@ -192,8 +206,15 @@ async function handleNewFolder() {
         </div>
       </ContextMenuTrigger>
 
-      <ContextMenuContent v-if="!ui.readonly" class="w-48">
+      <ContextMenuContent class="w-48">
+        <ContextMenuItem @select="handleOpen">
+          <FolderOpen v-if="isDir" class="size-4" />
+          <Eye v-else class="size-4" />
+          Open
+        </ContextMenuItem>
+
         <template v-if="!ui.readonly">
+          <ContextMenuSeparator />
           <ContextMenuItem @select="handleCopy">
             <Copy class="size-4" />
             Copy

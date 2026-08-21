@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
-import { ArrowUp, ArrowDown, CornerLeftUp, Loader2, ClipboardPaste, File, Folder, Upload, CheckSquare } from '@lucide/vue'
+import { computed } from 'vue'
+import { ArrowUp, ArrowDown, CornerLeftUp, Loader2, ClipboardPaste, File, Folder, CheckSquare } from '@lucide/vue'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -25,20 +25,8 @@ const ui = useUiStore()
 
 const isRoot = computed(() => navigation.currentPath.length === 0)
 
-const filteredDirs = computed(() => {
-  const q = ui.searchQuery.trim().toLowerCase()
-  if (!q || ui.searchRecursive) return fileList.sortedDirs
-  return fileList.sortedDirs.filter(d => d.name.toLowerCase().includes(q))
-})
-
-const filteredFiles = computed(() => {
-  const q = ui.searchQuery.trim().toLowerCase()
-  if (!q || ui.searchRecursive) return fileList.sortedFiles
-  return fileList.sortedFiles.filter(f => f.name.toLowerCase().includes(q))
-})
-
 const isEmpty = computed(
-  () => filteredDirs.value.length === 0 && filteredFiles.value.length === 0 && !fileList.loading,
+  () => fileList.filteredDirs.length === 0 && fileList.filteredFiles.length === 0 && !fileList.loading,
 )
 
 function goUp() {
@@ -51,11 +39,6 @@ function sortIcon(column: string) {
   return fileList.sortAsc ? ArrowUp : ArrowDown
 }
 
-watch(
-  () => navigation.currentPathStr,
-  (path) => fileList.fetchDir(path),
-  { immediate: true },
-)
 </script>
 
 <template>
@@ -116,14 +99,14 @@ watch(
           </div>
 
           <FileRow
-            v-for="d in filteredDirs"
+            v-for="d in fileList.filteredDirs"
             :key="'d-' + d.name"
             :name="d.name"
             :is-dir="true"
             :mtime="d.mtime"
           />
           <FileRow
-            v-for="f in filteredFiles"
+            v-for="f in fileList.filteredFiles"
             :key="'f-' + f.name"
             :name="f.name"
             :is-dir="false"

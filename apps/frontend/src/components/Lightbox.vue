@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { lightboxState, closeLightbox } from '@/composables/useLightbox'
 import { X } from '@lucide/vue'
 
 const scale = ref(1)
 const translateX = ref(0)
 const translateY = ref(0)
+const containerRef = ref<HTMLElement | null>(null)
 let isDragging = false
 let hasDragged = false
 let dragStartX = 0
@@ -18,6 +19,7 @@ watch(() => lightboxState.open, (open) => {
     scale.value = 1
     translateX.value = 0
     translateY.value = 0
+    nextTick(() => containerRef.value?.focus())
   }
 })
 
@@ -61,7 +63,10 @@ function handleBackdropClick(e: MouseEvent) {
 }
 
 function handleKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') closeLightbox()
+  if (e.key === 'Escape') {
+    e.stopPropagation()
+    closeLightbox()
+  }
 }
 </script>
 
@@ -77,7 +82,7 @@ function handleKeydown(e: KeyboardEvent) {
       @mouseup="handleMouseUp"
       @mouseleave="handleMouseUp"
       @keydown="handleKeydown"
-      tabindex="0"
+      tabindex="-1"
       ref="containerRef"
     >
       <button

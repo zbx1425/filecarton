@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useNavigationStore } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
 import { useUploadStore } from '@/stores/upload'
@@ -18,7 +18,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu'
 import {
@@ -32,6 +31,7 @@ import {
   ChevronDown,
 } from '@lucide/vue'
 import { createItem } from '@/composables/useFileActions'
+import { isInternalDrag, handleDrop } from '@/composables/useDragDrop'
 import ClipboardBadge from '@/components/ClipboardBadge.vue'
 
 const navigation = useNavigationStore()
@@ -43,6 +43,29 @@ const isAtRoot = computed(() => pathSegments.value.length === 0 && !navigation.a
 
 function navigateToSegment(index: number) {
   navigation.navigateTo(pathSegments.value.slice(0, index + 1))
+}
+
+const dropHoverSegment = ref<number | null>(null)
+
+function segmentPath(index: number): string {
+  return pathSegments.value.slice(0, index + 1).join('/')
+}
+
+function handleBreadcrumbDragOver(e: DragEvent, index: number) {
+  if (!isInternalDrag(e)) return
+  e.preventDefault()
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+  dropHoverSegment.value = index
+}
+
+function handleBreadcrumbDragLeave() {
+  dropHoverSegment.value = null
+}
+
+async function handleBreadcrumbDrop(e: DragEvent, index: number) {
+  dropHoverSegment.value = null
+  const targetPath = index === -1 ? '' : segmentPath(index)
+  await handleDrop(e, targetPath)
 }
 </script>
 
@@ -67,7 +90,11 @@ function navigateToSegment(index: number) {
           <BreadcrumbLink
             v-else
             class="flex items-center gap-1.5 cursor-pointer"
+            :class="dropHoverSegment === -1 ? 'bg-primary/10 rounded px-1' : ''"
             @click="navigation.navigateTo([])"
+            @dragover="handleBreadcrumbDragOver($event, -1)"
+            @dragleave="handleBreadcrumbDragLeave"
+            @drop="handleBreadcrumbDrop($event, -1)"
           >
             <Home class="size-4" />
           </BreadcrumbLink>
@@ -79,7 +106,11 @@ function navigateToSegment(index: number) {
             <BreadcrumbLink
               v-if="i < pathSegments.length - 1 || navigation.activeFile"
               class="cursor-pointer"
+              :class="dropHoverSegment === i ? 'bg-primary/10 rounded px-1' : ''"
               @click="navigateToSegment(i)"
+              @dragover="handleBreadcrumbDragOver($event, i)"
+              @dragleave="handleBreadcrumbDragLeave"
+              @drop="handleBreadcrumbDrop($event, i)"
             >
               {{ segment }}
             </BreadcrumbLink>

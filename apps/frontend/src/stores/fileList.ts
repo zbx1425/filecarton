@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { apiGet } from '@/api/client'
+import { useUiStore } from '@/stores/ui'
 import type { DirEntry, FileEntry, ListResponse } from '@/api/types'
 
 type SortColumn = 'name' | 'size' | 'mtime'
@@ -60,10 +61,31 @@ export const useFileListStore = defineStore('fileList', () => {
     return arr
   })
 
+  const filteredDirs = computed(() => {
+    const ui = useUiStore()
+    const q = ui.searchQuery.trim().toLowerCase()
+    if (!q || ui.searchRecursive) return sortedDirs.value
+    return sortedDirs.value.filter(d => d.name.toLowerCase().includes(q))
+  })
+
+  const filteredFiles = computed(() => {
+    const ui = useUiStore()
+    const q = ui.searchQuery.trim().toLowerCase()
+    if (!q || ui.searchRecursive) return sortedFiles.value
+    return sortedFiles.value.filter(f => f.name.toLowerCase().includes(q))
+  })
+
   const allEntries = computed(() => {
     const result: Array<{ name: string; isDir: boolean }> = []
     for (const d of sortedDirs.value) result.push({ name: d.name, isDir: true })
     for (const f of sortedFiles.value) result.push({ name: f.name, isDir: false })
+    return result
+  })
+
+  const filteredEntries = computed(() => {
+    const result: Array<{ name: string; isDir: boolean }> = []
+    for (const d of filteredDirs.value) result.push({ name: d.name, isDir: true })
+    for (const f of filteredFiles.value) result.push({ name: f.name, isDir: false })
     return result
   })
 
@@ -113,7 +135,7 @@ export const useFileListStore = defineStore('fileList', () => {
 
   function selectAll() {
     const s = new Set<string>()
-    for (const entry of allEntries.value) s.add(entry.name)
+    for (const entry of filteredEntries.value) s.add(entry.name)
     selected.value = s
   }
 
@@ -127,7 +149,7 @@ export const useFileListStore = defineStore('fileList', () => {
       toggleSelect(name)
       return
     }
-    const entries = allEntries.value
+    const entries = filteredEntries.value
     const lastIdx = entries.findIndex(e => e.name === lastClickedName.value)
     const curIdx = entries.findIndex(e => e.name === name)
     if (lastIdx < 0 || curIdx < 0) {
@@ -144,7 +166,7 @@ export const useFileListStore = defineStore('fileList', () => {
   }
 
   function moveFocus(delta: number) {
-    const entries = allEntries.value
+    const entries = filteredEntries.value
     if (entries.length === 0) return
     let next = focusIndex.value + delta
     if (next < 0) next = 0
@@ -171,7 +193,10 @@ export const useFileListStore = defineStore('fileList', () => {
     focusIndex,
     sortedDirs,
     sortedFiles,
+    filteredDirs,
+    filteredFiles,
     allEntries,
+    filteredEntries,
     selectedCount,
     hasSelection,
     totalSize,

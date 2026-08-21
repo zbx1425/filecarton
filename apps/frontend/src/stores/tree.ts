@@ -7,26 +7,33 @@ export const useTreeStore = defineStore('tree', () => {
   const childrenCache = ref(new Map<string, TreeChild[]>())
   const expanded = ref(new Set<string>())
   const loading = ref(new Set<string>())
+  const pendingRequests = new Map<string, Promise<TreeChild[]>>()
 
   async function loadChildren(path: string): Promise<TreeChild[]> {
     const cached = childrenCache.value.get(path)
     if (cached) return cached
 
+    const pending = pendingRequests.get(path)
+    if (pending) return pending
+
     const l = new Set(loading.value)
     l.add(path)
     loading.value = l
 
-    try {
-      const data = await apiGet<TreeNodeResponse>('tree_node', { path })
+    const promise = apiGet<TreeNodeResponse>('tree_node', { path }).then(data => {
       const newCache = new Map(childrenCache.value)
       newCache.set(path, data.children)
       childrenCache.value = newCache
       return data.children
-    } finally {
+    }).finally(() => {
+      pendingRequests.delete(path)
       const l2 = new Set(loading.value)
       l2.delete(path)
       loading.value = l2
-    }
+    })
+
+    pendingRequests.set(path, promise)
+    return promise
   }
 
   function setExpanded(path: string, value: boolean) {

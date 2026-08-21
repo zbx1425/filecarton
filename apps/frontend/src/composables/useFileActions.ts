@@ -43,15 +43,43 @@ export async function createItem(type: 'file' | 'dir') {
   }
 }
 
+function isAffectingActiveFile(dirPath: string, itemNames: string[]): boolean {
+  const navigation = useNavigationStore()
+  if (!navigation.activeFile) return false
+  if (navigation.currentPathStr !== dirPath) return false
+  return itemNames.includes(navigation.activeFile)
+}
+
+function isAffectingCurrentPath(dirPath: string, itemNames: string[]): boolean {
+  const navigation = useNavigationStore()
+  const currentStr = navigation.currentPathStr
+  for (const name of itemNames) {
+    const fullPath = joinPath(dirPath, name)
+    if (currentStr === fullPath || currentStr.startsWith(fullPath + '/')) {
+      return true
+    }
+  }
+  return false
+}
+
 export async function deleteItems(dirPath: string, itemNames: string[]) {
   const ui = useUiStore()
   if (ui.readonly) return
 
   const navigation = useNavigationStore()
   const count = itemNames.length
-  const message = count === 1
-    ? `Are you sure you want to delete "${itemNames[0]}"?`
-    : `Are you sure you want to delete ${count} items?`
+
+  const affectsEditor = navigation.editDirty && (isAffectingActiveFile(dirPath, itemNames) || isAffectingCurrentPath(dirPath, itemNames))
+  let message: string
+  if (affectsEditor) {
+    message = count === 1
+      ? `"${itemNames[0]}" is currently being edited with unsaved changes. Deleting it will discard your changes. Continue?`
+      : `${count} items include a file you are editing with unsaved changes. Deleting will discard your changes. Continue?`
+  } else {
+    message = count === 1
+      ? `Are you sure you want to delete "${itemNames[0]}"?`
+      : `Are you sure you want to delete ${count} items?`
+  }
 
   const confirmed = await confirm('Delete', message, {
     actionLabel: 'Delete',
@@ -72,6 +100,18 @@ export async function deleteItems(dirPath: string, itemNames: string[]) {
 
     const fileList = useFileListStore()
     const tree = useTreeStore()
+
+    if (isAffectingActiveFile(dirPath, itemNames)) {
+      navigation.editDirty = false
+      navigation.backToList()
+    }
+
+    if (isAffectingCurrentPath(dirPath, itemNames)) {
+      navigation.editDirty = false
+      const parentSegments = dirPath ? dirPath.split('/') : []
+      await navigation.navigateTo(parentSegments)
+    }
+
     fileList.fetchDir(navigation.currentPathStr)
     tree.invalidate(dirPath)
     tree.loadChildren(dirPath)
@@ -91,6 +131,18 @@ export async function renameItem(dirPath: string, oldName: string) {
   const ui = useUiStore()
   if (ui.readonly) return
 
+  const navigation = useNavigationStore()
+  const affectsEditor = navigation.editDirty && (isAffectingActiveFile(dirPath, [oldName]) || isAffectingCurrentPath(dirPath, [oldName]))
+
+  if (affectsEditor) {
+    const canProceed = await confirm(
+      'Unsaved Changes',
+      'Renaming this item will discard unsaved changes in the editor. Continue?',
+      { actionLabel: 'Continue', danger: true },
+    )
+    if (!canProceed) return
+  }
+
   const newName = await prompt('Rename', {
     initialValue: oldName,
     submitLabel: 'Rename',
@@ -105,7 +157,22 @@ export async function renameItem(dirPath: string, oldName: string) {
       newName,
     })
     toast.success(`Renamed to ${newName}`)
+
+    if (isAffectingActiveFile(dirPath, [oldName])) {
+      navigation.editDirty = false
+      navigation.backToList()
+    }
+
+    if (isAffectingCurrentPath(dirPath, [oldName])) {
+      navigation.editDirty = false
+      const parentSegments = dirPath ? dirPath.split('/') : []
+      await navigation.navigateTo(parentSegments)
+    }
+
     refreshCurrent()
+    const tree = useTreeStore()
+    tree.invalidate(dirPath)
+    tree.loadChildren(dirPath)
   } catch (e: unknown) {
     toast.error(e instanceof Error ? e.message : 'Failed to rename')
   }
@@ -119,7 +186,7 @@ export async function pasteItems(targetPath: string) {
   if (!clipboard.hasContent || !clipboard.mode) return
 
   try {
-    const result = await apiPost<PasteResponse>('paste', {
+    let result = await apiPost<PasteResponse>('paste', {
       mode: clipboard.mode,
       sourcePath: clipboard.sourcePath,
       items: clipboard.items.map(i => i.name),
@@ -130,13 +197,19 @@ export async function pasteItems(targetPath: string) {
     if (result.conflicts.length > 0) {
       const overwrite = await showPasteConflict(result.conflicts)
       if (overwrite) {
-        await apiPost<PasteResponse>('paste', {
+        const overwriteResult = await apiPost<PasteResponse>('paste', {
           mode: clipboard.mode,
           sourcePath: clipboard.sourcePath,
-          items: clipboard.items.map(i => i.name),
+          items: result.conflicts,
           targetPath,
           overwrite: true,
         })
+        result = {
+          completed: result.completed + overwriteResult.completed,
+          conflicts: [],
+          failed: [...result.failed, ...overwriteResult.failed],
+          renamed: [...result.renamed, ...overwriteResult.renamed],
+        }
       } else {
         return
       }
@@ -146,7 +219,7 @@ export async function pasteItems(targetPath: string) {
       toast.error(`Failed: ${result.failed.map(f => `${f.name}: ${f.error}`).join(', ')}`)
     } else {
       const verb = clipboard.mode === 'copy' ? 'Copied' : 'Moved'
-      toast.success(`${verb} ${clipboard.items.length} item(s)`)
+      toast.success(`${verb} ${result.completed} item(s)`)
     }
 
     if (clipboard.mode === 'cut') {

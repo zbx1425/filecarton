@@ -4,6 +4,7 @@ import type { PasteResponse } from '@/api/types'
 import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
 import { useTreeStore } from '@/stores/tree'
+import { showPasteConflict } from '@/composables/useDialogs'
 
 const MIME_TYPE = 'application/filecarton'
 
@@ -44,7 +45,7 @@ export async function handleDrop(e: DragEvent, targetPath: string) {
   if (payload.sourcePath === targetPath) return
 
   try {
-    const result = await apiPost<PasteResponse>('paste', {
+    let result = await apiPost<PasteResponse>('paste', {
       mode: 'cut',
       sourcePath: payload.sourcePath,
       items: payload.items,
@@ -52,10 +53,31 @@ export async function handleDrop(e: DragEvent, targetPath: string) {
       overwrite: false,
     })
 
+    if (result.conflicts.length > 0) {
+      const overwrite = await showPasteConflict(result.conflicts)
+      if (overwrite) {
+        const overwriteResult = await apiPost<PasteResponse>('paste', {
+          mode: 'cut',
+          sourcePath: payload.sourcePath,
+          items: result.conflicts,
+          targetPath,
+          overwrite: true,
+        })
+        result = {
+          completed: result.completed + overwriteResult.completed,
+          conflicts: [],
+          failed: [...result.failed, ...overwriteResult.failed],
+          renamed: [...result.renamed, ...overwriteResult.renamed],
+        }
+      } else {
+        return
+      }
+    }
+
     if (result.failed.length > 0) {
       toast.error(`Move failed: ${result.failed.map(f => f.name).join(', ')}`)
     } else {
-      toast.success(`Moved ${payload.items.length} item(s)`)
+      toast.success(`Moved ${result.completed} item(s)`)
     }
 
     const navigation = useNavigationStore()
@@ -90,6 +112,6 @@ export function startDragFromSelection(e: DragEvent) {
     label.style.cssText = 'position:fixed;top:-100px;padding:4px 8px;background:#333;color:#fff;font-size:12px;border-radius:4px;'
     document.body.appendChild(label)
     e.dataTransfer.setDragImage(label, 0, 0)
-    requestAnimationFrame(() => document.body.removeChild(label))
+    setTimeout(() => document.body.removeChild(label), 100)
   }
 }

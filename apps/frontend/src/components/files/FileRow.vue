@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onBeforeUnmount } from 'vue'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   ContextMenu,
@@ -22,12 +22,12 @@ import { buildDownloadUrl } from '@/api/client'
 import { joinPath } from '@/utils/path'
 import {
   FolderOpen, Eye, Copy, Scissors, ClipboardPaste,
-  Pencil, Trash2, Download, FileArchive, PackageOpen,
+  Pencil, Trash2, Download, PackageOpen,
 } from '@lucide/vue'
-import { isArchive } from '@/composables/useFileType'
+import { isArchive, canPreviewImage } from '@/composables/useFileType'
 import { extractArchive } from '@/composables/useArchive'
 import {
-  setDragData, isInternalDrag, handleDrop as dndHandleDrop, startDragFromSelection,
+  isInternalDrag, handleDrop as dndHandleDrop, startDragFromSelection,
 } from '@/composables/useDragDrop'
 
 const props = defineProps<{
@@ -46,17 +46,19 @@ const isSelected = computed(() => fileList.selected.has(props.name))
 const isCut = computed(() => clipboard.isCutItem(navigation.currentPathStr, props.name))
 const icon = computed(() => getFileIcon(props.name, props.isDir))
 
-function handleCheckboxClick(e: Event) {
-  e.stopPropagation()
-}
-
-function handleClick(e: MouseEvent) {
+function handleRowClick(e: MouseEvent) {
   if (e.shiftKey) {
     e.preventDefault()
     fileList.rangeSelect(props.name)
-    return
+  } else if (e.ctrlKey || e.metaKey) {
+    fileList.toggleSelect(props.name)
+  } else {
+    fileList.clearSelection()
+    fileList.toggleSelect(props.name)
   }
+}
 
+function handleDblClick() {
   if (props.isDir) {
     navigation.navigateTo([...navigation.currentPath, props.name])
   } else {
@@ -140,47 +142,86 @@ async function handleDrop(e: DragEvent) {
   if (!props.isDir) return
   await dndHandleDrop(e, joinPath(navigation.currentPathStr, props.name))
 }
+
+const showThumbnail = ref(false)
+const thumbnailPos = ref({ x: 0, y: 0 })
+let hoverTimer: ReturnType<typeof setTimeout> | null = null
+const hasThumbnail = computed(() => !props.isDir && canPreviewImage(props.name, props.size ?? 0))
+
+function handleNameMouseEnter(e: MouseEvent) {
+  if (!hasThumbnail.value) return
+  hoverTimer = setTimeout(() => {
+    thumbnailPos.value = { x: e.clientX + 12, y: e.clientY + 12 }
+    showThumbnail.value = true
+  }, 300)
+}
+
+function handleNameMouseMove(e: MouseEvent) {
+  if (showThumbnail.value) {
+    thumbnailPos.value = { x: e.clientX + 12, y: e.clientY + 12 }
+  }
+}
+
+function handleNameMouseLeave() {
+  if (hoverTimer) {
+    clearTimeout(hoverTimer)
+    hoverTimer = null
+  }
+  showThumbnail.value = false
+}
+
+onBeforeUnmount(() => {
+  if (hoverTimer) clearTimeout(hoverTimer)
+})
+
+const thumbnailUrl = computed(() => {
+  if (!hasThumbnail.value) return ''
+  return buildDownloadUrl(joinPath(navigation.currentPathStr, props.name))
+})
 </script>
 
 <template>
   <ContextMenu @update:open="(open: boolean) => { if (open) handleContextOpen() }">
     <ContextMenuTrigger as-child>
       <div
-        class="flex items-center h-8 px-3 text-xs group border-b border-transparent cursor-pointer select-none"
+        class="flex items-center h-8 px-3 text-xs group border-b border-transparent cursor-default select-none"
         :class="[
           dropHover ? 'bg-primary/10 border-primary border-dashed' :
           isSelected ? 'bg-accent' : 'hover:bg-muted/50',
           isCut ? 'opacity-50' : '',
         ]"
         :draggable="true"
+        @click="handleRowClick"
+        @dblclick="handleDblClick"
         @dragstart="handleDragStart"
         @dragover="handleDragOver"
         @dragleave="handleDragLeave"
         @drop="handleDrop"
       >
-        <div class="flex items-center justify-center w-6 shrink-0" @click="handleCheckboxClick">
+        <div class="flex items-center justify-center w-6 shrink-0" @click.stop>
           <Checkbox
             :model-value="isSelected"
             class="size-3.5 opacity-0 group-hover:opacity-100"
             :class="{ '!opacity-100': isSelected }"
-            @click.stop
             @update:model-value="fileList.toggleSelect(name)"
           />
         </div>
 
         <div
           class="flex items-center gap-2 flex-1 min-w-0 pr-4"
-          @click="handleClick"
+          @mouseenter="handleNameMouseEnter"
+          @mousemove="handleNameMouseMove"
+          @mouseleave="handleNameMouseLeave"
         >
           <component :is="icon" class="size-4 shrink-0 text-muted-foreground" />
           <span class="truncate" :class="isDir ? 'font-medium' : ''">{{ name }}</span>
         </div>
 
-        <div class="w-20 text-right text-muted-foreground shrink-0 tabular-nums" @click="handleClick">
+        <div class="w-20 text-right text-muted-foreground shrink-0 tabular-nums">
           {{ isDir ? '—' : formatSize(size ?? 0) }}
         </div>
 
-        <div class="w-24 text-right text-muted-foreground shrink-0" @click="handleClick">
+        <div class="w-24 text-right text-muted-foreground shrink-0">
           {{ formatTime(mtime) }}
         </div>
       </div>
@@ -242,4 +283,18 @@ async function handleDrop(e: DragEvent) {
       </template>
     </ContextMenuContent>
   </ContextMenu>
+
+  <Teleport to="body">
+    <div
+      v-if="showThumbnail"
+      class="fixed z-50 pointer-events-none rounded-md border bg-popover p-1 shadow-md"
+      :style="{ left: thumbnailPos.x + 'px', top: thumbnailPos.y + 'px' }"
+    >
+      <img
+        :src="thumbnailUrl"
+        :alt="name"
+        class="max-w-[128px] max-h-[128px] object-contain rounded"
+      />
+    </div>
+  </Teleport>
 </template>

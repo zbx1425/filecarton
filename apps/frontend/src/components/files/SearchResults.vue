@@ -54,13 +54,13 @@ watch(() => ui.searchRecursive, (recursive) => {
   }
 })
 
-function openResult(result: SearchResult) {
+async function openResult(result: SearchResult) {
   const dirSegments = result.path ? splitPath(result.path) : []
   if (result.type === 'dir') {
-    navigation.navigateTo([...dirSegments, result.name])
+    await navigation.navigateTo([...dirSegments, result.name])
   } else {
-    navigation.navigateTo(dirSegments)
-    navigation.openFile(result.name)
+    await navigation.navigateTo(dirSegments)
+    await navigation.openFile(result.name)
   }
   ui.searchQuery = ''
   ui.searchRecursive = false
