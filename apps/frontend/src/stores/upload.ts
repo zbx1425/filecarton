@@ -4,7 +4,8 @@ import { toast } from 'vue-sonner'
 import { useDebounceFn } from '@vueuse/core'
 import UploadToast from '@/components/upload/UploadToast.vue'
 import { apiUpload, apiPost } from '@/api/client'
-import type { UploadResponse, UploadChunkResponse, UploadCompleteResponse } from '@/api/types'
+import type { UploadResponse, UploadChunkResponse, UploadCompleteResponse, CheckUploadConflictsResponse } from '@/api/types'
+import { showPasteConflict } from '@/composables/useDialogs'
 import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
 import { useTreeStore } from '@/stores/tree'
@@ -50,46 +51,89 @@ export const useUploadStore = defineStore('upload', () => {
     }
   }
 
-  function addFiles(fileList: FileList | File[], targetDir: string) {
-    const newTasks: UploadTask[] = []
-    for (const file of fileList) {
-      newTasks.push({
-        id: crypto.randomUUID(),
-        file,
-        relativePath: '',
-        targetDir,
-        progress: 0,
-        status: 'pending',
-      })
+  function computeTargetPath(targetDir: string, relativePath: string, fileName: string): string {
+    if (relativePath) {
+      const dir = relativePath.split('/').slice(0, -1).join('/')
+      const base = dir ? joinPath(targetDir, dir) : targetDir
+      return joinPath(base, fileName)
     }
+    return joinPath(targetDir, fileName)
+  }
+
+  async function checkConflicts(
+    entries: Array<{ fileName: string; relativePath: string; targetDir: string }>,
+  ): Promise<boolean> {
+    const paths = entries.map(e => computeTargetPath(e.targetDir, e.relativePath, e.fileName))
+    try {
+      const result = await apiPost<CheckUploadConflictsResponse>('check_upload_conflicts', { paths })
+      if (result.existing.length > 0) {
+        return await showPasteConflict(result.existing)
+      }
+      return true
+    } catch {
+      return true
+    }
+  }
+
+  function enqueueTasks(newTasks: UploadTask[]) {
     tasks.value = [...tasks.value, ...newTasks]
     visible.value = true
     showUploadToast()
     processQueue()
   }
 
-  function addFolderFiles(fileList: FileList, targetDir: string) {
-    const newTasks: UploadTask[] = []
-    for (const file of fileList) {
-      newTasks.push({
-        id: crypto.randomUUID(),
-        file,
-        relativePath: (file as any).webkitRelativePath || '',
-        targetDir,
-        progress: 0,
-        status: 'pending',
-      })
-    }
-    tasks.value = [...tasks.value, ...newTasks]
-    visible.value = true
-    showUploadToast()
-    processQueue()
+  async function addFiles(fileList: FileList | File[], targetDir: string) {
+    const entries = Array.from(fileList).map(f => ({
+      fileName: f.name,
+      relativePath: '',
+      targetDir,
+    }))
+    const proceed = await checkConflicts(entries)
+    if (!proceed) return
+
+    const newTasks: UploadTask[] = Array.from(fileList).map(file => ({
+      id: crypto.randomUUID(),
+      file,
+      relativePath: '',
+      targetDir,
+      progress: 0,
+      status: 'pending' as const,
+    }))
+    enqueueTasks(newTasks)
   }
 
-  function addFilesWithPaths(
+  async function addFolderFiles(fileList: FileList, targetDir: string) {
+    const entries = Array.from(fileList).map(file => ({
+      fileName: file.name,
+      relativePath: (file as any).webkitRelativePath || '',
+      targetDir,
+    }))
+    const proceed = await checkConflicts(entries)
+    if (!proceed) return
+
+    const newTasks: UploadTask[] = Array.from(fileList).map(file => ({
+      id: crypto.randomUUID(),
+      file,
+      relativePath: (file as any).webkitRelativePath || '',
+      targetDir,
+      progress: 0,
+      status: 'pending' as const,
+    }))
+    enqueueTasks(newTasks)
+  }
+
+  async function addFilesWithPaths(
     files: { file: File; relativePath: string }[],
     targetDir: string,
   ) {
+    const entries = files.map(({ file, relativePath }) => ({
+      fileName: file.name,
+      relativePath,
+      targetDir,
+    }))
+    const proceed = await checkConflicts(entries)
+    if (!proceed) return
+
     const newTasks: UploadTask[] = files.map(({ file, relativePath }) => ({
       id: crypto.randomUUID(),
       file,
@@ -98,10 +142,7 @@ export const useUploadStore = defineStore('upload', () => {
       progress: 0,
       status: 'pending' as const,
     }))
-    tasks.value = [...tasks.value, ...newTasks]
-    visible.value = true
-    showUploadToast()
-    processQueue()
+    enqueueTasks(newTasks)
   }
 
   async function processQueue() {

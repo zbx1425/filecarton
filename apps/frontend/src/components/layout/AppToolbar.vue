@@ -72,6 +72,10 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
 
 <template>
   <div class="flex items-center h-11 px-3 border-b gap-2 shrink-0 bg-background">
+    <span v-if="ui.branding" class="text-sm font-semibold tracking-tight shrink-0 mr-1">
+      {{ ui.branding }}
+    </span>
+
     <Button
       v-if="ui.showTreeToggle"
       variant="ghost"
@@ -130,14 +134,14 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
       </BreadcrumbList>
     </Breadcrumb>
 
-    <div class="flex items-center gap-1">
-      <div class="flex items-center">
+    <div class="flex items-center gap-2">
+      <div class="flex items-center me-1">
         <div class="relative">
           <Search class="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
           <Input
             v-model="ui.searchQuery"
             placeholder="Search..."
-            class="h-8 w-40 pl-7 pr-7 text-xs"
+            class="h-8 w-48 pl-7 pr-7 text-xs"
           />
         </div>
         <DropdownMenu>

@@ -105,3 +105,13 @@ export interface ArchiveExtractResponse {
   extracted: number
   targetPath: string
 }
+
+export interface ArchiveExtractDryRunResponse {
+  wouldExtract: number
+  conflicts: string[]
+  targetPath: string
+}
+
+export interface CheckUploadConflictsResponse {
+  existing: string[]
+}

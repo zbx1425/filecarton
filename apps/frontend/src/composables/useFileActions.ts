@@ -186,7 +186,7 @@ export async function pasteItems(targetPath: string) {
   if (!clipboard.hasContent || !clipboard.mode) return
 
   try {
-    let result = await apiPost<PasteResponse>('paste', {
+    const check = await apiPost<PasteResponse>('paste', {
       mode: clipboard.mode,
       sourcePath: clipboard.sourcePath,
       items: clipboard.items.map(i => i.name),
@@ -194,32 +194,31 @@ export async function pasteItems(targetPath: string) {
       overwrite: false,
     })
 
-    if (result.conflicts.length > 0) {
-      const overwrite = await showPasteConflict(result.conflicts)
-      if (overwrite) {
-        const overwriteResult = await apiPost<PasteResponse>('paste', {
-          mode: clipboard.mode,
-          sourcePath: clipboard.sourcePath,
-          items: result.conflicts,
-          targetPath,
-          overwrite: true,
-        })
-        result = {
-          completed: result.completed + overwriteResult.completed,
-          conflicts: [],
-          failed: [...result.failed, ...overwriteResult.failed],
-          renamed: [...result.renamed, ...overwriteResult.renamed],
-        }
-      } else {
-        return
-      }
-    }
+    if (check.conflicts.length > 0) {
+      const overwrite = await showPasteConflict(check.conflicts)
+      if (!overwrite) return
 
-    if (result.failed.length > 0) {
-      toast.error(`Failed: ${result.failed.map(f => `${f.name}: ${f.error}`).join(', ')}`)
+      const result = await apiPost<PasteResponse>('paste', {
+        mode: clipboard.mode,
+        sourcePath: clipboard.sourcePath,
+        items: clipboard.items.map(i => i.name),
+        targetPath,
+        overwrite: true,
+      })
+
+      if (result.failed.length > 0) {
+        toast.error(`Failed: ${result.failed.map(f => `${f.name}: ${f.error}`).join(', ')}`)
+      } else {
+        const verb = clipboard.mode === 'copy' ? 'Copied' : 'Moved'
+        toast.success(`${verb} ${result.completed} item(s)`)
+      }
     } else {
-      const verb = clipboard.mode === 'copy' ? 'Copied' : 'Moved'
-      toast.success(`${verb} ${result.completed} item(s)`)
+      if (check.failed.length > 0) {
+        toast.error(`Failed: ${check.failed.map(f => `${f.name}: ${f.error}`).join(', ')}`)
+      } else {
+        const verb = clipboard.mode === 'copy' ? 'Copied' : 'Moved'
+        toast.success(`${verb} ${check.completed} item(s)`)
+      }
     }
 
     if (clipboard.mode === 'cut') {

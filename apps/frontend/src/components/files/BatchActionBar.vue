@@ -24,7 +24,10 @@ function handleSelectAll(checked: boolean | "indeterminate") {
 </script>
 
 <template>
-  <div class="flex items-center h-9 px-3 border-t bg-muted/30 gap-2 shrink-0">
+  <div
+    class="flex items-center h-9 px-3 gap-2 shrink-0"
+    style="background: var(--statusbar-bg); color: var(--statusbar-fg); border-top: 1px solid var(--statusbar-border)"
+  >
     <Checkbox
       :model-value="fileList.selectedCount === fileList.allEntries.length"
       class="size-3.5"

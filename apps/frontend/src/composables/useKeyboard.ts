@@ -46,11 +46,14 @@ export function useKeyboard() {
       return
     }
 
+    if (e.key === 'Escape' && ui.dragOverlayVisible) return
+
     if (navigation.viewMode === 'editor') return
 
     if (navigation.viewMode !== 'list') {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' || e.key === 'Backspace') {
         navigation.backToList()
+        e.preventDefault()
       }
       return
     }

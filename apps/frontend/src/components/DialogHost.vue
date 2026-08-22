@@ -23,6 +23,12 @@ import { pathWithoutExtension } from '@/utils/path'
 
 const promptValue = ref('')
 const promptInputRef = ref<InstanceType<typeof Input> | null>(null)
+const confirmBtnRef = ref<HTMLElement | null>(null)
+
+function handleConfirmAutoFocus(e: Event) {
+  e.preventDefault()
+  nextTick(() => confirmBtnRef.value?.focus())
+}
 
 watch(() => dialogState.prompt.open, (open) => {
   if (open) {
@@ -87,7 +93,7 @@ function handleEditorConflictOpenChange(open: boolean) {
 <template>
   <!-- Confirm (AlertDialog) -->
   <AlertDialog :open="dialogState.confirm.open">
-    <AlertDialogContent @escapeKeyDown="resolveConfirm(false)">
+    <AlertDialogContent @escapeKeyDown="resolveConfirm(false)" @openAutoFocus="handleConfirmAutoFocus">
       <form @submit.prevent="resolveConfirm(true)">
         <AlertDialogHeader>
           <AlertDialogTitle>{{ dialogState.confirm.title }}</AlertDialogTitle>
@@ -96,6 +102,7 @@ function handleEditorConflictOpenChange(open: boolean) {
         <AlertDialogFooter class="mt-4">
           <Button variant="outline" type="button" @click="resolveConfirm(false)">Cancel</Button>
           <Button
+            ref="confirmBtnRef"
             type="submit"
             :class="dialogState.confirm.danger ? 'bg-destructive text-white hover:bg-destructive/90' : ''"
           >
@@ -138,8 +145,18 @@ function handleEditorConflictOpenChange(open: boolean) {
             The following {{ dialogState.pasteConflict.files.length }} file(s) already exist in the target directory:
           </DialogDescription>
         </DialogHeader>
+        <div v-if="dialogState.pasteConflict.activeFilePath && dialogState.pasteConflict.files.includes(dialogState.pasteConflict.activeFilePath)" class="text-xs text-destructive mt-2 px-1">
+          Warning: One of these files is currently open in the editor. Overwriting will discard your changes.
+        </div>
         <div class="max-h-48 overflow-auto border p-2 text-xs font-mono space-y-0.5 mt-2">
-          <div v-for="f in dialogState.pasteConflict.files" :key="f">{{ f }}</div>
+          <div
+            v-for="f in dialogState.pasteConflict.files"
+            :key="f"
+            :class="f === dialogState.pasteConflict.activeFilePath ? 'text-destructive font-medium' : ''"
+          >
+            {{ f }}
+            <span v-if="f === dialogState.pasteConflict.activeFilePath" class="text-destructive opacity-70">(editing)</span>
+          </div>
         </div>
         <DialogFooter class="mt-4">
           <Button variant="outline" type="button" @click="resolvePasteConflict(false)">Cancel</Button>
@@ -156,7 +173,7 @@ function handleEditorConflictOpenChange(open: boolean) {
         <DialogHeader>
           <DialogTitle>File Modified</DialogTitle>
           <DialogDescription>
-            This file was modified by another user since you opened it.
+            This file was modified since you opened it.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter class="mt-4">

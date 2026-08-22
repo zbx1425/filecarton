@@ -6,7 +6,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
 import { Slider } from '@/components/ui/slider'
 import { Separator } from '@/components/ui/separator'
 import { useUiStore } from '@/stores/ui'
@@ -29,7 +28,7 @@ function setEditorFontSize(val: number[] | undefined) {
 
 <template>
   <Dialog v-model:open="ui.settingsOpen">
-    <DialogContent class="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+    <DialogContent class="sm:max-w-lg max-h-[85vh] overflow-y-auto pb-8">
       <DialogHeader>
         <DialogTitle>Settings</DialogTitle>
       </DialogHeader>
@@ -85,7 +84,7 @@ function setEditorFontSize(val: number[] | undefined) {
                 <Button
                   size="sm"
                   :variant="prefs.displayDensity === 'compact' ? 'default' : 'outline'"
-                  class="flex-1 px-1"
+                  class="flex-1 px-1 text-xs"
                   @click="prefs.displayDensity = 'compact'"
                 >
                   Compact
@@ -93,7 +92,7 @@ function setEditorFontSize(val: number[] | undefined) {
                 <Button
                   size="sm"
                   :variant="prefs.displayDensity === 'default' ? 'default' : 'outline'"
-                  class="flex-1 px-1"
+                  class="flex-1 px-1 text-xs"
                   @click="prefs.displayDensity = 'default'"
                 >
                   Default
@@ -101,7 +100,7 @@ function setEditorFontSize(val: number[] | undefined) {
                 <Button
                   size="sm"
                   :variant="prefs.displayDensity === 'comfortable' ? 'default' : 'outline'"
-                  class="flex-1 px-1"
+                  class="flex-1 px-1 text-xs"
                   @click="prefs.displayDensity = 'comfortable'"
                 >
                   Cozy
@@ -132,62 +131,18 @@ function setEditorFontSize(val: number[] | undefined) {
         <div class="space-y-4">
           <h3 class="text-sm font-medium">Editor</h3>
 
-          <div class="grid grid-cols-2 gap-x-6 gap-y-4">
-            <!-- Editor Font Size -->
-            <div class="col-span-2 space-y-1.5">
-              <div class="flex items-center justify-between">
-                <label class="text-xs text-muted-foreground">Editor Font Size</label>
-                <span class="text-xs tabular-nums text-muted-foreground">{{ prefs.editorFontSize }}px</span>
-              </div>
-              <Slider
-                :model-value="[prefs.editorFontSize]"
-                :min="10"
-                :max="24"
-                :step="1"
-                @update:model-value="setEditorFontSize"
-              />
-            </div>
-
-            <!-- Word Wrap -->
+          <div class="space-y-1.5">
             <div class="flex items-center justify-between">
-              <label class="text-xs text-muted-foreground">Word Wrap</label>
-              <Switch
-                :model-value="prefs.editorWordWrap"
-                @update:model-value="prefs.editorWordWrap = $event"
-              />
+              <label class="text-xs text-muted-foreground">Editor Font Size</label>
+              <span class="text-xs tabular-nums text-muted-foreground">{{ prefs.editorFontSize }}px</span>
             </div>
-
-            <!-- Line Numbers -->
-            <div class="flex items-center justify-between">
-              <label class="text-xs text-muted-foreground">Line Numbers</label>
-              <Switch
-                :model-value="prefs.editorLineNumbers"
-                @update:model-value="prefs.editorLineNumbers = $event"
-              />
-            </div>
-
-            <!-- Tab Size -->
-            <div class="space-y-1.5">
-              <label class="text-xs text-muted-foreground">Tab Size</label>
-              <div class="flex gap-1">
-                <Button
-                  size="sm"
-                  :variant="prefs.editorTabSize === 2 ? 'default' : 'outline'"
-                  class="flex-1"
-                  @click="prefs.editorTabSize = 2"
-                >
-                  2
-                </Button>
-                <Button
-                  size="sm"
-                  :variant="prefs.editorTabSize === 4 ? 'default' : 'outline'"
-                  class="flex-1"
-                  @click="prefs.editorTabSize = 4"
-                >
-                  4
-                </Button>
-              </div>
-            </div>
+            <Slider
+              :model-value="[prefs.editorFontSize]"
+              :min="10"
+              :max="24"
+              :step="1"
+              @update:model-value="setEditorFontSize"
+            />
           </div>
         </div>
       </div>

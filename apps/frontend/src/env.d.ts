@@ -3,6 +3,7 @@ interface FileCartonConfig {
   csrfToken: string
   readonly: boolean
   repoName: string
+  branding?: string
 }
 
 declare global {

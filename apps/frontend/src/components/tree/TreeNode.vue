@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { ChevronRight, Loader2, FolderPlus } from '@lucide/vue'
+import { ChevronRight, Loader2, FolderPlus, FileArchive, PackageOpen } from '@lucide/vue'
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import FileItemMenu from '@/components/FileItemMenu.vue'
@@ -20,6 +23,8 @@ import {
   deleteItems, renameItem, pasteItems,
 } from '@/composables/useFileActions'
 import { isInternalDrag, handleDrop as dndHandleDrop } from '@/composables/useDragDrop'
+import { createArchive, extractArchive } from '@/composables/useArchive'
+import { isArchive } from '@/composables/useFileType'
 import { apiPost } from '@/api/client'
 import type { CreateResponse } from '@/api/types'
 import { toast } from 'vue-sonner'
@@ -157,6 +162,14 @@ function handleDownload() {
   window.open(buildDownloadUrl(props.path), '_blank')
 }
 
+async function handleCreateArchive(format: 'zip' | 'tar') {
+  await createArchive(format, dirPath.value, [props.name])
+}
+
+async function handleExtract() {
+  await extractArchive(props.path, dirPath.value)
+}
+
 async function handleNewFolder() {
   if (!isDir.value) return
   const name = await prompt('New Folder', { placeholder: 'folder-name', submitLabel: 'Create' })
@@ -227,8 +240,28 @@ async function handleNewFolder() {
           @delete="handleDelete"
           @download="handleDownload"
         >
-          <template v-if="isDir && !ui.readonly">
+          <template v-if="!ui.readonly">
             <ContextMenuSeparator />
+            <template v-if="!isDir && isArchive(name)">
+              <ContextMenuItem @select="handleExtract">
+                <PackageOpen class="size-4" />
+                Extract Here
+              </ContextMenuItem>
+            </template>
+            <template v-else>
+              <ContextMenuSub>
+                <ContextMenuSubTrigger class="gap-2">
+                  <FileArchive class="size-4" />
+                  Archive
+                </ContextMenuSubTrigger>
+                <ContextMenuSubContent>
+                  <ContextMenuItem @select="handleCreateArchive('zip')">Create .zip</ContextMenuItem>
+                  <ContextMenuItem @select="handleCreateArchive('tar')">Create .tar</ContextMenuItem>
+                </ContextMenuSubContent>
+              </ContextMenuSub>
+            </template>
+          </template>
+          <template v-if="isDir && !ui.readonly">
             <ContextMenuItem @select="handleNewFolder">
               <FolderPlus class="size-4" />
               New Folder

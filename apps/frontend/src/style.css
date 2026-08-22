@@ -61,6 +61,12 @@
   --fc-text-xs: 10.5px;
   --fc-row-height: 32px;
   --fc-success: oklch(0.65 0.2 150);
+
+  --statusbar-bg: #F8F8F8;
+  --statusbar-fg: #3B3B3B;
+  --statusbar-border: #E5E5E5;
+  --statusbar-hover: rgba(31, 31, 31, 0.067);
+  --statusbar-hover-fg: #000000;
 }
 
 .dark {
@@ -112,6 +118,12 @@
   --icon-model:       oklch(0.70 0.12 210);
 
   --fc-success: oklch(0.72 0.18 150);
+
+  --statusbar-bg: #181818;
+  --statusbar-fg: #CCCCCC;
+  --statusbar-border: #2B2B2B;
+  --statusbar-hover: rgba(241, 241, 241, 0.2);
+  --statusbar-hover-fg: #FFFFFF;
 }
 
 @theme inline {

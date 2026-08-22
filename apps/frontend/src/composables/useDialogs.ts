@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import { useNavigationStore } from '@/stores/navigation'
 
 export interface ConfirmState {
   open: boolean
@@ -22,6 +23,7 @@ export interface PromptState {
 export interface PasteConflictState {
   open: boolean
   files: string[]
+  activeFilePath: string | null
   resolve: ((value: boolean) => void) | null
 }
 
@@ -38,7 +40,7 @@ export const dialogState = reactive({
     open: false, title: '', placeholder: '', initialValue: '', submitLabel: 'OK', selectBaseName: false, resolve: null,
   } as PromptState,
   pasteConflict: {
-    open: false, files: [] as string[], resolve: null,
+    open: false, files: [] as string[], activeFilePath: null, resolve: null,
   } as PasteConflictState,
   editorConflict: {
     open: false, resolve: null,
@@ -81,8 +83,17 @@ export function prompt(
 }
 
 export function showPasteConflict(files: string[]): Promise<boolean> {
+  let activePath: string | null = null
+  try {
+    const nav = useNavigationStore()
+    if (nav.viewMode === 'editor' && nav.activeFilePath) {
+      activePath = nav.activeFilePath
+    }
+  } catch { /* guard against call before pinia init */ }
+
   return new Promise(resolve => {
     dialogState.pasteConflict.files = files
+    dialogState.pasteConflict.activeFilePath = activePath
     dialogState.pasteConflict.resolve = resolve
     dialogState.pasteConflict.open = true
   })

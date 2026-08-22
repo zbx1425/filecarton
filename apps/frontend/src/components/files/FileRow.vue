@@ -257,26 +257,26 @@ const thumbnailUrl = computed(() => {
         @delete="handleDelete"
         @download="handleDownload"
       >
-        <template v-if="!ui.readonly && fileList.selectedCount > 1">
+        <template v-if="!ui.readonly">
           <ContextMenuSeparator />
-          <ContextMenuSub>
-            <ContextMenuSubTrigger class="gap-2">
-              <FileArchive class="size-4" />
-              Archive
-            </ContextMenuSubTrigger>
-            <ContextMenuSubContent>
-              <ContextMenuItem @select="createArchive('zip')">Create .zip</ContextMenuItem>
-              <ContextMenuItem @select="createArchive('tar')">Create .tar</ContextMenuItem>
-            </ContextMenuSubContent>
-          </ContextMenuSub>
-        </template>
-
-        <template v-if="!ui.readonly && fileList.selectedCount <= 1 && !isDir && isArchive(name)">
-          <ContextMenuSeparator />
-          <ContextMenuItem @select="extractArchive(joinPath(navigation.currentPathStr, name), navigation.currentPathStr)">
-            <PackageOpen class="size-4" />
-            Extract Here
-          </ContextMenuItem>
+          <template v-if="fileList.selectedCount <= 1 && !isDir && isArchive(name)">
+            <ContextMenuItem @select="extractArchive(joinPath(navigation.currentPathStr, name), navigation.currentPathStr)">
+              <PackageOpen class="size-4" />
+              Extract Here
+            </ContextMenuItem>
+          </template>
+          <template v-else>
+            <ContextMenuSub>
+              <ContextMenuSubTrigger class="gap-2">
+                <FileArchive class="size-4" />
+                Archive
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                <ContextMenuItem @select="createArchive('zip')">Create .zip</ContextMenuItem>
+                <ContextMenuItem @select="createArchive('tar')">Create .tar</ContextMenuItem>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          </template>
         </template>
       </FileItemMenu>
     </ContextMenuContent>

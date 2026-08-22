@@ -45,7 +45,7 @@ export async function handleDrop(e: DragEvent, targetPath: string) {
   if (payload.sourcePath === targetPath) return
 
   try {
-    let result = await apiPost<PasteResponse>('paste', {
+    const check = await apiPost<PasteResponse>('paste', {
       mode: 'cut',
       sourcePath: payload.sourcePath,
       items: payload.items,
@@ -53,31 +53,29 @@ export async function handleDrop(e: DragEvent, targetPath: string) {
       overwrite: false,
     })
 
-    if (result.conflicts.length > 0) {
-      const overwrite = await showPasteConflict(result.conflicts)
-      if (overwrite) {
-        const overwriteResult = await apiPost<PasteResponse>('paste', {
-          mode: 'cut',
-          sourcePath: payload.sourcePath,
-          items: result.conflicts,
-          targetPath,
-          overwrite: true,
-        })
-        result = {
-          completed: result.completed + overwriteResult.completed,
-          conflicts: [],
-          failed: [...result.failed, ...overwriteResult.failed],
-          renamed: [...result.renamed, ...overwriteResult.renamed],
-        }
-      } else {
-        return
-      }
-    }
+    if (check.conflicts.length > 0) {
+      const overwrite = await showPasteConflict(check.conflicts)
+      if (!overwrite) return
 
-    if (result.failed.length > 0) {
-      toast.error(`Move failed: ${result.failed.map(f => f.name).join(', ')}`)
+      const result = await apiPost<PasteResponse>('paste', {
+        mode: 'cut',
+        sourcePath: payload.sourcePath,
+        items: payload.items,
+        targetPath,
+        overwrite: true,
+      })
+
+      if (result.failed.length > 0) {
+        toast.error(`Move failed: ${result.failed.map(f => f.name).join(', ')}`)
+      } else {
+        toast.success(`Moved ${result.completed} item(s)`)
+      }
     } else {
-      toast.success(`Moved ${result.completed} item(s)`)
+      if (check.failed.length > 0) {
+        toast.error(`Move failed: ${check.failed.map(f => f.name).join(', ')}`)
+      } else {
+        toast.success(`Moved ${check.completed} item(s)`)
+      }
     }
 
     const navigation = useNavigationStore()

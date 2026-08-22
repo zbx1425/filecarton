@@ -15,6 +15,7 @@ interface StoredPreferences {
   editorWordWrap: boolean
   editorTabSize: TabSize
   editorLineNumbers: boolean
+  editorAutoDetect: boolean
   displayDensity: Density
   tableMaxWidth: number | null
 }
@@ -26,6 +27,7 @@ const DEFAULTS: StoredPreferences = {
   editorWordWrap: true,
   editorTabSize: 2,
   editorLineNumbers: true,
+  editorAutoDetect: true,
   displayDensity: 'default',
   tableMaxWidth: null,
 }
@@ -68,6 +70,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
   const editorWordWrap = ref(saved.editorWordWrap)
   const editorTabSize = ref<TabSize>(saved.editorTabSize)
   const editorLineNumbers = ref(saved.editorLineNumbers)
+  const editorAutoDetect = ref(saved.editorAutoDetect)
   const displayDensity = ref<Density>(saved.displayDensity)
   const tableMaxWidth = ref<number | null>(saved.tableMaxWidth)
 
@@ -96,6 +99,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
       editorWordWrap: editorWordWrap.value,
       editorTabSize: editorTabSize.value,
       editorLineNumbers: editorLineNumbers.value,
+      editorAutoDetect: editorAutoDetect.value,
       displayDensity: displayDensity.value,
       tableMaxWidth: tableMaxWidth.value,
     })
@@ -123,7 +127,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
   }
 
   function setTableMaxWidth(width: number | null) {
-    if (width !== null && width > windowWidth.value) {
+    if (width !== null && width > windowWidth.value - 48) {
       tableMaxWidth.value = null
     } else {
       tableMaxWidth.value = width
@@ -140,7 +144,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
   watch(theme, () => { applyTheme(); persist() })
   watch(baseFontSize, () => { applyTypography(); persist() })
   watch(displayDensity, () => { applyDensity(); persist() })
-  watch([editorFontSize, editorWordWrap, editorTabSize, editorLineNumbers], () => persist())
+  watch([editorFontSize, editorWordWrap, editorTabSize, editorLineNumbers, editorAutoDetect], () => persist())
 
   watch(breakpointBracket, (newBracket) => {
     if (newBracket !== prevBracket) {
@@ -157,6 +161,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
     editorWordWrap,
     editorTabSize,
     editorLineNumbers,
+    editorAutoDetect,
     displayDensity,
     tableMaxWidth,
     effectiveTableMaxWidth,

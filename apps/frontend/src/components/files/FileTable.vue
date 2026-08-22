@@ -77,7 +77,7 @@ function startResize(e: MouseEvent) {
   function onMouseMove(ev: MouseEvent) {
     const delta = ev.clientX - startX
     const newWidth = Math.max(400, startWidth + delta)
-    if (newWidth > window.innerWidth - 20) {
+    if (newWidth > window.innerWidth - 48) {
       preferences.setTableMaxWidth(null)
     } else {
       preferences.setTableMaxWidth(newWidth)
@@ -98,7 +98,7 @@ function startResize(e: MouseEvent) {
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="border-b bg-muted/30 sticky top-0 z-10" @click="handleEmptyClick">
+    <div class="border-b bg-muted/30 sticky top-0 z-10 relative" @click="handleEmptyClick">
       <div class="flex items-center px-3 text-xs font-medium text-muted-foreground" :style="{ ...constrainedStyle, height: 'var(--fc-row-height, 32px)' }">
         <div class="w-6 shrink-0" />
         <div
@@ -122,6 +122,16 @@ function startResize(e: MouseEvent) {
           Modified
           <component :is="sortIcon('mtime')" v-if="sortIcon('mtime')" class="size-3" />
         </div>
+      </div>
+      <!-- Resize handle on header -->
+      <div
+        v-if="preferences.effectiveTableMaxWidth != null"
+        class="absolute top-0 bottom-0 w-1.5 cursor-col-resize transition-colors -translate-x-1/2 group/handle z-20"
+        :class="resizing ? 'bg-primary/40' : 'hover:bg-primary/30'"
+        :style="{ left: `${preferences.effectiveTableMaxWidth}px` }"
+        @mousedown="startResize"
+      >
+        <div class="absolute inset-y-0 left-1/2 w-px bg-border group-hover/handle:bg-primary/50" :class="resizing ? 'bg-primary/60' : ''" />
       </div>
     </div>
 
@@ -182,16 +192,6 @@ function startResize(e: MouseEvent) {
             <p v-if="!ui.readonly" class="text-xs mt-1">Drag files here to upload</p>
           </div>
 
-          <!-- Resize handle -->
-          <div
-            v-if="preferences.effectiveTableMaxWidth != null"
-            class="absolute top-0 bottom-0 w-1.5 cursor-col-resize transition-colors -translate-x-1/2 group/handle"
-            :class="resizing ? 'bg-primary/40' : 'hover:bg-primary/30'"
-            :style="{ left: `${preferences.effectiveTableMaxWidth}px` }"
-            @mousedown="startResize"
-          >
-            <div class="absolute inset-y-0 left-1/2 w-px bg-border group-hover/handle:bg-primary/50" :class="resizing ? 'bg-primary/60' : ''" />
-          </div>
         </div>
       </ContextMenuTrigger>
 
@@ -224,9 +224,15 @@ function startResize(e: MouseEvent) {
 
     <!-- Status / Batch bar -->
     <BatchActionBar v-if="fileList.hasSelection" />
-    <div v-else-if="!fileList.loading && !fileList.error" class="flex items-center h-7 px-3 text-xs text-muted-foreground border-t bg-muted/20 shrink-0">
+    <div
+      v-else-if="!fileList.loading && !fileList.error"
+      class="flex items-center h-9 px-3 text-xs shrink-0"
+      style="background: var(--statusbar-bg); color: var(--statusbar-fg); border-top: 1px solid var(--statusbar-border)"
+    >
       {{ fileList.dirs.length }} folders, {{ fileList.files.length }} files
       <span class="ml-1">({{ formatSize(fileList.totalSize) }})</span>
+      <span class="flex-1"></span>
+      <span class="text-muted-foreground/60">FileCarton by Zbx1425</span>
     </div>
   </div>
 </template>

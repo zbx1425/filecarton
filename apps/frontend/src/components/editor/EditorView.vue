@@ -14,6 +14,7 @@ import { showEditorConflict } from '@/composables/useDialogs'
 import { ArrowLeft, Save, Loader2, ClipboardCopy, Download } from '@lucide/vue'
 import { buildDownloadUrl } from '@/api/client'
 import { usePreferencesStore } from '@/stores/preferences'
+import EditorStatusBar from './EditorStatusBar.vue'
 
 const navigation = useNavigationStore()
 const ui = useUiStore()
@@ -24,6 +25,7 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const saving = ref(false)
 
+const editorInstance = ref<Monaco.editor.IStandaloneCodeEditor | null>(null)
 let editor: Monaco.editor.IStandaloneCodeEditor | null = null
 let resizeObserver: ResizeObserver | null = null
 let currentMtime = 0
@@ -116,9 +118,10 @@ onMounted(async () => {
       scrollBeyondLastLine: false,
       automaticLayout: false,
       tabSize: prefs.editorTabSize,
-      detectIndentation: false,
+      detectIndentation: prefs.editorAutoDetect,
       mouseWheelZoom: true,
     })
+    editorInstance.value = editor
 
     editor.onDidChangeModelContent(() => {
       navigation.editDirty = true
@@ -135,9 +138,6 @@ onMounted(async () => {
       editor?.updateOptions({ theme: t === 'dark' ? 'vs-dark' : 'vs' })
     })
     watch(() => prefs.editorFontSize, (s) => editor?.updateOptions({ fontSize: s }))
-    watch(() => prefs.editorWordWrap, (w) => editor?.updateOptions({ wordWrap: w ? 'on' : 'off' }))
-    watch(() => prefs.editorLineNumbers, (l) => editor?.updateOptions({ lineNumbers: l ? 'on' : 'off' }))
-    watch(() => prefs.editorTabSize, (t) => editor?.updateOptions({ tabSize: t }))
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Failed to load editor'
   } finally {
@@ -193,5 +193,11 @@ onBeforeUnmount(() => {
       </div>
       <div ref="containerRef" class="h-full" />
     </div>
+
+    <EditorStatusBar
+      v-if="!loading && !error"
+      :editor="editorInstance"
+      :language="monacoLanguage(fileName)"
+    />
   </div>
 </template>

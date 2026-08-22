@@ -11,6 +11,28 @@ const ui = useUiStore()
 
 const showOverlay = ref(false)
 let dragCounter = 0
+let safetyTimer: ReturnType<typeof setTimeout> | null = null
+
+function syncOverlay(visible: boolean) {
+  showOverlay.value = visible
+  ui.dragOverlayVisible = visible
+  if (visible) {
+    resetSafetyTimer()
+  } else if (safetyTimer) {
+    clearTimeout(safetyTimer)
+    safetyTimer = null
+  }
+}
+
+function resetSafetyTimer() {
+  if (safetyTimer) clearTimeout(safetyTimer)
+  safetyTimer = setTimeout(() => {
+    if (showOverlay.value) {
+      dragCounter = 0
+      syncOverlay(false)
+    }
+  }, 5000)
+}
 
 function isExternalFileDrag(e: DragEvent): boolean {
   return e.dataTransfer?.types.includes('Files') === true
@@ -21,14 +43,14 @@ function handleDragEnter(e: DragEvent) {
   if (ui.readonly) return
   if (!isExternalFileDrag(e)) return
   dragCounter++
-  if (dragCounter === 1) showOverlay.value = true
+  if (dragCounter === 1) syncOverlay(true)
 }
 
 function handleDragLeave(_e: DragEvent) {
   dragCounter--
   if (dragCounter <= 0) {
     dragCounter = 0
-    showOverlay.value = false
+    syncOverlay(false)
   }
 }
 
@@ -36,6 +58,21 @@ function handleDragOver(e: DragEvent) {
   if (!isExternalFileDrag(e)) return
   e.preventDefault()
   if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+  if (showOverlay.value) resetSafetyTimer()
+}
+
+function handleDragEnd() {
+  if (showOverlay.value) {
+    dragCounter = 0
+    syncOverlay(false)
+  }
+}
+
+function handleKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && showOverlay.value) {
+    dragCounter = 0
+    syncOverlay(false)
+  }
 }
 
 async function readEntryRecursive(
@@ -73,7 +110,7 @@ async function readEntryRecursive(
 async function handleDrop(e: DragEvent) {
   e.preventDefault()
   dragCounter = 0
-  showOverlay.value = false
+  syncOverlay(false)
 
   if (ui.readonly) return
 
@@ -109,6 +146,8 @@ onMounted(() => {
   document.addEventListener('dragleave', handleDragLeave)
   document.addEventListener('dragover', handleDragOver)
   document.addEventListener('drop', handleDrop)
+  document.addEventListener('dragend', handleDragEnd)
+  document.addEventListener('keydown', handleKeyDown)
 })
 
 onBeforeUnmount(() => {
@@ -116,6 +155,9 @@ onBeforeUnmount(() => {
   document.removeEventListener('dragleave', handleDragLeave)
   document.removeEventListener('dragover', handleDragOver)
   document.removeEventListener('drop', handleDrop)
+  document.removeEventListener('dragend', handleDragEnd)
+  document.removeEventListener('keydown', handleKeyDown)
+  if (safetyTimer) clearTimeout(safetyTimer)
 })
 </script>
 

@@ -7,10 +7,12 @@ export const useUiStore = defineStore('ui', () => {
 
   const readonly = ref(config.readonly)
   const repoName = ref(config.repoName)
+  const branding = ref(config.branding ?? '')
 
   const searchQuery = ref('')
   const searchRecursive = ref(false)
   const settingsOpen = ref(false)
+  const dragOverlayVisible = ref(false)
 
   const isWide = useMediaQuery('(min-width: 900px)')
   const isMedium = useMediaQuery('(min-width: 700px)')
@@ -35,9 +37,11 @@ export const useUiStore = defineStore('ui', () => {
   return {
     readonly,
     repoName,
+    branding,
     searchQuery,
     searchRecursive,
     settingsOpen,
+    dragOverlayVisible,
     treePanelVisible,
     showTreeToggle,
     shouldShowTree,
