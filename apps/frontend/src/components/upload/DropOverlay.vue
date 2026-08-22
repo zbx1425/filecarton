@@ -72,6 +72,7 @@ function handleKeyDown(e: KeyboardEvent) {
   if (e.key === 'Escape' && showOverlay.value) {
     dragCounter = 0
     syncOverlay(false)
+    e.stopPropagation()
   }
 }
 

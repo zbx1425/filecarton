@@ -109,13 +109,11 @@ function setIndentSpaces(useSpaces: boolean) {
   }
 }
 
-function setTabSize(size: 2 | 4 | 8) {
-  tabSize.value = size as 2 | 4
+function setTabSize(size: 2 | 4) {
+  tabSize.value = size
   autoDetect.value = false
   prefs.editorAutoDetect = false
-  if (size === 2 || size === 4) {
-    prefs.editorTabSize = size
-  }
+  prefs.editorTabSize = size
   const model = props.editor?.getModel()
   if (model) {
     model.updateOptions({ tabSize: size })
@@ -224,7 +222,7 @@ onBeforeUnmount(() => {
           <label class="text-xs text-muted-foreground">Tab Size</label>
           <div class="flex gap-1">
             <Button
-              v-for="size in [2, 4, 8] as const"
+              v-for="size in [2, 4] as const"
               :key="size"
               size="sm"
               :variant="tabSize === size ? 'default' : 'outline'"

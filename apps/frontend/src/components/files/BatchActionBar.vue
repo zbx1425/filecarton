@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -16,9 +17,13 @@ import { Copy, Scissors, Trash2, X, FileArchive } from '@lucide/vue'
 const fileList = useFileListStore()
 const ui = useUiStore()
 
+const checkboxState = computed(() => {
+  if (fileList.isAllSelected) return true
+  return 'indeterminate' as const
+})
+
 function handleSelectAll(checked: boolean | "indeterminate") {
-  if (checked === "indeterminate") return
-  if (checked) fileList.selectAll()
+  if (checked === true) fileList.selectAll()
   else fileList.clearSelection()
 }
 </script>
@@ -29,7 +34,7 @@ function handleSelectAll(checked: boolean | "indeterminate") {
     style="background: var(--statusbar-bg); color: var(--statusbar-fg); border-top: 1px solid var(--statusbar-border)"
   >
     <Checkbox
-      :model-value="fileList.selectedCount === fileList.allEntries.length"
+      :model-value="checkboxState"
       class="size-3.5"
       @update:model-value="handleSelectAll"
     />

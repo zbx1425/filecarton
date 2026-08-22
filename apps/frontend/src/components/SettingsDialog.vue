@@ -11,7 +11,9 @@ import { Separator } from '@/components/ui/separator'
 import { useUiStore } from '@/stores/ui'
 import { usePreferencesStore } from '@/stores/preferences'
 import { Sun, Moon } from '@lucide/vue'
+import Badge from './ui/badge/Badge.vue'
 
+const appVersion = __APP_VERSION__
 const ui = useUiStore()
 const prefs = usePreferencesStore()
 
@@ -36,12 +38,17 @@ function setEditorFontSize(val: number[] | undefined) {
       <div class="space-y-5 pt-2">
         <!-- About -->
         <div class="flex items-center gap-3 px-4 py-3 border rounded-md bg-muted/20">
-          <div>
+          <div class="flex-1">
             <div class="font-semibold text-sm">
               FileCarton
               <span class="font-medium">by Zbx1425</span>
             </div>
-            <div class="text-xs text-muted-foreground">v0.1.0</div>
+            <div class="text-xs text-muted-foreground">
+              A modern self-hosted file manager,<br>mostly written with LLM
+            </div>
+          </div>
+          <div class="float-end">
+            <Badge variant="secondary">v{{ appVersion }}</Badge>
           </div>
         </div>
 
@@ -109,7 +116,7 @@ function setEditorFontSize(val: number[] | undefined) {
             </div>
 
             <!-- Base Font Size -->
-            <div class="col-span-2 space-y-1.5">
+            <div class="col-span-2 space-y-1.5 mb-3">
               <div class="flex items-center justify-between">
                 <label class="text-xs text-muted-foreground">Base Font Size</label>
                 <span class="text-xs tabular-nums text-muted-foreground">{{ prefs.baseFontSize }}px</span>

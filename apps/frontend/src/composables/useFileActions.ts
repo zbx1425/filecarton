@@ -106,13 +106,15 @@ export async function deleteItems(dirPath: string, itemNames: string[]) {
       navigation.backToList()
     }
 
-    if (isAffectingCurrentPath(dirPath, itemNames)) {
+    const navigatedAway = isAffectingCurrentPath(dirPath, itemNames)
+    if (navigatedAway) {
       navigation.editDirty = false
       const parentSegments = dirPath ? dirPath.split('/') : []
       await navigation.navigateTo(parentSegments)
+    } else {
+      fileList.fetchDir(navigation.currentPathStr)
     }
 
-    fileList.fetchDir(navigation.currentPathStr)
     tree.invalidate(dirPath)
     tree.loadChildren(dirPath)
 

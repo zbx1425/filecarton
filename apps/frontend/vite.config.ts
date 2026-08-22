@@ -30,4 +30,7 @@ export default defineConfig({
     cors: true,
     origin: 'http://localhost:5173',
   },
+  define: {
+    '__APP_VERSION__': JSON.stringify(process.env.npm_package_version),
+  }
 })

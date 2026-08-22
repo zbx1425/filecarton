@@ -111,6 +111,15 @@ export const useNavigationStore = defineStore('navigation', () => {
 
     if (view === 'preview' || view === 'editor') {
       const fileName = segments.pop()
+
+      if (viewMode.value === 'editor' && editDirty.value) {
+        const canLeave = await checkDirty()
+        if (!canLeave) {
+          syncToHash()
+          return
+        }
+      }
+
       suppressHashSync = true
       currentPath.value = segments
       activeFile.value = fileName ?? null

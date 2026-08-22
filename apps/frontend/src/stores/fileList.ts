@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { apiGet } from '@/api/client'
 import { useUiStore } from '@/stores/ui'
 import type { DirEntry, FileEntry, ListResponse } from '@/api/types'
@@ -191,6 +191,19 @@ export const useFileListStore = defineStore('fileList', () => {
     focusIndex.value = next
   }
 
+  function setFocusByName(name: string) {
+    const idx = filteredEntries.value.findIndex(e => e.name === name)
+    if (idx >= 0) focusIndex.value = idx
+  }
+
+  watch(() => filteredEntries.value.length, (len) => {
+    if (len === 0) {
+      focusIndex.value = -1
+    } else if (focusIndex.value >= len) {
+      focusIndex.value = len - 1
+    }
+  })
+
   function getFileByName(name: string): FileEntry | undefined {
     return files.value.find(f => f.name === name)
   }
@@ -226,6 +239,7 @@ export const useFileListStore = defineStore('fileList', () => {
     clearSelection,
     rangeSelect,
     moveFocus,
+    setFocusByName,
     getFileByName,
     getDirByName,
   }

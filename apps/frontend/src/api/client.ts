@@ -57,15 +57,48 @@ export async function apiPost<T>(action: string, body: unknown): Promise<T> {
   return handleResponse<T>(response)
 }
 
-export async function apiUpload<T>(action: string, formData: FormData): Promise<T> {
+export function apiUpload<T>(
+  action: string,
+  formData: FormData,
+  onProgress?: (loaded: number, total: number) => void,
+): Promise<T> {
   const { csrfToken } = getConfig()
   const url = buildUrl(action)
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'X-CSRF-Token': csrfToken },
-    body: formData,
+
+  return new Promise<T>((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', url)
+    xhr.setRequestHeader('X-CSRF-Token', csrfToken)
+
+    if (onProgress) {
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) onProgress(e.loaded, e.total)
+      })
+    }
+
+    xhr.addEventListener('load', () => {
+      try {
+        const body = JSON.parse(xhr.responseText)
+        if (xhr.status < 200 || xhr.status >= 300) {
+          reject(new ApiError(body?.error ?? `HTTP ${xhr.status}`, xhr.status))
+          return
+        }
+        if (!body.ok) {
+          reject(new ApiError(body.error ?? 'Unknown error', xhr.status))
+          return
+        }
+        resolve(body.data as T)
+      } catch {
+        reject(new ApiError(`HTTP ${xhr.status}`, xhr.status))
+      }
+    })
+
+    xhr.addEventListener('error', () => {
+      reject(new ApiError('Network error', 0))
+    })
+
+    xhr.send(formData)
   })
-  return handleResponse<T>(response)
 }
 
 export function buildRawUrl(filePath: string): string {

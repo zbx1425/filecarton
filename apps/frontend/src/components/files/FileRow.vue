@@ -17,7 +17,7 @@ import { formatSize, formatTime } from '@/utils/format'
 import {
   copySelected, cutSelected, deleteItems, renameItem, pasteItems,
 } from '@/composables/useFileActions'
-import { buildDownloadUrl } from '@/api/client'
+import { buildDownloadUrl, buildRawUrl } from '@/api/client'
 import { joinPath } from '@/utils/path'
 import { PackageOpen, FileArchive } from '@lucide/vue'
 import {
@@ -67,6 +67,7 @@ function handleRowClick(e: MouseEvent) {
     fileList.clearSelection()
     fileList.toggleSelect(props.name)
   }
+  fileList.setFocusByName(props.name)
 }
 
 function handleDblClick() {
@@ -187,7 +188,7 @@ onBeforeUnmount(() => {
 
 const thumbnailUrl = computed(() => {
   if (!hasThumbnail.value) return ''
-  return buildDownloadUrl(joinPath(navigation.currentPathStr, props.name))
+  return buildRawUrl(joinPath(navigation.currentPathStr, props.name))
 })
 </script>
 

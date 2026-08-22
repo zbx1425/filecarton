@@ -33,7 +33,13 @@ export const useUploadStore = defineStore('upload', () => {
   function show() { visible.value = true }
   function hide() { visible.value = false }
 
+  let dismissTimer: ReturnType<typeof setTimeout> | null = null
+
   function showUploadToast() {
+    if (dismissTimer) {
+      clearTimeout(dismissTimer)
+      dismissTimer = null
+    }
     if (toastId != null) return
     toastId = toast(markRaw(UploadToast), {
       duration: Infinity,
@@ -44,7 +50,8 @@ export const useUploadStore = defineStore('upload', () => {
 
   function dismissUploadToast() {
     if (toastId != null) {
-      setTimeout(() => {
+      dismissTimer = setTimeout(() => {
+        dismissTimer = null
         toast.dismiss(toastId!)
         toastId = null
       }, 3000)
@@ -192,7 +199,9 @@ export const useUploadStore = defineStore('upload', () => {
     formData.append('path', targetPath)
 
     formData.append('files[]', task.file)
-    await apiUpload<UploadResponse>('upload', formData)
+    await apiUpload<UploadResponse>('upload', formData, (loaded, total) => {
+      task.progress = Math.round((loaded / total) * 100)
+    })
     task.progress = 100
   }
 

@@ -52,6 +52,7 @@ export function confirm(
   message: string,
   options?: { actionLabel?: string; danger?: boolean },
 ): Promise<boolean> {
+  if (dialogState.confirm.open) return Promise.resolve(false)
   return new Promise(resolve => {
     dialogState.confirm.title = title
     dialogState.confirm.message = message
@@ -71,6 +72,7 @@ export function prompt(
     selectBaseName?: boolean
   },
 ): Promise<string | null> {
+  if (dialogState.prompt.open) return Promise.resolve(null)
   return new Promise(resolve => {
     dialogState.prompt.title = title
     dialogState.prompt.placeholder = options?.placeholder ?? ''
@@ -83,6 +85,8 @@ export function prompt(
 }
 
 export function showPasteConflict(files: string[]): Promise<boolean> {
+  if (dialogState.pasteConflict.open) return Promise.resolve(false)
+
   let activePath: string | null = null
   try {
     const nav = useNavigationStore()
@@ -100,6 +104,7 @@ export function showPasteConflict(files: string[]): Promise<boolean> {
 }
 
 export function showEditorConflict(): Promise<'overwrite' | 'reload' | 'cancel'> {
+  if (dialogState.editorConflict.open) return Promise.resolve('cancel')
   return new Promise(resolve => {
     dialogState.editorConflict.resolve = resolve
     dialogState.editorConflict.open = true

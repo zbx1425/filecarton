@@ -115,7 +115,7 @@ export function useKeyboard() {
 
     if (e.key === 'Enter' && fileList.selectedCount === 1) {
       const name = Array.from(fileList.selected)[0]
-      const entry = fileList.allEntries.find(en => en.name === name)
+      const entry = fileList.filteredEntries.find(en => en.name === name)
       if (entry) {
         if (entry.isDir) {
           navigation.navigateTo([...navigation.currentPath, entry.name])
@@ -129,7 +129,7 @@ export function useKeyboard() {
     if (e.key === 'ArrowUp') {
       e.preventDefault()
       fileList.moveFocus(-1)
-      const entries = fileList.allEntries
+      const entries = fileList.filteredEntries
       if (entries[fileList.focusIndex]) {
         fileList.clearSelection()
         fileList.toggleSelect(entries[fileList.focusIndex].name)
@@ -139,7 +139,7 @@ export function useKeyboard() {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       fileList.moveFocus(1)
-      const entries = fileList.allEntries
+      const entries = fileList.filteredEntries
       if (entries[fileList.focusIndex]) {
         fileList.clearSelection()
         fileList.toggleSelect(entries[fileList.focusIndex].name)
