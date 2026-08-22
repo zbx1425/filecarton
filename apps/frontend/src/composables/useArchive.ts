@@ -69,7 +69,7 @@ export async function extractArchive(archivePath: string, targetDir: string) {
     })
     toast.success(`Extracted ${result.extracted} files`)
     fileList.fetchDir(navigation.currentPathStr)
-    tree.invalidate(targetDir)
+    tree.invalidateSubtree(targetDir)
     tree.loadChildren(targetDir)
   } catch (e: unknown) {
     toast.error(e instanceof Error ? e.message : 'Failed to extract')

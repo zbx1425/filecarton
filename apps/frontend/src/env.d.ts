@@ -10,6 +10,8 @@ declare global {
   interface Window {
     __FILECARTON__: FileCartonConfig
   }
+
+  declare const __APP_VERSION__: string
 }
 
 export {}

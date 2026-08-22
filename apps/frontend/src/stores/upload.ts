@@ -272,7 +272,7 @@ export const useUploadStore = defineStore('upload', () => {
     pendingRefreshDirs.clear()
 
     for (const dir of dirs) {
-      tree.invalidate(dir)
+      tree.invalidateSubtree(dir)
       tree.loadChildren(dir)
       let ancestor = parentPath(dir)
       while (ancestor) {

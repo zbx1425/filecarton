@@ -83,8 +83,8 @@ export async function handleDrop(e: DragEvent, targetPath: string) {
     const tree = useTreeStore()
 
     fileList.fetchDir(navigation.currentPathStr)
-    tree.invalidate(payload.sourcePath)
-    tree.invalidate(targetPath)
+    tree.invalidateSubtree(payload.sourcePath)
+    tree.invalidateSubtree(targetPath)
     tree.loadChildren(payload.sourcePath)
     tree.loadChildren(targetPath)
   } catch (e: unknown) {

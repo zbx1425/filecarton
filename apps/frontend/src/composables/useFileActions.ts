@@ -234,7 +234,7 @@ export async function pasteItems(targetPath: string) {
     const fileList = useFileListStore()
     const tree = useTreeStore()
     fileList.fetchDir(navigation.currentPathStr)
-    tree.invalidate(targetPath)
+    tree.invalidateSubtree(targetPath)
     tree.loadChildren(targetPath)
   } catch (e: unknown) {
     toast.error(e instanceof Error ? e.message : 'Paste failed')

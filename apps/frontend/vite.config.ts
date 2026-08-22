@@ -2,16 +2,27 @@ import path from 'node:path'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
-import monacoEditorPlugin from 'vite-plugin-monaco-editor'
+
+const cdnExternals = [
+  'vue',
+  'pinia',
+  '@vue/devtools-api',
+  '@vue/devtools-kit',
+  '@vue/devtools-shared',
+  'birpc',
+  'hookable',
+  'perfect-debounce',
+  '@vueuse/core',
+  '@vueuse/shared',
+  '@vueuse/metadata',
+  'vue-sonner',
+]
 
 export default defineConfig({
   base: './',
   plugins: [
     vue(),
     tailwindcss(),
-    monacoEditorPlugin.default({
-      languageWorkers: ['json', 'css', 'html', 'typescript'],
-    }),
   ],
   resolve: {
     alias: {
@@ -22,6 +33,7 @@ export default defineConfig({
     manifest: true,
     rollupOptions: {
       input: 'src/main.ts',
+      external: cdnExternals,
     },
   },
   server: {

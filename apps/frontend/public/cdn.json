@@ -1,0 +1,22 @@
+{
+  "importmap": {
+    "imports": {
+      "vue": "https://fastly.jsdelivr.net/npm/vue@3.5.41/dist/vue.esm-browser.prod.js",
+      "pinia": "https://fastly.jsdelivr.net/npm/pinia@4.0.3/dist/pinia.esm-browser.js",
+      "nostics": "https://fastly.jsdelivr.net/npm/nostics@1.2.0/dist/index.mjs",
+      "@vue/devtools-api": "https://fastly.jsdelivr.net/npm/@vue/devtools-api@8.2.1/dist/index.js",
+      "@vue/devtools-kit": "https://fastly.jsdelivr.net/npm/@vue/devtools-kit@8.2.1/dist/index.js",
+      "@vue/devtools-shared": "https://fastly.jsdelivr.net/npm/@vue/devtools-shared@8.2.1/dist/index.js",
+      "birpc": "https://fastly.jsdelivr.net/npm/birpc@2.9.0/dist/index.mjs",
+      "hookable": "https://fastly.jsdelivr.net/npm/hookable@5.5.3/dist/index.mjs",
+      "perfect-debounce": "https://fastly.jsdelivr.net/npm/perfect-debounce@2.1.0/dist/index.mjs",
+      "@vueuse/core": "https://fastly.jsdelivr.net/npm/@vueuse/core@14.4.0/dist/index.js",
+      "@vueuse/shared": "https://fastly.jsdelivr.net/npm/@vueuse/shared@14.4.0/dist/index.js",
+      "@vueuse/metadata": "https://fastly.jsdelivr.net/npm/@vueuse/metadata@14.4.0/dist/index.js",
+      "vue-sonner": "https://fastly.jsdelivr.net/npm/vue-sonner@2.0.9/lib/index.js"
+    }
+  },
+  "stylesheets": [
+    "https://fastly.jsdelivr.net/npm/vue-sonner@2.0.9/lib/index.css"
+  ]
+}
