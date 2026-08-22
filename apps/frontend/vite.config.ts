@@ -2,14 +2,14 @@ import path from 'node:path'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
-import monacoEditorEsmPlugin from 'vite-plugin-monaco-editor-esm'
+import monacoEditorPlugin from 'vite-plugin-monaco-editor'
 
 export default defineConfig({
   base: './',
   plugins: [
     vue(),
     tailwindcss(),
-    monacoEditorEsmPlugin({
+    monacoEditorPlugin.default({
       languageWorkers: ['json', 'css', 'html', 'typescript'],
     }),
   ],

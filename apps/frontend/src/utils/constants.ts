@@ -7,7 +7,7 @@ export const AUDIO_EXTENSIONS = new Set([
 ])
 
 export const ARCHIVE_EXTENSIONS = new Set([
-  'zip', 'tar', 'gz', 'tgz',
+  'zip', 'tar', 'gz', 'tgz', 'rar', '7z', 'bz2', 'xz',
 ])
 
 export const EDITABLE_EXTENSIONS = new Set([

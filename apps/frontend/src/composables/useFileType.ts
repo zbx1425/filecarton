@@ -12,6 +12,9 @@ import {
   FileType,
   Settings,
   FileSpreadsheet,
+  Box,
+  Video,
+  Database,
 } from '@lucide/vue'
 import { pathExtension } from '@/utils/path'
 import {
@@ -47,7 +50,11 @@ const ICON_MAP: Record<string, Component> = {
   png: Image, jpg: Image, jpeg: Image, gif: Image,
   webp: Image, avif: Image, bmp: Image, ico: Image,
   ogg: Music, mp3: Music, wav: Music, flac: Music, aac: Music, m4a: Music,
+  mp4: Video, webm: Video, mov: Video, avi: Video, mkv: Video, flv: Video,
+  obj: Box, mtl: Box, fbx: Box, glb: Box, gltf: Box, bbmodel: Box,
+  dat: Database, nbt: Database, db: Database, sqlite: Database, bin: Database,
   zip: FileArchive, tar: FileArchive, gz: FileArchive, tgz: FileArchive,
+  rar: FileArchive, '7z': FileArchive, bz2: FileArchive, xz: FileArchive,
   ttf: FileType, otf: FileType, woff: FileType, woff2: FileType,
 }
 
@@ -63,6 +70,28 @@ export function getFileIcon(name: string, isDir: boolean, expanded = false): Com
   if (SPECIAL_FILE_ICONS[name]) return SPECIAL_FILE_ICONS[name]
   const ext = pathExtension(name)
   return ICON_MAP[ext] ?? File
+}
+
+const ICON_COLOR_MAP = new Map<Component, string>([
+  [Folder, 'text-icon-folder'],
+  [FolderOpen, 'text-icon-folder'],
+  [FileCode, 'text-icon-code'],
+  [Braces, 'text-icon-data'],
+  [Settings, 'text-icon-config'],
+  [FileText, 'text-icon-text'],
+  [FileSpreadsheet, 'text-icon-spreadsheet'],
+  [Image, 'text-icon-image'],
+  [Music, 'text-icon-audio'],
+  [Video, 'text-icon-video'],
+  [Box, 'text-icon-model'],
+  [Database, 'text-icon-data'],
+  [FileArchive, 'text-icon-archive'],
+  [FileType, 'text-icon-font'],
+])
+
+export function getFileIconColor(name: string, isDir: boolean, expanded = false): string {
+  const icon = getFileIcon(name, isDir, expanded)
+  return ICON_COLOR_MAP.get(icon) ?? 'text-muted-foreground'
 }
 
 export function isEditable(name: string): boolean {

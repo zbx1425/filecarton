@@ -88,19 +88,21 @@ function handleEditorConflictOpenChange(open: boolean) {
   <!-- Confirm (AlertDialog) -->
   <AlertDialog :open="dialogState.confirm.open">
     <AlertDialogContent @escapeKeyDown="resolveConfirm(false)">
-      <AlertDialogHeader>
-        <AlertDialogTitle>{{ dialogState.confirm.title }}</AlertDialogTitle>
-        <AlertDialogDescription>{{ dialogState.confirm.message }}</AlertDialogDescription>
-      </AlertDialogHeader>
-      <AlertDialogFooter>
-        <Button variant="outline" @click="resolveConfirm(false)">Cancel</Button>
-        <Button
-          :class="dialogState.confirm.danger ? 'bg-destructive text-white hover:bg-destructive/90' : ''"
-          @click="resolveConfirm(true)"
-        >
-          {{ dialogState.confirm.actionLabel }}
-        </Button>
-      </AlertDialogFooter>
+      <form @submit.prevent="resolveConfirm(true)">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{{ dialogState.confirm.title }}</AlertDialogTitle>
+          <AlertDialogDescription>{{ dialogState.confirm.message }}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter class="mt-4">
+          <Button variant="outline" type="button" @click="resolveConfirm(false)">Cancel</Button>
+          <Button
+            type="submit"
+            :class="dialogState.confirm.danger ? 'bg-destructive text-white hover:bg-destructive/90' : ''"
+          >
+            {{ dialogState.confirm.actionLabel }}
+          </Button>
+        </AlertDialogFooter>
+      </form>
     </AlertDialogContent>
   </AlertDialog>
 
@@ -129,36 +131,40 @@ function handleEditorConflictOpenChange(open: boolean) {
   <!-- Paste Conflict (Dialog) -->
   <Dialog :open="dialogState.pasteConflict.open" @update:open="handlePasteConflictOpenChange">
     <DialogContent>
-      <DialogHeader>
-        <DialogTitle>File Conflict</DialogTitle>
-        <DialogDescription>
-          The following {{ dialogState.pasteConflict.files.length }} file(s) already exist in the target directory:
-        </DialogDescription>
-      </DialogHeader>
-      <div class="max-h-48 overflow-auto border p-2 text-xs font-mono space-y-0.5">
-        <div v-for="f in dialogState.pasteConflict.files" :key="f">{{ f }}</div>
-      </div>
-      <DialogFooter>
-        <Button variant="outline" @click="resolvePasteConflict(false)">Cancel</Button>
-        <Button variant="destructive" @click="resolvePasteConflict(true)">Overwrite All</Button>
-      </DialogFooter>
+      <form @submit.prevent="resolvePasteConflict(true)">
+        <DialogHeader>
+          <DialogTitle>File Conflict</DialogTitle>
+          <DialogDescription>
+            The following {{ dialogState.pasteConflict.files.length }} file(s) already exist in the target directory:
+          </DialogDescription>
+        </DialogHeader>
+        <div class="max-h-48 overflow-auto border p-2 text-xs font-mono space-y-0.5 mt-2">
+          <div v-for="f in dialogState.pasteConflict.files" :key="f">{{ f }}</div>
+        </div>
+        <DialogFooter class="mt-4">
+          <Button variant="outline" type="button" @click="resolvePasteConflict(false)">Cancel</Button>
+          <Button variant="destructive" type="submit">Overwrite All</Button>
+        </DialogFooter>
+      </form>
     </DialogContent>
   </Dialog>
 
   <!-- Editor Conflict (Dialog) -->
   <Dialog :open="dialogState.editorConflict.open" @update:open="handleEditorConflictOpenChange">
     <DialogContent>
-      <DialogHeader>
-        <DialogTitle>File Modified</DialogTitle>
-        <DialogDescription>
-          This file was modified by another user since you opened it.
-        </DialogDescription>
-      </DialogHeader>
-      <DialogFooter>
-        <Button variant="outline" @click="resolveEditorConflict('cancel')">Cancel</Button>
-        <Button variant="secondary" @click="resolveEditorConflict('reload')">Reload</Button>
-        <Button @click="resolveEditorConflict('overwrite')">Overwrite</Button>
-      </DialogFooter>
+      <form @submit.prevent="resolveEditorConflict('overwrite')">
+        <DialogHeader>
+          <DialogTitle>File Modified</DialogTitle>
+          <DialogDescription>
+            This file was modified by another user since you opened it.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter class="mt-4">
+          <Button variant="outline" type="button" @click="resolveEditorConflict('cancel')">Cancel</Button>
+          <Button variant="secondary" type="button" @click="resolveEditorConflict('reload')">Reload</Button>
+          <Button type="submit">Overwrite</Button>
+        </DialogFooter>
+      </form>
     </DialogContent>
   </Dialog>
 </template>

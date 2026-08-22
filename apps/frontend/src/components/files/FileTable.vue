@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { ArrowUp, ArrowDown, CornerLeftUp, Loader2, ClipboardPaste, File, Folder, CheckSquare } from '@lucide/vue'
+import { computed, ref } from 'vue'
+import { ArrowUp, ArrowDown, CornerLeftUp, Loader2, ClipboardPaste, File, Folder, CheckSquare, Square } from '@lucide/vue'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -13,6 +13,7 @@ import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
 import { useClipboardStore } from '@/stores/clipboard'
 import { useUiStore } from '@/stores/ui'
+import { usePreferencesStore } from '@/stores/preferences'
 import { formatSize } from '@/utils/format'
 import { createItem, pasteItems } from '@/composables/useFileActions'
 import FileRow from './FileRow.vue'
@@ -22,11 +23,19 @@ const fileList = useFileListStore()
 const navigation = useNavigationStore()
 const clipboard = useClipboardStore()
 const ui = useUiStore()
+const preferences = usePreferencesStore()
 
 const isRoot = computed(() => navigation.currentPath.length === 0)
 
-const isEmpty = computed(
-  () => fileList.filteredDirs.length === 0 && fileList.filteredFiles.length === 0 && !fileList.loading,
+const isActuallyEmpty = computed(
+  () => fileList.dirs.length === 0 && fileList.files.length === 0 && !fileList.loading,
+)
+
+const isFilteredEmpty = computed(
+  () => !isActuallyEmpty.value
+    && fileList.filteredDirs.length === 0
+    && fileList.filteredFiles.length === 0
+    && !fileList.loading,
 )
 
 function goUp() {
@@ -39,33 +48,80 @@ function sortIcon(column: string) {
   return fileList.sortAsc ? ArrowUp : ArrowDown
 }
 
+function handleEmptyClick(e: MouseEvent) {
+  if (e.target === e.currentTarget) {
+    fileList.clearSelection()
+  }
+}
+
+function handleListClick(e: MouseEvent) {
+  const target = e.target as HTMLElement
+  if (target.closest('[data-file-row]')) return
+  fileList.clearSelection()
+}
+
+const constrainedStyle = computed(() => {
+  const maxW = preferences.effectiveTableMaxWidth
+  if (maxW == null) return {}
+  return { maxWidth: `${maxW}px` }
+})
+
+const resizing = ref(false)
+
+function startResize(e: MouseEvent) {
+  e.preventDefault()
+  resizing.value = true
+  const startX = e.clientX
+  const startWidth = preferences.effectiveTableMaxWidth ?? e.clientX
+
+  function onMouseMove(ev: MouseEvent) {
+    const delta = ev.clientX - startX
+    const newWidth = Math.max(400, startWidth + delta)
+    if (newWidth > window.innerWidth - 20) {
+      preferences.setTableMaxWidth(null)
+    } else {
+      preferences.setTableMaxWidth(newWidth)
+    }
+  }
+
+  function onMouseUp() {
+    resizing.value = false
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup', onMouseUp)
+  }
+
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseup', onMouseUp)
+}
 </script>
 
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="flex items-center h-8 px-3 text-xs font-medium text-muted-foreground border-b bg-muted/30 sticky top-0 z-10">
-      <div class="w-6 shrink-0" />
-      <div
-        class="flex items-center gap-1 flex-1 min-w-0 cursor-pointer hover:text-foreground"
-        @click="fileList.toggleSort('name')"
-      >
-        Name
-        <component :is="sortIcon('name')" v-if="sortIcon('name')" class="size-3" />
-      </div>
-      <div
-        class="w-20 text-right cursor-pointer hover:text-foreground flex items-center justify-end gap-1"
-        @click="fileList.toggleSort('size')"
-      >
-        Size
-        <component :is="sortIcon('size')" v-if="sortIcon('size')" class="size-3" />
-      </div>
-      <div
-        class="w-24 text-right cursor-pointer hover:text-foreground flex items-center justify-end gap-1"
-        @click="fileList.toggleSort('mtime')"
-      >
-        Modified
-        <component :is="sortIcon('mtime')" v-if="sortIcon('mtime')" class="size-3" />
+    <div class="border-b bg-muted/30 sticky top-0 z-10" @click="handleEmptyClick">
+      <div class="flex items-center px-3 text-xs font-medium text-muted-foreground" :style="{ ...constrainedStyle, height: 'var(--fc-row-height, 32px)' }">
+        <div class="w-6 shrink-0" />
+        <div
+          class="flex items-center gap-1 flex-1 min-w-0 cursor-pointer hover:text-foreground"
+          @click="fileList.toggleSort('name')"
+        >
+          Name
+          <component :is="sortIcon('name')" v-if="sortIcon('name')" class="size-3" />
+        </div>
+        <div
+          class="w-20 text-right cursor-pointer hover:text-foreground flex items-center justify-end gap-1"
+          @click="fileList.toggleSort('size')"
+        >
+          Size
+          <component :is="sortIcon('size')" v-if="sortIcon('size')" class="size-3" />
+        </div>
+        <div
+          class="w-24 text-right cursor-pointer hover:text-foreground flex items-center justify-end gap-1"
+          @click="fileList.toggleSort('mtime')"
+        >
+          Modified
+          <component :is="sortIcon('mtime')" v-if="sortIcon('mtime')" class="size-3" />
+        </div>
       </div>
     </div>
 
@@ -82,11 +138,14 @@ function sortIcon(column: string) {
     <!-- File list with context menu on empty area -->
     <ContextMenu v-else>
       <ContextMenuTrigger as-child>
-        <div class="flex-1 overflow-auto">
+        <div class="flex-1 overflow-auto relative" @click="handleListClick">
           <!-- Go up row -->
           <div
             v-if="!isRoot"
-            class="flex items-center h-8 px-3 text-xs text-muted-foreground cursor-pointer hover:bg-muted/50"
+            class="flex items-center px-3 text-xs text-muted-foreground cursor-pointer hover:bg-muted/50"
+            style="height: var(--fc-row-height, 32px)"
+            :style="constrainedStyle"
+            data-file-row
             @click="goUp"
           >
             <div class="w-6 shrink-0" />
@@ -115,9 +174,23 @@ function sortIcon(column: string) {
           />
 
           <!-- Empty state -->
-          <div v-if="isEmpty" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
+          <div v-if="isFilteredEmpty" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <p class="text-sm">No matches for "{{ ui.searchQuery }}"</p>
+          </div>
+          <div v-else-if="isActuallyEmpty" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
             <p class="text-sm">This folder is empty</p>
             <p v-if="!ui.readonly" class="text-xs mt-1">Drag files here to upload</p>
+          </div>
+
+          <!-- Resize handle -->
+          <div
+            v-if="preferences.effectiveTableMaxWidth != null"
+            class="absolute top-0 bottom-0 w-1.5 cursor-col-resize transition-colors -translate-x-1/2 group/handle"
+            :class="resizing ? 'bg-primary/40' : 'hover:bg-primary/30'"
+            :style="{ left: `${preferences.effectiveTableMaxWidth}px` }"
+            @mousedown="startResize"
+          >
+            <div class="absolute inset-y-0 left-1/2 w-px bg-border group-hover/handle:bg-primary/50" :class="resizing ? 'bg-primary/60' : ''" />
           </div>
         </div>
       </ContextMenuTrigger>
@@ -140,9 +213,10 @@ function sortIcon(column: string) {
           </ContextMenuItem>
           <ContextMenuSeparator />
         </template>
-        <ContextMenuItem @select="fileList.selectAll()">
-          <CheckSquare class="size-4" />
-          Select All
+        <ContextMenuItem @select="fileList.toggleSelectAll()">
+          <CheckSquare v-if="!fileList.isAllSelected" class="size-4" />
+          <Square v-else class="size-4" />
+          {{ fileList.isAllSelected ? 'Deselect All' : 'Select All' }}
           <ContextMenuShortcut>Ctrl+A</ContextMenuShortcut>
         </ContextMenuItem>
       </ContextMenuContent>

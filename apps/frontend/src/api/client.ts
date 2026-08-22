@@ -1,10 +1,13 @@
 export class ApiError extends Error {
+  status: number
+
   constructor(
     message: string,
-    public status: number,
+    status: number,
   ) {
     super(message)
     this.name = 'ApiError'
+    this.status = status
   }
 }
 
@@ -34,9 +37,9 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return body.data as T
 }
 
-export async function apiGet<T>(action: string, params?: Record<string, string>): Promise<T> {
+export async function apiGet<T>(action: string, params?: Record<string, string>, signal?: AbortSignal): Promise<T> {
   const url = buildUrl(action, params)
-  const response = await fetch(url)
+  const response = await fetch(url, signal ? { signal } : undefined)
   return handleResponse<T>(response)
 }
 

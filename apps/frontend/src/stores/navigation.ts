@@ -39,6 +39,9 @@ export const useNavigationStore = defineStore('navigation', () => {
     activeFile.value = null
     editDirty.value = false
     currentPath.value = path
+    const ui = useUiStore()
+    ui.searchQuery = ''
+    ui.searchRecursive = false
   }
 
   async function openFile(fileName: string) {

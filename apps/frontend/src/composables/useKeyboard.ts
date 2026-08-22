@@ -82,7 +82,7 @@ export function useKeyboard() {
     }
     if (ctrl && e.key === 'a') {
       e.preventDefault()
-      fileList.selectAll()
+      fileList.toggleSelectAll()
       return
     }
     if (ctrl && e.key === 'f') {

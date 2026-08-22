@@ -6,11 +6,14 @@ import type { ReadResponse } from '@/api/types'
 import { loadMonaco } from '@/composables/useMonaco'
 import { monacoLanguage } from '@/composables/useFileType'
 import { Loader2 } from '@lucide/vue'
+import { usePreferencesStore } from '@/stores/preferences'
 
 const props = defineProps<{
   path: string
   name: string
 }>()
+
+const prefs = usePreferencesStore()
 
 const containerRef = ref<HTMLElement | null>(null)
 const loading = ref(true)
@@ -30,18 +33,26 @@ onMounted(async () => {
     editor = monaco.editor.create(containerRef.value, {
       value: fileData.content,
       language: monacoLanguage(props.name),
-      theme: 'vs',
+      theme: prefs.theme === 'dark' ? 'vs-dark' : 'vs',
       readOnly: true,
       minimap: { enabled: false },
-      wordWrap: 'on',
-      fontSize: 13,
-      lineNumbers: 'on',
+      wordWrap: prefs.editorWordWrap ? 'on' : 'off',
+      fontSize: prefs.editorFontSize,
+      lineNumbers: prefs.editorLineNumbers ? 'on' : 'off',
       scrollBeyondLastLine: false,
       automaticLayout: false,
+      mouseWheelZoom: true,
     })
 
     resizeObserver = new ResizeObserver(() => editor?.layout())
     resizeObserver.observe(containerRef.value)
+
+    watch(() => prefs.theme, (t) => {
+      editor?.updateOptions({ theme: t === 'dark' ? 'vs-dark' : 'vs' })
+    })
+    watch(() => prefs.editorFontSize, (s) => editor?.updateOptions({ fontSize: s }))
+    watch(() => prefs.editorWordWrap, (w) => editor?.updateOptions({ wordWrap: w ? 'on' : 'off' }))
+    watch(() => prefs.editorLineNumbers, (l) => editor?.updateOptions({ lineNumbers: l ? 'on' : 'off' }))
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Failed to load file'
   } finally {

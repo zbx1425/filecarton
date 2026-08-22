@@ -66,9 +66,9 @@ importers:
       vite:
         specifier: ^8.2.0
         version: 8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)
-      vite-plugin-monaco-editor-esm:
-        specifier: ^2.0.3
-        version: 2.0.3(monaco-editor@0.56.0)
+      vite-plugin-monaco-editor:
+        specifier: ^1.1.0
+        version: 1.1.0(monaco-editor@0.56.0)
       vue-tsc:
         specifier: ^3.3.8
         version: 3.3.11(typescript@6.0.3)
@@ -876,8 +876,8 @@ packages:
   undici-types@7.18.2:
     resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
 
-  vite-plugin-monaco-editor-esm@2.0.3:
-    resolution: {integrity: sha512-9nA73gcWtO+XDsLmBBQXoY4NMv6D2ZKDZHdHgVl1lfADnXEwdBPr1iL8qGqDKXGgEmYo1F12rFPEnymFe2aibA==}
+  vite-plugin-monaco-editor@1.1.0:
+    resolution: {integrity: sha512-IvtUqZotrRoVqwT0PBBDIZPNraya3BxN/bfcNfnxZ5rkJiGcNtO5eAOWWSgT7zullIAEqQwxMU83yL9J5k7gww==}
     peerDependencies:
       monaco-editor: '>=0.33.0'
 
@@ -1632,7 +1632,7 @@ snapshots:
 
   undici-types@7.18.2: {}
 
-  vite-plugin-monaco-editor-esm@2.0.3(monaco-editor@0.56.0):
+  vite-plugin-monaco-editor@1.1.0(monaco-editor@0.56.0):
     dependencies:
       monaco-editor: 0.56.0
 

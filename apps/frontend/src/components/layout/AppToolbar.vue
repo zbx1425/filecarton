@@ -29,6 +29,7 @@ import {
   File,
   Folder,
   ChevronDown,
+  Settings2,
 } from '@lucide/vue'
 import { createItem } from '@/composables/useFileActions'
 import { isInternalDrag, handleDrop } from '@/composables/useDragDrop'
@@ -136,7 +137,7 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
           <Input
             v-model="ui.searchQuery"
             placeholder="Search..."
-            class="h-7 w-40 pl-7 pr-7 text-xs"
+            class="h-8 w-40 pl-7 pr-7 text-xs"
           />
         </div>
         <DropdownMenu>
@@ -184,11 +185,15 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Button variant="outline" size="sm" @click="upload.show()">
+        <Button variant="outline" size="sm" @click="upload.visible ? upload.hide() : upload.show()">
           <Upload class="size-4" />
           Upload
         </Button>
       </template>
+
+      <Button variant="ghost" size="icon-sm" @click="ui.settingsOpen = true">
+        <Settings2 class="size-4" />
+      </Button>
     </div>
   </div>
 </template>

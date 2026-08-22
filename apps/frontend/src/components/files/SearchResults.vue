@@ -5,7 +5,7 @@ import { apiGet } from '@/api/client'
 import type { SearchResponse, SearchResult } from '@/api/types'
 import { useNavigationStore } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
-import { getFileIcon } from '@/composables/useFileType'
+import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
 import { formatSize } from '@/utils/format'
 import { splitPath } from '@/utils/path'
 import { Loader2, Search } from '@lucide/vue'
@@ -97,12 +97,14 @@ function navigateToDir(path: string) {
       <div
         v-for="result in results"
         :key="result.path + '/' + result.name"
-        class="flex items-center h-8 px-3 text-xs cursor-pointer hover:bg-muted/50 gap-2"
+        class="flex items-center px-3 text-xs cursor-pointer hover:bg-muted/50 gap-2"
+        style="height: var(--fc-row-height, 32px)"
         @click="openResult(result)"
       >
         <component
           :is="getFileIcon(result.name, result.type === 'dir')"
-          class="size-4 shrink-0 text-muted-foreground"
+          class="size-4 shrink-0"
+          :class="getFileIconColor(result.name, result.type === 'dir')"
         />
         <span class="truncate font-medium">{{ result.name }}</span>
         <span

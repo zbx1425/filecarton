@@ -38,16 +38,69 @@ function handleDragOver(e: DragEvent) {
   if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
 }
 
-function handleDrop(e: DragEvent) {
+async function readEntryRecursive(
+  entry: FileSystemEntry,
+  basePath: string,
+): Promise<{ file: File; relativePath: string }[]> {
+  if (entry.isFile) {
+    return new Promise((resolve, reject) => {
+      ;(entry as FileSystemFileEntry).file(
+        (f) => resolve([{ file: f, relativePath: basePath ? `${basePath}/${f.name}` : f.name }]),
+        reject,
+      )
+    })
+  }
+  if (entry.isDirectory) {
+    const dirReader = (entry as FileSystemDirectoryEntry).createReader()
+    const results: { file: File; relativePath: string }[] = []
+    const dirPath = basePath ? `${basePath}/${entry.name}` : entry.name
+
+    let batch: FileSystemEntry[] = []
+    do {
+      batch = await new Promise<FileSystemEntry[]>((resolve, reject) => {
+        dirReader.readEntries(resolve, reject)
+      })
+      for (const child of batch) {
+        results.push(...(await readEntryRecursive(child, dirPath)))
+      }
+    } while (batch.length > 0)
+
+    return results
+  }
+  return []
+}
+
+async function handleDrop(e: DragEvent) {
   e.preventDefault()
   dragCounter = 0
   showOverlay.value = false
 
   if (ui.readonly) return
 
-  const files = e.dataTransfer?.files
-  if (files && files.length > 0) {
-    upload.addFiles(files, navigation.currentPathStr)
+  const items = e.dataTransfer?.items
+  if (!items || items.length === 0) return
+
+  const entries: FileSystemEntry[] = []
+  for (let i = 0; i < items.length; i++) {
+    const entry = items[i].webkitGetAsEntry?.()
+    if (entry) entries.push(entry)
+  }
+
+  if (entries.length === 0) {
+    const files = e.dataTransfer?.files
+    if (files && files.length > 0) {
+      upload.addFiles(files, navigation.currentPathStr)
+    }
+    return
+  }
+
+  const allFiles: { file: File; relativePath: string }[] = []
+  for (const entry of entries) {
+    allFiles.push(...(await readEntryRecursive(entry, '')))
+  }
+
+  if (allFiles.length > 0) {
+    upload.addFilesWithPaths(allFiles, navigation.currentPathStr)
   }
 }
 

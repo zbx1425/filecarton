@@ -7,7 +7,7 @@ import { useNavigationStore } from '@/stores/navigation'
 import { useClipboardStore } from '@/stores/clipboard'
 import { useUiStore } from '@/stores/ui'
 import { confirm, prompt, showPasteConflict } from '@/composables/useDialogs'
-import { joinPath, parentPath } from '@/utils/path'
+import { joinPath } from '@/utils/path'
 
 function refreshCurrent() {
   const navigation = useNavigationStore()

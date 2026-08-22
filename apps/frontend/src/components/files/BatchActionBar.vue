@@ -16,7 +16,8 @@ import { Copy, Scissors, Trash2, X, FileArchive } from '@lucide/vue'
 const fileList = useFileListStore()
 const ui = useUiStore()
 
-function handleSelectAll(checked: boolean) {
+function handleSelectAll(checked: boolean | "indeterminate") {
+  if (checked === "indeterminate") return
   if (checked) fileList.selectAll()
   else fileList.clearSelection()
 }

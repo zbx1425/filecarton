@@ -39,6 +39,28 @@
   --sidebar-accent-foreground: oklch(0.218 0.008 223.9);
   --sidebar-border: oklch(0.925 0.005 214.3);
   --sidebar-ring: oklch(0.723 0.014 214.4);
+
+  --selected: oklch(0.94 0.04 240);
+
+  --icon-folder:      oklch(0.75 0.15 75);
+  --icon-code:        oklch(0.60 0.16 250);
+  --icon-data:        oklch(0.72 0.14 85);
+  --icon-config:      oklch(0.55 0.10 290);
+  --icon-text:        oklch(0.55 0.08 250);
+  --icon-spreadsheet: oklch(0.65 0.16 155);
+  --icon-image:       oklch(0.65 0.18 150);
+  --icon-audio:       oklch(0.60 0.16 310);
+  --icon-archive:     oklch(0.65 0.18 30);
+  --icon-font:        oklch(0.55 0.12 290);
+  --icon-video:       oklch(0.60 0.20 15);
+  --icon-model:       oklch(0.60 0.14 210);
+
+  --fc-size: 14px;
+  --fc-leading: 1.5;
+  --fc-text-sm: 12.3px;
+  --fc-text-xs: 10.5px;
+  --fc-row-height: 32px;
+  --fc-success: oklch(0.65 0.2 150);
 }
 
 .dark {
@@ -73,6 +95,23 @@
   --sidebar-accent-foreground: oklch(0.987 0.002 197.1);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.56 0.021 213.5);
+
+  --selected: oklch(0.28 0.04 240);
+
+  --icon-folder:      oklch(0.80 0.14 75);
+  --icon-code:        oklch(0.70 0.14 250);
+  --icon-data:        oklch(0.78 0.12 85);
+  --icon-config:      oklch(0.65 0.10 290);
+  --icon-text:        oklch(0.65 0.08 250);
+  --icon-spreadsheet: oklch(0.72 0.14 155);
+  --icon-image:       oklch(0.72 0.16 150);
+  --icon-audio:       oklch(0.70 0.14 310);
+  --icon-archive:     oklch(0.72 0.16 30);
+  --icon-font:        oklch(0.65 0.12 290);
+  --icon-video:       oklch(0.70 0.18 15);
+  --icon-model:       oklch(0.70 0.12 210);
+
+  --fc-success: oklch(0.72 0.18 150);
 }
 
 @theme inline {
@@ -110,6 +149,26 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-selected: var(--selected);
+  --color-fc-success: var(--fc-success);
+
+  --color-icon-folder: var(--icon-folder);
+  --color-icon-code: var(--icon-code);
+  --color-icon-data: var(--icon-data);
+  --color-icon-config: var(--icon-config);
+  --color-icon-text: var(--icon-text);
+  --color-icon-spreadsheet: var(--icon-spreadsheet);
+  --color-icon-image: var(--icon-image);
+  --color-icon-audio: var(--icon-audio);
+  --color-icon-archive: var(--icon-archive);
+  --color-icon-font: var(--icon-font);
+  --color-icon-video: var(--icon-video);
+  --color-icon-model: var(--icon-model);
+
+  --text-xs: var(--fc-text-xs, 0.75rem);
+  --text-xs--line-height: var(--fc-leading, 1rem);
+  --text-sm: var(--fc-text-sm, 0.875rem);
+  --text-sm--line-height: var(--fc-leading, 1.25rem);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -126,5 +185,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-size: var(--fc-size, 14px);
+    line-height: var(--fc-leading, 1.5);
   }
 }

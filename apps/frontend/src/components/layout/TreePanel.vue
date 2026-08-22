@@ -4,7 +4,6 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { useTreeStore } from '@/stores/tree'
 import { useNavigationStore } from '@/stores/navigation'
 import TreeNode from '@/components/tree/TreeNode.vue'
-import { joinPath } from '@/utils/path'
 
 const tree = useTreeStore()
 const navigation = useNavigationStore()

@@ -15,6 +15,7 @@ import ContentPanel from '@/components/layout/ContentPanel.vue'
 import DialogHost from '@/components/DialogHost.vue'
 import Lightbox from '@/components/Lightbox.vue'
 import DropOverlay from '@/components/upload/DropOverlay.vue'
+import SettingsDialog from '@/components/SettingsDialog.vue'
 import { useKeyboard } from '@/composables/useKeyboard'
 import 'vue-sonner/style.css'
 
@@ -55,5 +56,6 @@ watch(
     <DialogHost />
     <Lightbox />
     <DropOverlay />
+    <SettingsDialog />
   </div>
 </template>

@@ -6,29 +6,32 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
-  ContextMenuShortcut,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
 import { useClipboardStore } from '@/stores/clipboard'
 import { useUiStore } from '@/stores/ui'
-import { getFileIcon } from '@/composables/useFileType'
+import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
 import { formatSize, formatTime } from '@/utils/format'
 import {
   copySelected, cutSelected, deleteItems, renameItem, pasteItems,
 } from '@/composables/useFileActions'
 import { buildDownloadUrl } from '@/api/client'
 import { joinPath } from '@/utils/path'
+import { PackageOpen, FileArchive } from '@lucide/vue'
 import {
-  FolderOpen, Eye, Copy, Scissors, ClipboardPaste,
-  Pencil, Trash2, Download, PackageOpen,
-} from '@lucide/vue'
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent,
+} from '@/components/ui/context-menu'
+import FileItemMenu from '@/components/FileItemMenu.vue'
 import { isArchive, canPreviewImage } from '@/composables/useFileType'
-import { extractArchive } from '@/composables/useArchive'
+import { extractArchive, createArchive } from '@/composables/useArchive'
 import {
   isInternalDrag, handleDrop as dndHandleDrop, startDragFromSelection,
 } from '@/composables/useDragDrop'
+import { usePreferencesStore } from '@/stores/preferences'
 
 const props = defineProps<{
   name: string
@@ -41,10 +44,18 @@ const fileList = useFileListStore()
 const navigation = useNavigationStore()
 const clipboard = useClipboardStore()
 const ui = useUiStore()
+const preferences = usePreferencesStore()
+
+const constrainedStyle = computed(() => {
+  const maxW = preferences.effectiveTableMaxWidth
+  if (maxW == null) return {}
+  return { maxWidth: `${maxW}px` }
+})
 
 const isSelected = computed(() => fileList.selected.has(props.name))
 const isCut = computed(() => clipboard.isCutItem(navigation.currentPathStr, props.name))
 const icon = computed(() => getFileIcon(props.name, props.isDir))
+const iconColor = computed(() => getFileIconColor(props.name, props.isDir))
 
 function handleRowClick(e: MouseEvent) {
   if (e.shiftKey) {
@@ -184,10 +195,13 @@ const thumbnailUrl = computed(() => {
   <ContextMenu @update:open="(open: boolean) => { if (open) handleContextOpen() }">
     <ContextMenuTrigger as-child>
       <div
-        class="flex items-center h-8 px-3 text-xs group border-b border-transparent cursor-default select-none"
+        data-file-row
+        class="flex items-center px-3 text-xs group border-b border-transparent cursor-default select-none"
+        style="height: var(--fc-row-height, 32px)"
+        :style="constrainedStyle"
         :class="[
           dropHover ? 'bg-primary/10 border-primary border-dashed' :
-          isSelected ? 'bg-accent' : 'hover:bg-muted/50',
+          isSelected ? 'bg-selected' : 'hover:bg-muted/50',
           isCut ? 'opacity-50' : '',
         ]"
         :draggable="true"
@@ -213,7 +227,7 @@ const thumbnailUrl = computed(() => {
           @mousemove="handleNameMouseMove"
           @mouseleave="handleNameMouseLeave"
         >
-          <component :is="icon" class="size-4 shrink-0 text-muted-foreground" />
+          <component :is="icon" class="size-4 shrink-0" :class="iconColor" />
           <span class="truncate" :class="isDir ? 'font-medium' : ''">{{ name }}</span>
         </div>
 
@@ -228,59 +242,43 @@ const thumbnailUrl = computed(() => {
     </ContextMenuTrigger>
 
     <ContextMenuContent class="w-52">
-      <ContextMenuItem @select="handleOpen">
-        <FolderOpen v-if="isDir" class="size-4" />
-        <Eye v-else class="size-4" />
-        Open
-      </ContextMenuItem>
+      <FileItemMenu
+        :is-dir="isDir"
+        :readonly="ui.readonly"
+        :can-paste="clipboard.hasContent"
+        :show-open="fileList.selectedCount <= 1"
+        :show-rename="fileList.selectedCount <= 1"
+        :show-download="fileList.selectedCount <= 1"
+        @open="handleOpen"
+        @copy="handleCopy"
+        @cut="handleCut"
+        @paste="handlePaste"
+        @rename="handleRename"
+        @delete="handleDelete"
+        @download="handleDownload"
+      >
+        <template v-if="!ui.readonly && fileList.selectedCount > 1">
+          <ContextMenuSeparator />
+          <ContextMenuSub>
+            <ContextMenuSubTrigger class="gap-2">
+              <FileArchive class="size-4" />
+              Archive
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent>
+              <ContextMenuItem @select="createArchive('zip')">Create .zip</ContextMenuItem>
+              <ContextMenuItem @select="createArchive('tar')">Create .tar</ContextMenuItem>
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+        </template>
 
-      <ContextMenuSeparator />
-
-      <template v-if="!ui.readonly">
-        <ContextMenuItem @select="handleCopy">
-          <Copy class="size-4" />
-          Copy
-          <ContextMenuShortcut>Ctrl+C</ContextMenuShortcut>
-        </ContextMenuItem>
-        <ContextMenuItem @select="handleCut">
-          <Scissors class="size-4" />
-          Cut
-          <ContextMenuShortcut>Ctrl+X</ContextMenuShortcut>
-        </ContextMenuItem>
-        <ContextMenuItem v-if="clipboard.hasContent" @select="handlePaste">
-          <ClipboardPaste class="size-4" />
-          Paste
-          <ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
-        </ContextMenuItem>
-
-        <ContextMenuSeparator />
-
-        <ContextMenuItem @select="handleRename">
-          <Pencil class="size-4" />
-          Rename
-          <ContextMenuShortcut>F2</ContextMenuShortcut>
-        </ContextMenuItem>
-        <ContextMenuItem class="text-destructive focus:text-destructive" @select="handleDelete">
-          <Trash2 class="size-4" />
-          Delete
-          <ContextMenuShortcut>Del</ContextMenuShortcut>
-        </ContextMenuItem>
-
-        <ContextMenuSeparator />
-      </template>
-
-      <ContextMenuItem @select="handleDownload">
-        <Download class="size-4" />
-        Download
-      </ContextMenuItem>
-
-      <template v-if="!ui.readonly && !isDir && isArchive(name)">
-        <ContextMenuSeparator />
-        <ContextMenuItem @select="extractArchive(joinPath(navigation.currentPathStr, name), navigation.currentPathStr)">
-          <PackageOpen class="size-4" />
-          Extract Here
-        </ContextMenuItem>
-      </template>
+        <template v-if="!ui.readonly && fileList.selectedCount <= 1 && !isDir && isArchive(name)">
+          <ContextMenuSeparator />
+          <ContextMenuItem @select="extractArchive(joinPath(navigation.currentPathStr, name), navigation.currentPathStr)">
+            <PackageOpen class="size-4" />
+            Extract Here
+          </ContextMenuItem>
+        </template>
+      </FileItemMenu>
     </ContextMenuContent>
   </ContextMenu>
 

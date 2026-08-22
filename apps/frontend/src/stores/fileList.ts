@@ -26,6 +26,7 @@ export const useFileListStore = defineStore('fileList', () => {
   const files = ref<FileEntry[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+  let fetchAbort: AbortController | null = null
 
   const savedSort = loadSortPreference()
   const sortBy = ref<SortColumn>(savedSort.sortBy)
@@ -93,22 +94,33 @@ export const useFileListStore = defineStore('fileList', () => {
   const hasSelection = computed(() => selected.value.size > 0)
   const totalSize = computed(() => files.value.reduce((sum, f) => sum + f.size, 0))
 
+  const isAllSelected = computed(() => {
+    const entries = filteredEntries.value
+    return entries.length > 0 && entries.every(e => selected.value.has(e.name))
+  })
+
   async function fetchDir(path: string) {
+    if (fetchAbort) fetchAbort.abort()
+    fetchAbort = new AbortController()
+    const signal = fetchAbort.signal
+
     loading.value = true
     error.value = null
     selected.value = new Set()
     focusIndex.value = -1
     lastClickedName.value = null
     try {
-      const data = await apiGet<ListResponse>('list', { path })
+      const data = await apiGet<ListResponse>('list', { path }, signal)
+      if (signal.aborted) return
       dirs.value = data.dirs
       files.value = data.files
     } catch (e: unknown) {
+      if (signal.aborted) return
       error.value = e instanceof Error ? e.message : 'Failed to load directory'
       dirs.value = []
       files.value = []
     } finally {
-      loading.value = false
+      if (!signal.aborted) loading.value = false
     }
   }
 
@@ -142,6 +154,11 @@ export const useFileListStore = defineStore('fileList', () => {
   function clearSelection() {
     selected.value = new Set()
     lastClickedName.value = null
+  }
+
+  function toggleSelectAll() {
+    if (isAllSelected.value) clearSelection()
+    else selectAll()
   }
 
   function rangeSelect(name: string) {
@@ -200,10 +217,12 @@ export const useFileListStore = defineStore('fileList', () => {
     selectedCount,
     hasSelection,
     totalSize,
+    isAllSelected,
     fetchDir,
     toggleSort,
     toggleSelect,
     selectAll,
+    toggleSelectAll,
     clearSelection,
     rangeSelect,
     moveFocus,

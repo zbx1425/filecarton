@@ -1,12 +1,14 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, markRaw } from 'vue'
 import { toast } from 'vue-sonner'
+import { useDebounceFn } from '@vueuse/core'
+import UploadToast from '@/components/upload/UploadToast.vue'
 import { apiUpload, apiPost } from '@/api/client'
 import type { UploadResponse, UploadChunkResponse, UploadCompleteResponse } from '@/api/types'
 import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
 import { useTreeStore } from '@/stores/tree'
-import { joinPath } from '@/utils/path'
+import { joinPath, parentPath } from '@/utils/path'
 import { CHUNK_SIZE, MAX_CONCURRENT_UPLOADS } from '@/utils/constants'
 
 export interface UploadTask {
@@ -22,12 +24,31 @@ export interface UploadTask {
 export const useUploadStore = defineStore('upload', () => {
   const visible = ref(false)
   const tasks = ref<UploadTask[]>([])
+  let toastId: string | number | null = null
 
   const activeTasks = computed(() => tasks.value.filter(t => t.status === 'uploading').length)
   const hasActive = computed(() => tasks.value.some(t => t.status === 'uploading' || t.status === 'pending'))
 
   function show() { visible.value = true }
   function hide() { visible.value = false }
+
+  function showUploadToast() {
+    if (toastId != null) return
+    toastId = toast(markRaw(UploadToast), {
+      duration: Infinity,
+      dismissible: false,
+      id: 'upload-progress',
+    })
+  }
+
+  function dismissUploadToast() {
+    if (toastId != null) {
+      setTimeout(() => {
+        toast.dismiss(toastId!)
+        toastId = null
+      }, 3000)
+    }
+  }
 
   function addFiles(fileList: FileList | File[], targetDir: string) {
     const newTasks: UploadTask[] = []
@@ -43,6 +64,7 @@ export const useUploadStore = defineStore('upload', () => {
     }
     tasks.value = [...tasks.value, ...newTasks]
     visible.value = true
+    showUploadToast()
     processQueue()
   }
 
@@ -60,6 +82,25 @@ export const useUploadStore = defineStore('upload', () => {
     }
     tasks.value = [...tasks.value, ...newTasks]
     visible.value = true
+    showUploadToast()
+    processQueue()
+  }
+
+  function addFilesWithPaths(
+    files: { file: File; relativePath: string }[],
+    targetDir: string,
+  ) {
+    const newTasks: UploadTask[] = files.map(({ file, relativePath }) => ({
+      id: crypto.randomUUID(),
+      file,
+      relativePath,
+      targetDir,
+      progress: 0,
+      status: 'pending' as const,
+    }))
+    tasks.value = [...tasks.value, ...newTasks]
+    visible.value = true
+    showUploadToast()
     processQueue()
   }
 
@@ -89,19 +130,13 @@ export const useUploadStore = defineStore('upload', () => {
     refreshAfterUpload(task.targetDir)
 
     if (!hasActive.value) {
-      const succeeded = tasks.value.filter(t => t.status === 'success').length
-      const failed = tasks.value.filter(t => t.status === 'error').length
-      if (failed > 0) {
-        toast.error(`Upload complete: ${succeeded} succeeded, ${failed} failed`)
-      } else if (succeeded > 0) {
-        toast.success(`Uploaded ${succeeded} file(s)`)
-      }
+      dismissUploadToast()
       setTimeout(() => {
         if (!hasActive.value) {
           tasks.value = tasks.value.filter(t => t.status !== 'success')
           if (tasks.value.length === 0) visible.value = false
         }
-      }, 2000)
+      }, 4000)
     }
   }
 
@@ -176,15 +211,37 @@ export const useUploadStore = defineStore('upload', () => {
     tasks.value = tasks.value.filter(t => t.id !== taskId)
   }
 
-  function refreshAfterUpload(targetDir: string) {
+  const pendingRefreshDirs = new Set<string>()
+
+  const flushRefresh = useDebounceFn(() => {
     const navigation = useNavigationStore()
     const fileList = useFileListStore()
     const tree = useTreeStore()
-    if (navigation.currentPathStr === targetDir) {
-      fileList.fetchDir(targetDir)
+
+    const dirs = new Set(pendingRefreshDirs)
+    pendingRefreshDirs.clear()
+
+    for (const dir of dirs) {
+      tree.invalidate(dir)
+      tree.loadChildren(dir)
+      let ancestor = parentPath(dir)
+      while (ancestor) {
+        tree.invalidate(ancestor)
+        tree.loadChildren(ancestor)
+        ancestor = parentPath(ancestor)
+      }
+      tree.invalidate('')
+      tree.loadChildren('')
     }
-    tree.invalidate(targetDir)
-    tree.loadChildren(targetDir)
+
+    if (dirs.has(navigation.currentPathStr)) {
+      fileList.fetchDir(navigation.currentPathStr)
+    }
+  }, 500)
+
+  function refreshAfterUpload(targetDir: string) {
+    pendingRefreshDirs.add(targetDir)
+    flushRefresh()
   }
 
   return {
@@ -196,6 +253,7 @@ export const useUploadStore = defineStore('upload', () => {
     hide,
     addFiles,
     addFolderFiles,
+    addFilesWithPaths,
     retry,
     remove,
   }

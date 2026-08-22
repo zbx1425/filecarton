@@ -32,7 +32,7 @@ function handleClear() {
       <Badge
         v-if="clipboard.hasContent"
         variant="secondary"
-        class="cursor-pointer gap-1 whitespace-nowrap"
+        class="cursor-pointer gap-1 whitespace-nowrap ms-3 me-2"
       >
         <Scissors v-if="clipboard.mode === 'cut'" class="size-3" />
         <Copy v-else class="size-3" />

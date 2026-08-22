@@ -10,6 +10,7 @@ export const useUiStore = defineStore('ui', () => {
 
   const searchQuery = ref('')
   const searchRecursive = ref(false)
+  const settingsOpen = ref(false)
 
   const isWide = useMediaQuery('(min-width: 900px)')
   const isMedium = useMediaQuery('(min-width: 700px)')
@@ -36,6 +37,7 @@ export const useUiStore = defineStore('ui', () => {
     repoName,
     searchQuery,
     searchRecursive,
+    settingsOpen,
     treePanelVisible,
     showTreeToggle,
     shouldShowTree,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue'
 import type * as Monaco from 'monaco-editor'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
@@ -13,9 +13,11 @@ import { monacoLanguage } from '@/composables/useFileType'
 import { showEditorConflict } from '@/composables/useDialogs'
 import { ArrowLeft, Save, Loader2, ClipboardCopy, Download } from '@lucide/vue'
 import { buildDownloadUrl } from '@/api/client'
+import { usePreferencesStore } from '@/stores/preferences'
 
 const navigation = useNavigationStore()
 const ui = useUiStore()
+const prefs = usePreferencesStore()
 
 const containerRef = ref<HTMLElement | null>(null)
 const loading = ref(true)
@@ -25,7 +27,6 @@ const saving = ref(false)
 let editor: Monaco.editor.IStandaloneCodeEditor | null = null
 let resizeObserver: ResizeObserver | null = null
 let currentMtime = 0
-let monacoModule: typeof Monaco | null = null
 
 const filePath = computed(() => navigation.activeFilePath ?? '')
 const fileName = computed(() => navigation.activeFile ?? '')
@@ -99,7 +100,6 @@ onMounted(async () => {
       apiGet<ReadResponse>('read', { path: filePath.value }),
     ])
 
-    monacoModule = monaco
     currentMtime = fileData.mtime
 
     if (!containerRef.value) return
@@ -107,15 +107,17 @@ onMounted(async () => {
     editor = monaco.editor.create(containerRef.value, {
       value: fileData.content,
       language: monacoLanguage(fileName.value),
-      theme: 'vs',
+      theme: prefs.theme === 'dark' ? 'vs-dark' : 'vs',
       readOnly: ui.readonly,
       minimap: { enabled: false },
-      wordWrap: 'on',
-      fontSize: 13,
-      lineNumbers: 'on',
+      wordWrap: prefs.editorWordWrap ? 'on' : 'off',
+      fontSize: prefs.editorFontSize,
+      lineNumbers: prefs.editorLineNumbers ? 'on' : 'off',
       scrollBeyondLastLine: false,
       automaticLayout: false,
-      tabSize: 2,
+      tabSize: prefs.editorTabSize,
+      detectIndentation: false,
+      mouseWheelZoom: true,
     })
 
     editor.onDidChangeModelContent(() => {
@@ -128,6 +130,14 @@ onMounted(async () => {
 
     resizeObserver = new ResizeObserver(() => editor?.layout())
     resizeObserver.observe(containerRef.value)
+
+    watch(() => prefs.theme, (t) => {
+      editor?.updateOptions({ theme: t === 'dark' ? 'vs-dark' : 'vs' })
+    })
+    watch(() => prefs.editorFontSize, (s) => editor?.updateOptions({ fontSize: s }))
+    watch(() => prefs.editorWordWrap, (w) => editor?.updateOptions({ wordWrap: w ? 'on' : 'off' }))
+    watch(() => prefs.editorLineNumbers, (l) => editor?.updateOptions({ lineNumbers: l ? 'on' : 'off' }))
+    watch(() => prefs.editorTabSize, (t) => editor?.updateOptions({ tabSize: t }))
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Failed to load editor'
   } finally {

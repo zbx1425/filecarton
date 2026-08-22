@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { ChevronRight, Loader2, Copy, Scissors, ClipboardPaste, Pencil, Trash2, FolderPlus, FolderOpen, Eye } from '@lucide/vue'
+import { ChevronRight, Loader2, FolderPlus } from '@lucide/vue'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -8,11 +8,13 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
+import FileItemMenu from '@/components/FileItemMenu.vue'
+import { buildDownloadUrl } from '@/api/client'
 import { useTreeStore } from '@/stores/tree'
 import { useNavigationStore } from '@/stores/navigation'
 import { useClipboardStore } from '@/stores/clipboard'
 import { useUiStore } from '@/stores/ui'
-import { getFileIcon } from '@/composables/useFileType'
+import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
 import { joinPath, parentPath } from '@/utils/path'
 import {
   deleteItems, renameItem, pasteItems,
@@ -57,6 +59,7 @@ const isActive = computed(() => {
 })
 
 const icon = computed(() => getFileIcon(props.name, isDir.value, isExpanded.value))
+const iconColor = computed(() => getFileIconColor(props.name, isDir.value, isExpanded.value))
 
 const dropHover = ref(false)
 let expandTimer: ReturnType<typeof setTimeout> | null = null
@@ -150,6 +153,10 @@ async function handlePaste() {
   }
 }
 
+function handleDownload() {
+  window.open(buildDownloadUrl(props.path), '_blank')
+}
+
 async function handleNewFolder() {
   if (!isDir.value) return
   const name = await prompt('New Folder', { placeholder: 'folder-name', submitLabel: 'Create' })
@@ -201,49 +208,33 @@ async function handleNewFolder() {
           </span>
           <span v-else class="w-4 shrink-0" />
 
-          <component :is="icon" class="size-4 mx-1.5 shrink-0 text-muted-foreground" />
+          <component :is="icon" class="size-4 mx-1.5 shrink-0" :class="iconColor" />
           <span class="truncate text-xs">{{ name }}</span>
         </div>
       </ContextMenuTrigger>
 
-      <ContextMenuContent class="w-48">
-        <ContextMenuItem @select="handleOpen">
-          <FolderOpen v-if="isDir" class="size-4" />
-          <Eye v-else class="size-4" />
-          Open
-        </ContextMenuItem>
-
-        <template v-if="!ui.readonly">
-          <ContextMenuSeparator />
-          <ContextMenuItem @select="handleCopy">
-            <Copy class="size-4" />
-            Copy
-          </ContextMenuItem>
-          <ContextMenuItem @select="handleCut">
-            <Scissors class="size-4" />
-            Cut
-          </ContextMenuItem>
-          <ContextMenuItem v-if="clipboard.hasContent && isDir" @select="handlePaste">
-            <ClipboardPaste class="size-4" />
-            Paste
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem @select="handleRename">
-            <Pencil class="size-4" />
-            Rename
-          </ContextMenuItem>
-          <ContextMenuItem class="text-destructive focus:text-destructive" @select="handleDelete">
-            <Trash2 class="size-4" />
-            Delete
-          </ContextMenuItem>
-          <template v-if="isDir">
+      <ContextMenuContent class="w-52">
+        <FileItemMenu
+          :is-dir="isDir"
+          :readonly="ui.readonly"
+          :can-paste="clipboard.hasContent && isDir"
+          :show-download="!isDir"
+          @open="handleOpen"
+          @copy="handleCopy"
+          @cut="handleCut"
+          @paste="handlePaste"
+          @rename="handleRename"
+          @delete="handleDelete"
+          @download="handleDownload"
+        >
+          <template v-if="isDir && !ui.readonly">
             <ContextMenuSeparator />
             <ContextMenuItem @select="handleNewFolder">
               <FolderPlus class="size-4" />
               New Folder
             </ContextMenuItem>
           </template>
-        </template>
+        </FileItemMenu>
       </ContextMenuContent>
     </ContextMenu>
 
