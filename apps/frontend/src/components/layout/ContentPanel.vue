@@ -6,7 +6,6 @@ import FileTable from '@/components/files/FileTable.vue'
 import SearchResults from '@/components/files/SearchResults.vue'
 import PreviewShell from '@/components/preview/PreviewShell.vue'
 import EditorView from '@/components/editor/EditorView.vue'
-import UploadZone from '@/components/upload/UploadZone.vue'
 
 const navigation = useNavigationStore()
 const ui = useUiStore()
@@ -18,8 +17,6 @@ const showRecursiveSearch = computed(
 
 <template>
   <div class="flex flex-col h-full overflow-hidden">
-    <UploadZone />
-
     <div class="flex-1 min-h-0">
       <template v-if="navigation.viewMode === 'list'">
         <SearchResults v-if="showRecursiveSearch" />

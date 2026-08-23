@@ -7,7 +7,7 @@ import { useNavigationStore } from '@/stores/navigation'
 import { useClipboardStore } from '@/stores/clipboard'
 import { useUiStore } from '@/stores/ui'
 import { confirm, prompt, showPasteConflict } from '@/composables/useDialogs'
-import { joinPath } from '@/utils/path'
+import { joinPath, validateFileName } from '@/utils/path'
 
 function refreshCurrent() {
   const navigation = useNavigationStore()
@@ -29,6 +29,12 @@ export async function createItem(type: 'file' | 'dir') {
 
   const name = await prompt(label, { placeholder, submitLabel: 'Create' })
   if (!name) return
+
+  const validationError = validateFileName(name)
+  if (validationError) {
+    toast.error(validationError)
+    return
+  }
 
   try {
     await apiPost<CreateResponse>('create', {
@@ -152,6 +158,12 @@ export async function renameItem(dirPath: string, oldName: string) {
   })
   if (!newName || newName === oldName) return
 
+  const validationError = validateFileName(newName)
+  if (validationError) {
+    toast.error(validationError)
+    return
+  }
+
   try {
     await apiPost<RenameResponse>('rename', {
       path: dirPath,
@@ -196,7 +208,7 @@ export async function pasteItems(targetPath: string) {
       overwrite: false,
     })
 
-    if (check.conflicts.length > 0) {
+    if (check.conflicts.length > 0 && check.completed === 0) {
       const overwrite = await showPasteConflict(check.conflicts)
       if (!overwrite) return
 
@@ -215,10 +227,12 @@ export async function pasteItems(targetPath: string) {
         toast.success(`${verb} ${result.completed} item(s)`)
       }
     } else {
+      const verb = clipboard.mode === 'copy' ? 'Copied' : 'Moved'
       if (check.failed.length > 0) {
         toast.error(`Failed: ${check.failed.map(f => `${f.name}: ${f.error}`).join(', ')}`)
+      } else if (check.conflicts.length > 0) {
+        toast.warning(`${verb} ${check.completed} item(s), but ${check.conflicts.length} skipped due to conflicts`)
       } else {
-        const verb = clipboard.mode === 'copy' ? 'Copied' : 'Moved'
         toast.success(`${verb} ${check.completed} item(s)`)
       }
     }

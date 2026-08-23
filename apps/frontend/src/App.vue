@@ -15,8 +15,12 @@ import ContentPanel from '@/components/layout/ContentPanel.vue'
 import DialogHost from '@/components/DialogHost.vue'
 import Lightbox from '@/components/Lightbox.vue'
 import DropOverlay from '@/components/upload/DropOverlay.vue'
+import UploadDialog from '@/components/upload/UploadDialog.vue'
+import UploadErrorDialog from '@/components/upload/UploadErrorDialog.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
 import { useKeyboard } from '@/composables/useKeyboard'
+
+if (import.meta.env.DEV) import('vue-sonner/style.css')
 
 const ui = useUiStore()
 const navigation = useNavigationStore()
@@ -51,10 +55,12 @@ watch(
       </ResizablePanel>
     </ResizablePanelGroup>
 
-    <Toaster position="bottom-right" :duration="4000" rich-colors />
+    <Toaster position="bottom-right" :duration="4000" rich-colors :expand="true" />
     <DialogHost />
     <Lightbox />
     <DropOverlay />
+    <UploadDialog />
+    <UploadErrorDialog />
     <SettingsDialog />
   </div>
 </template>

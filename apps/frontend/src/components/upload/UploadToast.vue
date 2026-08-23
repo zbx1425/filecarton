@@ -1,96 +1,90 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Progress } from '@/components/ui/progress'
-import { Button } from '@/components/ui/button'
-import { useUploadStore, type UploadTask } from '@/stores/upload'
-import { formatSize } from '@/utils/format'
+import { useUploadStore } from '@/stores/upload'
 import {
-  Loader2, CheckCircle2, XCircle, Upload, X, RotateCcw,
+  Loader2, CheckCircle2, AlertTriangle, Upload,
 } from '@lucide/vue'
 
 const upload = useUploadStore()
 
-const uploading = computed(() => upload.tasks.filter(t => t.status === 'uploading'))
-const pending = computed(() => upload.tasks.filter(t => t.status === 'pending'))
-const completed = computed(() => upload.tasks.filter(t => t.status === 'success' || t.status === 'error'))
-
-const sortedTasks = computed<UploadTask[]>(() => [
-  ...uploading.value,
-  ...pending.value,
-  ...completed.value,
-])
-
 const totalProgress = computed(() => {
-  const all = upload.tasks
-  if (all.length === 0) return 0
-  return Math.round(all.reduce((sum, t) => sum + t.progress, 0) / all.length)
+  const total = upload.activeTotal
+  if (total === 0) return 0
+  const sum = upload.tasks
+    .filter(t => t.status !== 'error')
+    .reduce((s, t) => s + t.progress, 0)
+  return Math.min(100, Math.round(sum / total))
 })
 
-const successCount = computed(() => upload.tasks.filter(t => t.status === 'success').length)
-const errorCount = computed(() => upload.tasks.filter(t => t.status === 'error').length)
-const activeCount = computed(() => upload.tasks.filter(t => t.status === 'uploading' || t.status === 'pending').length)
+const result = computed(() => upload.latestBatchResult)
+const hasErrors = computed(() => upload.errorTasks.length > 0)
+const latestBatchAllSuccess = computed(() => result.value != null && result.value.failed === 0)
 </script>
 
 <template>
-  <div class="w-[340px]">
-    <div class="flex items-center gap-2 pb-2 border-b border-border/50">
-      <Upload class="size-4 text-primary shrink-0" />
+  <div class="w-[300px] select-none">
+    <!-- Active uploads -->
+    <div v-if="upload.hasActive" class="flex items-center gap-2.5">
+      <Loader2 class="size-4 animate-spin text-primary shrink-0" />
       <div class="flex-1 min-w-0">
-        <div class="text-sm font-medium">
-          <template v-if="activeCount > 0">
-            Uploading {{ activeCount }} file(s)...
-          </template>
-          <template v-else>
-            Upload complete
-          </template>
-        </div>
-        <div class="text-xs text-muted-foreground">
-          {{ successCount }} done<template v-if="errorCount > 0">, {{ errorCount }} failed</template>
-        </div>
+        <div class="text-sm font-medium">Uploading {{ upload.activeTotal }} file(s)...</div>
+        <Progress :model-value="totalProgress" class="h-1.5 mt-1" />
       </div>
-      <Progress v-if="activeCount > 0" :model-value="totalProgress" class="w-16 h-1.5" />
-      <span v-if="activeCount > 0" class="text-xs tabular-nums text-muted-foreground">{{ totalProgress }}%</span>
+      <span class="text-xs tabular-nums text-muted-foreground shrink-0 w-8 text-right">{{ totalProgress }}%</span>
     </div>
 
-    <div class="max-h-[200px] overflow-y-auto -mx-1 px-1 py-1">
-      <div
-        v-for="task in sortedTasks"
-        :key="task.id"
-        class="flex items-center gap-1.5 py-1 text-xs"
-      >
-        <Loader2 v-if="task.status === 'uploading'" class="size-3 animate-spin text-primary shrink-0" />
-        <CheckCircle2 v-else-if="task.status === 'success'" class="size-3 text-fc-success shrink-0" />
-        <XCircle v-else-if="task.status === 'error'" class="size-3 text-destructive shrink-0" />
-        <Upload v-else class="size-3 text-muted-foreground shrink-0" />
-
-        <span class="truncate flex-1" :title="task.relativePath || task.file.name">
-          {{ task.relativePath || task.file.name }}
-        </span>
-        <span class="text-muted-foreground shrink-0 tabular-nums">{{ formatSize(task.file.size) }}</span>
-
-        <div v-if="task.status === 'uploading'" class="w-10 shrink-0">
-          <Progress :model-value="task.progress" class="h-1" />
+    <!-- Done: show latest batch result -->
+    <template v-else-if="result">
+      <!-- Latest batch result line -->
+      <div class="flex items-center gap-2.5">
+        <CheckCircle2 v-if="latestBatchAllSuccess" class="size-4 text-fc-success shrink-0" />
+        <AlertTriangle v-else class="size-4 text-destructive shrink-0" />
+        <div class="flex-1 min-w-0 text-sm font-medium">
+          <template v-if="latestBatchAllSuccess">
+            {{ result.total }} file(s) uploaded
+          </template>
+          <template v-else>
+            {{ result.success }} uploaded, {{ result.failed }} failed
+          </template>
         </div>
-
-        <Button
-          v-if="task.status === 'error'"
-          variant="ghost"
-          size="icon-xs"
-          class="size-5"
-          @click="upload.retry(task.id)"
-        >
-          <RotateCcw class="size-2.5" />
-        </Button>
-
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          class="size-5"
-          @click="upload.remove(task.id)"
-        >
-          <X class="size-2.5" />
-        </Button>
       </div>
+
+      <!-- Error detail link -->
+      <div v-if="hasErrors" class="mt-1.5 ml-[26px]">
+        <div
+          v-if="latestBatchAllSuccess && upload.oldErrorCount > 0"
+          class="text-xs text-muted-foreground"
+        >
+          {{ upload.oldErrorCount }} earlier upload(s) still failed
+        </div>
+        <button
+          class="text-xs text-primary hover:underline cursor-pointer mt-0.5"
+          @click="upload.openErrorDialog()"
+        >
+          View details
+        </button>
+      </div>
+    </template>
+
+    <!-- Fallback: no result yet but errors exist (e.g. after retry cleared batch result) -->
+    <div v-else-if="hasErrors" class="flex items-center gap-2.5">
+      <AlertTriangle class="size-4 text-destructive shrink-0" />
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-medium">{{ upload.errorTasks.length }} upload(s) failed</div>
+        <button
+          class="text-xs text-primary hover:underline cursor-pointer mt-0.5"
+          @click="upload.openErrorDialog()"
+        >
+          View details
+        </button>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div v-else class="flex items-center gap-2.5">
+      <Upload class="size-4 text-muted-foreground shrink-0" />
+      <div class="text-sm text-muted-foreground">No active uploads</div>
     </div>
   </div>
 </template>

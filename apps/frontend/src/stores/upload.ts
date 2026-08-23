@@ -5,15 +5,17 @@ import { useDebounceFn } from '@vueuse/core'
 import UploadToast from '@/components/upload/UploadToast.vue'
 import { apiUpload, apiPost } from '@/api/client'
 import type { UploadResponse, UploadChunkResponse, UploadCompleteResponse, CheckUploadConflictsResponse } from '@/api/types'
-import { showPasteConflict } from '@/composables/useDialogs'
+import { showPasteConflict, confirm } from '@/composables/useDialogs'
 import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
 import { useTreeStore } from '@/stores/tree'
 import { joinPath, parentPath } from '@/utils/path'
-import { CHUNK_SIZE, MAX_CONCURRENT_UPLOADS } from '@/utils/constants'
+import { CHUNK_SIZE as DEFAULT_CHUNK_SIZE, MAX_CONCURRENT_UPLOADS } from '@/utils/constants'
+import { formatSize } from '@/utils/format'
 
 export interface UploadTask {
   id: string
+  batchId: string
   file: File
   relativePath: string
   targetDir: string
@@ -22,13 +24,35 @@ export interface UploadTask {
   error?: string
 }
 
+export interface BatchResult {
+  total: number
+  success: number
+  failed: number
+}
+
+function getUploadConfig() {
+  const cfg = window.__FILECARTON__?.upload
+  return {
+    chunkSize: cfg?.chunkSize ?? DEFAULT_CHUNK_SIZE,
+    maxFileSize: cfg?.maxFileSize ?? Infinity,
+  }
+}
+
 export const useUploadStore = defineStore('upload', () => {
   const visible = ref(false)
   const tasks = ref<UploadTask[]>([])
+  const latestBatchId = ref<string | null>(null)
+  const latestBatchResult = ref<BatchResult | null>(null)
+  const errorDialogOpen = ref(false)
+  const activeTotal = ref(0)
   let toastId: string | number | null = null
 
   const activeTasks = computed(() => tasks.value.filter(t => t.status === 'uploading').length)
   const hasActive = computed(() => tasks.value.some(t => t.status === 'uploading' || t.status === 'pending'))
+  const errorTasks = computed(() => tasks.value.filter(t => t.status === 'error'))
+  const oldErrorCount = computed(() =>
+    errorTasks.value.filter(t => t.batchId !== latestBatchId.value).length,
+  )
 
   function show() { visible.value = true }
   function hide() { visible.value = false }
@@ -49,13 +73,33 @@ export const useUploadStore = defineStore('upload', () => {
   }
 
   function dismissUploadToast() {
-    if (toastId != null) {
-      dismissTimer = setTimeout(() => {
-        dismissTimer = null
-        toast.dismiss(toastId!)
-        toastId = null
-      }, 3000)
+    if (toastId == null) return
+    if (errorTasks.value.length > 0) return
+    dismissTimer = setTimeout(() => {
+      dismissTimer = null
+      toast.dismiss(toastId!)
+      toastId = null
+    }, 3000)
+  }
+
+  function forceCloseToast() {
+    if (dismissTimer) {
+      clearTimeout(dismissTimer)
+      dismissTimer = null
     }
+    if (toastId != null) {
+      toast.dismiss(toastId)
+      toastId = null
+    }
+  }
+
+  function remeasureToast() {
+    if (toastId == null) return
+    toast(markRaw(UploadToast), {
+      id: 'upload-progress',
+      duration: Infinity,
+      dismissible: false,
+    })
   }
 
   function computeTargetPath(targetDir: string, relativePath: string, fileName: string): string {
@@ -82,74 +126,115 @@ export const useUploadStore = defineStore('upload', () => {
     }
   }
 
-  function enqueueTasks(newTasks: UploadTask[]) {
-    tasks.value = [...tasks.value, ...newTasks]
+  async function checkOversized(files: File[]): Promise<boolean> {
+    const { maxFileSize } = getUploadConfig()
+    if (maxFileSize === Infinity) return true
+    const oversized = files.filter(f => f.size > maxFileSize)
+    if (oversized.length === 0) return true
+    const limit = formatSize(maxFileSize)
+    const listing = oversized
+      .slice(0, 10)
+      .map(f => `${f.name} (${formatSize(f.size)})`)
+      .join('\n')
+    const suffix = oversized.length > 10 ? `\n...and ${oversized.length - 10} more` : ''
+    await confirm(
+      'Files Too Large',
+      `${oversized.length} file(s) exceed the ${limit} upload limit:\n\n${listing}${suffix}\n\nPlease remove or compress these files before uploading.`,
+      { actionLabel: 'OK', hideCancel: true },
+    )
+    return false
+  }
+
+  function enqueueTasks(batchId: string, newTasks: UploadTask[]) {
+    latestBatchId.value = batchId
+    latestBatchResult.value = null
+    if (!hasActive.value) {
+      activeTotal.value = newTasks.length
+    } else {
+      activeTotal.value += newTasks.length
+    }
+    const newPaths = new Set(
+      newTasks.map(t => computeTargetPath(t.targetDir, t.relativePath, t.file.name)),
+    )
+    tasks.value = [
+      ...tasks.value.filter(t =>
+        t.status !== 'error' || !newPaths.has(computeTargetPath(t.targetDir, t.relativePath, t.file.name)),
+      ),
+      ...newTasks,
+    ]
     visible.value = true
     showUploadToast()
     processQueue()
   }
 
   async function addFiles(fileList: FileList | File[], targetDir: string) {
-    const entries = Array.from(fileList).map(f => ({
-      fileName: f.name,
-      relativePath: '',
-      targetDir,
-    }))
-    const proceed = await checkConflicts(entries)
-    if (!proceed) return
+    const allFiles = Array.from(fileList)
+    if (allFiles.length === 0) return
+    if (!await checkOversized(allFiles)) return
 
-    const newTasks: UploadTask[] = Array.from(fileList).map(file => ({
+    const entries = allFiles.map(f => ({ fileName: f.name, relativePath: '', targetDir }))
+    if (!await checkConflicts(entries)) return
+
+    const batchId = crypto.randomUUID()
+    enqueueTasks(batchId, allFiles.map(file => ({
       id: crypto.randomUUID(),
+      batchId,
       file,
       relativePath: '',
       targetDir,
       progress: 0,
       status: 'pending' as const,
-    }))
-    enqueueTasks(newTasks)
+    })))
   }
 
   async function addFolderFiles(fileList: FileList, targetDir: string) {
-    const entries = Array.from(fileList).map(file => ({
+    const allFiles = Array.from(fileList)
+    if (allFiles.length === 0) return
+    if (!await checkOversized(allFiles)) return
+
+    const entries = allFiles.map(file => ({
       fileName: file.name,
       relativePath: (file as any).webkitRelativePath || '',
       targetDir,
     }))
-    const proceed = await checkConflicts(entries)
-    if (!proceed) return
+    if (!await checkConflicts(entries)) return
 
-    const newTasks: UploadTask[] = Array.from(fileList).map(file => ({
+    const batchId = crypto.randomUUID()
+    enqueueTasks(batchId, allFiles.map(file => ({
       id: crypto.randomUUID(),
+      batchId,
       file,
       relativePath: (file as any).webkitRelativePath || '',
       targetDir,
       progress: 0,
       status: 'pending' as const,
-    }))
-    enqueueTasks(newTasks)
+    })))
   }
 
   async function addFilesWithPaths(
     files: { file: File; relativePath: string }[],
     targetDir: string,
   ) {
+    if (files.length === 0) return
+    if (!await checkOversized(files.map(f => f.file))) return
+
     const entries = files.map(({ file, relativePath }) => ({
       fileName: file.name,
       relativePath,
       targetDir,
     }))
-    const proceed = await checkConflicts(entries)
-    if (!proceed) return
+    if (!await checkConflicts(entries)) return
 
-    const newTasks: UploadTask[] = files.map(({ file, relativePath }) => ({
+    const batchId = crypto.randomUUID()
+    enqueueTasks(batchId, files.map(({ file, relativePath }) => ({
       id: crypto.randomUUID(),
+      batchId,
       file,
       relativePath,
       targetDir,
       progress: 0,
       status: 'pending' as const,
-    }))
-    enqueueTasks(newTasks)
+    })))
   }
 
   async function processQueue() {
@@ -162,8 +247,9 @@ export const useUploadStore = defineStore('upload', () => {
   }
 
   async function uploadTask(task: UploadTask) {
+    const { chunkSize } = getUploadConfig()
     try {
-      if (task.file.size > CHUNK_SIZE) {
+      if (task.file.size > chunkSize) {
         await uploadChunked(task)
       } else {
         await uploadSingle(task)
@@ -178,13 +264,28 @@ export const useUploadStore = defineStore('upload', () => {
     refreshAfterUpload(task.targetDir)
 
     if (!hasActive.value) {
+      snapshotLatestBatch()
+      remeasureToast()
       dismissUploadToast()
       setTimeout(() => {
         if (!hasActive.value) {
           tasks.value = tasks.value.filter(t => t.status !== 'success')
-          if (tasks.value.length === 0) visible.value = false
+          if (tasks.value.length === 0) {
+            visible.value = false
+          }
         }
       }, 4000)
+    }
+  }
+
+  function snapshotLatestBatch() {
+    if (!latestBatchId.value) return
+    const batch = tasks.value.filter(t => t.batchId === latestBatchId.value)
+    if (batch.length === 0) return
+    latestBatchResult.value = {
+      total: batch.length,
+      success: batch.filter(t => t.status === 'success').length,
+      failed: batch.filter(t => t.status === 'error').length,
     }
   }
 
@@ -206,12 +307,13 @@ export const useUploadStore = defineStore('upload', () => {
   }
 
   async function uploadChunked(task: UploadTask) {
+    const { chunkSize } = getUploadConfig()
     const uploadId = crypto.randomUUID()
-    const totalChunks = Math.ceil(task.file.size / CHUNK_SIZE)
+    const totalChunks = Math.ceil(task.file.size / chunkSize)
 
     for (let i = 0; i < totalChunks; i++) {
-      const start = i * CHUNK_SIZE
-      const end = Math.min(start + CHUNK_SIZE, task.file.size)
+      const start = i * chunkSize
+      const end = Math.min(start + chunkSize, task.file.size)
       const chunk = task.file.slice(start, end)
 
       const formData = new FormData()
@@ -250,16 +352,67 @@ export const useUploadStore = defineStore('upload', () => {
   function retry(taskId: string) {
     const task = tasks.value.find(t => t.id === taskId)
     if (task && task.status === 'error') {
+      const retryBatchId = crypto.randomUUID()
+      latestBatchId.value = retryBatchId
+      latestBatchResult.value = null
+      if (!hasActive.value) {
+        activeTotal.value = 1
+      } else {
+        activeTotal.value++
+      }
+      task.batchId = retryBatchId
       task.status = 'pending'
       task.progress = 0
       task.error = undefined
+      showUploadToast()
       processQueue()
     }
   }
 
+  function retryAllErrors() {
+    const errs = tasks.value.filter(t => t.status === 'error')
+    if (errs.length === 0) return
+    const retryBatchId = crypto.randomUUID()
+    latestBatchId.value = retryBatchId
+    latestBatchResult.value = null
+    if (!hasActive.value) {
+      activeTotal.value = errs.length
+    } else {
+      activeTotal.value += errs.length
+    }
+    for (const t of errs) {
+      t.batchId = retryBatchId
+      t.status = 'pending'
+      t.progress = 0
+      t.error = undefined
+    }
+    errorDialogOpen.value = false
+    showUploadToast()
+    processQueue()
+  }
+
   function remove(taskId: string) {
     tasks.value = tasks.value.filter(t => t.id !== taskId)
+    if (errorTasks.value.length === 0 && !hasActive.value) {
+      forceCloseToast()
+      visible.value = false
+    }
   }
+
+  function clearErrors() {
+    tasks.value = tasks.value.filter(t => t.status !== 'error')
+    errorDialogOpen.value = false
+    if (!hasActive.value) {
+      forceCloseToast()
+      visible.value = false
+    }
+  }
+
+  const uploadDialogOpen = ref(false)
+  function openUploadDialog() { uploadDialogOpen.value = true }
+  function closeUploadDialog() { uploadDialogOpen.value = false }
+  function openErrorDialog() { errorDialogOpen.value = true }
+  function closeErrorDialog() { errorDialogOpen.value = false }
 
   const pendingRefreshDirs = new Set<string>()
 
@@ -298,13 +451,26 @@ export const useUploadStore = defineStore('upload', () => {
     visible,
     tasks,
     activeTasks,
+    activeTotal,
     hasActive,
+    errorTasks,
+    oldErrorCount,
+    latestBatchId,
+    latestBatchResult,
+    errorDialogOpen,
+    uploadDialogOpen,
     show,
     hide,
     addFiles,
     addFolderFiles,
     addFilesWithPaths,
     retry,
+    retryAllErrors,
     remove,
+    clearErrors,
+    openUploadDialog,
+    closeUploadDialog,
+    openErrorDialog,
+    closeErrorDialog,
   }
 })

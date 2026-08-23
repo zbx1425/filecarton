@@ -16,6 +16,7 @@ defineProps<{
   showOpen?: boolean
   showRename?: boolean
   showDownload?: boolean
+  hasHotkey?: boolean
 }>()
 
 defineEmits<{
@@ -43,28 +44,28 @@ defineEmits<{
     <ContextMenuItem @select="$emit('copy')">
       <Copy class="size-4" />
       Copy
-      <ContextMenuShortcut>Ctrl+C</ContextMenuShortcut>
+      <ContextMenuShortcut v-if="hasHotkey">Ctrl+C</ContextMenuShortcut>
     </ContextMenuItem>
     <ContextMenuItem @select="$emit('cut')">
       <Scissors class="size-4" />
       Cut
-      <ContextMenuShortcut>Ctrl+X</ContextMenuShortcut>
+      <ContextMenuShortcut v-if="hasHotkey">Ctrl+X</ContextMenuShortcut>
     </ContextMenuItem>
     <ContextMenuItem v-if="canPaste" @select="$emit('paste')">
       <ClipboardPaste class="size-4" />
       Paste
-      <ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
+      <ContextMenuShortcut v-if="hasHotkey">Ctrl+V</ContextMenuShortcut>
     </ContextMenuItem>
     <ContextMenuSeparator />
     <ContextMenuItem v-if="showRename !== false" @select="$emit('rename')">
       <Pencil class="size-4" />
       Rename
-      <ContextMenuShortcut>F2</ContextMenuShortcut>
+      <ContextMenuShortcut v-if="hasHotkey">F2</ContextMenuShortcut>
     </ContextMenuItem>
     <ContextMenuItem class="text-destructive focus:text-destructive" @select="$emit('delete')">
       <Trash2 class="size-4" />
       Delete
-      <ContextMenuShortcut>Del</ContextMenuShortcut>
+      <ContextMenuShortcut v-if="hasHotkey">Del</ContextMenuShortcut>
     </ContextMenuItem>
   </template>
 

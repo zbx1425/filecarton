@@ -18,7 +18,7 @@ import { useNavigationStore } from '@/stores/navigation'
 import { useClipboardStore } from '@/stores/clipboard'
 import { useUiStore } from '@/stores/ui'
 import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
-import { joinPath, parentPath } from '@/utils/path'
+import { joinPath, parentPath, validateFileName } from '@/utils/path'
 import {
   deleteItems, renameItem, pasteItems,
 } from '@/composables/useFileActions'
@@ -174,6 +174,11 @@ async function handleNewFolder() {
   if (!isDir.value) return
   const name = await prompt('New Folder', { placeholder: 'folder-name', submitLabel: 'Create' })
   if (!name) return
+  const validationError = validateFileName(name)
+  if (validationError) {
+    toast.error(validationError)
+    return
+  }
   try {
     await apiPost<CreateResponse>('create', { path: props.path, name, type: 'dir' })
     toast.success(`Created ${name}`)

@@ -250,6 +250,7 @@ const thumbnailUrl = computed(() => {
         :show-open="fileList.selectedCount <= 1"
         :show-rename="fileList.selectedCount <= 1"
         :show-download="fileList.selectedCount <= 1"
+        :has-hotkey="true"
         @open="handleOpen"
         @copy="handleCopy"
         @cut="handleCut"

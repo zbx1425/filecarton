@@ -44,7 +44,7 @@ function setEditorFontSize(val: number[] | undefined) {
               <span class="font-medium">by Zbx1425</span>
             </div>
             <div class="text-xs text-muted-foreground">
-              A modern self-hosted file manager,<br>mostly written with LLM
+              A modern, simple and fast file manager,<br>mostly written with LLM
             </div>
           </div>
           <div class="float-end">

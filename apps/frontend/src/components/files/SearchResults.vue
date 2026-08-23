@@ -16,6 +16,7 @@ const ui = useUiStore()
 const results = ref<SearchResult[]>([])
 const loading = ref(false)
 const truncated = ref(false)
+const scanLimitReached = ref(false)
 const error = ref<string | null>(null)
 
 async function doSearch(query: string) {
@@ -33,6 +34,7 @@ async function doSearch(query: string) {
     })
     results.value = data.results
     truncated.value = data.truncated
+    scanLimitReached.value = data.scanLimitReached ?? false
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Search failed'
   } finally {
@@ -118,8 +120,9 @@ function navigateToDir(path: string) {
         </span>
       </div>
 
-      <div v-if="truncated" class="px-3 py-2 text-xs text-muted-foreground text-center border-t">
-        Results truncated. Refine your search for more specific results.
+      <div v-if="truncated || scanLimitReached" class="px-3 py-2 text-xs text-muted-foreground text-center border-t space-y-0.5">
+        <p v-if="truncated">Results truncated. Refine your search for more specific results.</p>
+        <p v-if="scanLimitReached">Too many files to scan, results may be incomplete. Try searching within a subdirectory.</p>
       </div>
     </div>
   </div>

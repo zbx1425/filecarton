@@ -23,11 +23,14 @@ import { pathWithoutExtension } from '@/utils/path'
 
 const promptValue = ref('')
 const promptInputRef = ref<InstanceType<typeof Input> | null>(null)
-const confirmBtnRef = ref<HTMLElement | null>(null)
+const confirmBtnRef = ref<InstanceType<typeof Button> | null>(null)
 
 function handleConfirmAutoFocus(e: Event) {
   e.preventDefault()
-  nextTick(() => confirmBtnRef.value?.focus())
+  nextTick(() => {
+    console.log(confirmBtnRef.value?.$el)
+    confirmBtnRef.value?.$el.focus()
+  })
 }
 
 watch(() => dialogState.prompt.open, (open) => {
@@ -97,10 +100,10 @@ function handleEditorConflictOpenChange(open: boolean) {
       <form @submit.prevent="resolveConfirm(true)">
         <AlertDialogHeader>
           <AlertDialogTitle>{{ dialogState.confirm.title }}</AlertDialogTitle>
-          <AlertDialogDescription>{{ dialogState.confirm.message }}</AlertDialogDescription>
+          <AlertDialogDescription class="whitespace-pre-line">{{ dialogState.confirm.message }}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter class="mt-4">
-          <Button variant="outline" type="button" @click="resolveConfirm(false)">Cancel</Button>
+          <Button v-if="!dialogState.confirm.hideCancel" variant="outline" type="button" @click="resolveConfirm(false)">Cancel</Button>
           <Button
             ref="confirmBtnRef"
             type="submit"
@@ -148,7 +151,7 @@ function handleEditorConflictOpenChange(open: boolean) {
         <div v-if="dialogState.pasteConflict.activeFilePath && dialogState.pasteConflict.files.includes(dialogState.pasteConflict.activeFilePath)" class="text-xs text-destructive mt-2 px-1">
           Warning: One of these files is currently open in the editor. Overwriting will discard your changes.
         </div>
-        <div class="max-h-48 overflow-auto border p-2 text-xs font-mono space-y-0.5 mt-2">
+        <div class="max-h-48 overflow-auto border p-2 text-xs font-mono space-y-0.5 mt-2 break-all">
           <div
             v-for="f in dialogState.pasteConflict.files"
             :key="f"

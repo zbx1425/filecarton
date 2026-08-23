@@ -53,7 +53,7 @@ export async function handleDrop(e: DragEvent, targetPath: string) {
       overwrite: false,
     })
 
-    if (check.conflicts.length > 0) {
+    if (check.conflicts.length > 0 && check.completed === 0) {
       const overwrite = await showPasteConflict(check.conflicts)
       if (!overwrite) return
 
@@ -73,6 +73,8 @@ export async function handleDrop(e: DragEvent, targetPath: string) {
     } else {
       if (check.failed.length > 0) {
         toast.error(`Move failed: ${check.failed.map(f => f.name).join(', ')}`)
+      } else if (check.conflicts.length > 0) {
+        toast.warning(`Moved ${check.completed} item(s), but ${check.conflicts.length} skipped due to conflicts`)
       } else {
         toast.success(`Moved ${check.completed} item(s)`)
       }

@@ -30,3 +30,11 @@ export function pathWithoutExtension(name: string): string {
   if (dot <= 0) return name
   return name.slice(0, dot)
 }
+
+const INVALID_CHARS = /[/\\:*?"<>|]/
+export function validateFileName(name: string): string | null {
+  if (!name || !name.trim()) return 'Name cannot be empty'
+  if (name === '.' || name === '..') return `"${name}" is not a valid name`
+  if (INVALID_CHARS.test(name)) return 'Name contains invalid characters: / \\ : * ? " < > |'
+  return null
+}

@@ -4,6 +4,10 @@ interface FileCartonConfig {
   readonly: boolean
   repoName: string
   branding?: string
+  upload?: {
+    maxFileSize: number
+    chunkSize: number
+  }
 }
 
 declare global {

@@ -189,7 +189,7 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Button variant="outline" size="sm" @click="upload.visible ? upload.hide() : upload.show()">
+        <Button variant="outline" size="sm" @click="upload.openUploadDialog()">
           <Upload class="size-4" />
           Upload
         </Button>

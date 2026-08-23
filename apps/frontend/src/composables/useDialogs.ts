@@ -7,6 +7,7 @@ export interface ConfirmState {
   message: string
   actionLabel: string
   danger: boolean
+  hideCancel: boolean
   resolve: ((value: boolean) => void) | null
 }
 
@@ -34,7 +35,7 @@ export interface EditorConflictState {
 
 export const dialogState = reactive({
   confirm: {
-    open: false, title: '', message: '', actionLabel: 'Confirm', danger: false, resolve: null,
+    open: false, title: '', message: '', actionLabel: 'Confirm', danger: false, hideCancel: false, resolve: null,
   } as ConfirmState,
   prompt: {
     open: false, title: '', placeholder: '', initialValue: '', submitLabel: 'OK', selectBaseName: false, resolve: null,
@@ -50,7 +51,7 @@ export const dialogState = reactive({
 export function confirm(
   title: string,
   message: string,
-  options?: { actionLabel?: string; danger?: boolean },
+  options?: { actionLabel?: string; danger?: boolean; hideCancel?: boolean },
 ): Promise<boolean> {
   if (dialogState.confirm.open) return Promise.resolve(false)
   return new Promise(resolve => {
@@ -58,6 +59,7 @@ export function confirm(
     dialogState.confirm.message = message
     dialogState.confirm.actionLabel = options?.actionLabel ?? 'Confirm'
     dialogState.confirm.danger = options?.danger ?? false
+    dialogState.confirm.hideCancel = options?.hideCancel ?? false
     dialogState.confirm.resolve = resolve
     dialogState.confirm.open = true
   })

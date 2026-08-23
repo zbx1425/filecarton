@@ -42,6 +42,7 @@ export interface SearchResult {
 export interface SearchResponse {
   results: SearchResult[]
   truncated: boolean
+  scanLimitReached?: boolean
 }
 
 export interface ArchiveEntry {
