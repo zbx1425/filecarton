@@ -18,14 +18,12 @@ if ($type !== 'file' && $type !== 'dir') {
     Response::error('Type must be "file" or "dir"', 400);
 }
 
-$parentAbs = $pathSec->resolve($parentPath);
-if (!is_dir($parentAbs)) {
-    Response::error('Parent directory not found', 404);
+if (!$pathSec->isValidFileName($name)) {
+    Response::error('Invalid filename', 400);
 }
 
-$sanitized = $pathSec->sanitizeFileName($name);
-$targetAbs = $parentAbs . '/' . $sanitized;
-$pathSec->assertWithinRoot($targetAbs);
+$relativePath = ($parentPath === '' || $parentPath === '/') ? $name : rtrim($parentPath, '/') . '/' . $name;
+$targetAbs = $pathSec->resolveParent($relativePath);
 
 if (file_exists($targetAbs)) {
     Response::error('Name already exists', 409);
@@ -37,5 +35,4 @@ if ($type === 'dir') {
     $fileOps->createFile($targetAbs);
 }
 
-$relativePath = ($parentPath === '' ? '' : $parentPath . '/') . $sanitized;
 Response::ok(['created' => $relativePath]);

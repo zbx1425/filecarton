@@ -1,73 +1,100 @@
 <?php
 /**
- * FileCarton Default Configuration
- *
- * All values use define-if-not-defined pattern, so they can be overridden
- * by defining the constants earlier (e.g. in conf/config.php).
- *
- * To customize, add the relevant define() calls to your conf/config.php
- * BEFORE the filecarton module is loaded.
+ * FileCarton Configuration
  */
 
-// --- Editor ---
+// --- Core ---
 
+// Absolute filesystem path to the managed root directory.
+define_default('FILECARTON_ROOT_PATH', '');
+
+// Read-only mode: when true, all write APIs return 403.
+define_default('FILECARTON_READONLY', false);
+
+// Display name shown in the page title and UI.
+define_default('FILECARTON_REPO_NAME', 'Files');
+
+// Brand name displayed in the top bar (passed to frontend as branding).
+define_default('FILECARTON_BRANDING', '');
+
+
+// --- Routing ---
+// Number of leading PATH_INFO segments to skip (consumed by parent router).
+// E.g. set to 1 when mounted under fm_bootstrap.php/{repoKey/.
+define_default('FILECARTON_PATHINFO_OFFSET', 0);
+
+// Base URL for static assets. When empty, assets are served from '.../entry_point.php/__fcres/'.
+define_default('FILECARTON_ASSET_URL', '');
+
+
+// --- Editor ---
 // Maximum file size for text read/write API (bytes).
-// Files larger than this cannot be opened in the editor.
-if (!defined('FILECARTON_MAX_EDIT_SIZE')) {
-    define('FILECARTON_MAX_EDIT_SIZE', 5 * 1024 * 1024); // 5 MB
-}
+define_default('FILECARTON_MAX_EDIT_SIZE', 5 * 1024 * 1024); // 5 MB
+
 
 // --- Archive ---
-
 // Maximum number of files allowed in a single archive creation.
-if (!defined('FILECARTON_ARCHIVE_MAX_FILES')) {
-    define('FILECARTON_ARCHIVE_MAX_FILES', 10000);
-}
+define_default('FILECARTON_ARCHIVE_MAX_FILES', 10000);
 
 // Maximum total (uncompressed) size for archive creation (bytes).
-if (!defined('FILECARTON_ARCHIVE_MAX_SIZE')) {
-    define('FILECARTON_ARCHIVE_MAX_SIZE', 2 * 1024 * 1024 * 1024); // 2 GB
-}
+define_default('FILECARTON_ARCHIVE_MAX_SIZE', 2 * 1024 * 1024 * 1024); // 2 GB
+
 
 // --- Upload ---
+// Maximum file size for a single upload (bytes). Applies to chunked uploads.
+define_default('FILECARTON_UPLOAD_MAX_FILE_SIZE', 10 * 1024 * 1024 * 1024); // 10 GB
+
+// Expected chunk size for chunked uploads (bytes). Should be less than PHP's upload_max_filesize and post_max_size.
+define_default('FILECARTON_UPLOAD_CHUNK_SIZE', 5 * 1024 * 1024); // 5 MB
+
+// Maximum number of chunks per chunked upload session.
+define_default('FILECARTON_UPLOAD_MAX_CHUNKS', 10000);
 
 // Maximum directory nesting depth for folder upload relative paths.
-if (!defined('FILECARTON_UPLOAD_MAX_DEPTH')) {
-    define('FILECARTON_UPLOAD_MAX_DEPTH', 50);
-}
+define_default('FILECARTON_UPLOAD_MAX_DEPTH', 50);
 
 // Chunk upload temporary directory expiry time (seconds).
-// Incomplete uploads older than this are eligible for cleanup.
-if (!defined('FILECARTON_CHUNK_EXPIRY')) {
-    define('FILECARTON_CHUNK_EXPIRY', 86400); // 24 hours
-}
+define_default('FILECARTON_CHUNK_EXPIRY', 86400); // 24 hours
 
 // Probability of running cleanup on each chunk upload request (1 in N).
-// Set to 1 to always clean up, higher values reduce overhead.
-if (!defined('FILECARTON_CHUNK_CLEANUP_CHANCE')) {
-    define('FILECARTON_CHUNK_CLEANUP_CHANCE', 10); // 1 in 10
-}
+define_default('FILECARTON_CHUNK_CLEANUP_CHANCE', 10);
+
 
 // --- Search ---
-
 // Default maximum number of search results returned.
-if (!defined('FILECARTON_SEARCH_DEFAULT_LIMIT')) {
-    define('FILECARTON_SEARCH_DEFAULT_LIMIT', 200);
-}
+define_default('FILECARTON_SEARCH_DEFAULT_LIMIT', 200);
 
-// Hard cap on search results (cannot be exceeded even if client requests more).
-if (!defined('FILECARTON_SEARCH_MAX_LIMIT')) {
-    define('FILECARTON_SEARCH_MAX_LIMIT', 1000);
-}
+// Hard cap on search results.
+define_default('FILECARTON_SEARCH_MAX_LIMIT', 1000);
+
+// Maximum filesystem entries to scan per search.
+define_default('FILECARTON_SEARCH_MAX_SCAN', 100000);
+
+
+// --- SendFile / X-Accel-Redirect ---
+// Offload file serving to the web server. Possible values:
+//   false                   - Disabled (default). PHP serves via readfile().
+//   'xsendfile'             - Apache mod_xsendfile. Sends absolute path via X-Sendfile header.
+//   [[phys, uri], ...]      - Nginx X-Accel-Redirect. Maps filesystem prefixes to internal URIs.
+//                             Matched top-to-bottom, first matching prefix wins.
+//
+// Nginx example:
+//   define_default('FILECARTON_SENDFILE', [
+//       [__DIR__ . '/', '/internal/fc-root'],
+//       ['/var/www/user-content', '/internal/user-content'],
+//   ]);
+//
+// Apache example:
+//   define_default('FILECARTON_SENDFILE', 'xsendfile');
+define_default('FILECARTON_SENDFILE', false);
+
 
 // --- Development ---
-
 // Vite dev server URL. When defined and truthy, page.php loads assets from
 // this server instead of the built manifest. Comment out for production.
-// define('FILECARTON_DEV_SERVER', 'http://localhost:5173');
+// define_default('FILECARTON_DEV_SERVER', 'http://localhost:5173');
 
-// --- Performance / Offload ---
 
-// Nginx internal redirect prefix for static assets. When defined, asset_serve.php
-// sends an X-Accel-Redirect header instead of reading the file in PHP.
-// define('FILECARTON_NGINX_INTERNAL_PREFIX', '/internal/filecarton');
+function define_default(string $key, mixed $value) {
+    if (!defined($key)) define($key, $value);
+}

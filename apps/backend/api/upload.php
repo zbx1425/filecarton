@@ -10,11 +10,7 @@
 
 
 $targetDir = $_POST['path'] ?? '';
-$targetAbs = $pathSec->resolve($targetDir);
-
-if (!is_dir($targetAbs)) {
-    Response::error('Target directory not found', 404);
-}
+$targetAbs = $pathSec->resolveOrCreate($targetDir);
 
 if (empty($_FILES['files'])) {
     Response::error('No files uploaded', 400);
@@ -39,36 +35,24 @@ for ($i = 0; $i < $count; $i++) {
         continue;
     }
 
-    $relPath = is_array($relativePaths) ? ($relativePaths[$i] ?? '') : '';
+    try {
+        $relPath = is_array($relativePaths) ? ($relativePaths[$i] ?? '') : '';
 
-    if ($relPath !== '') {
-        $relParts = explode('/', str_replace('\\', '/', $relPath));
-        array_pop($relParts);
+        if ($relPath !== '') {
+            $relParts = explode('/', str_replace('\\', '/', $relPath));
+            array_pop($relParts);
 
-        if (count($relParts) > FILECARTON_UPLOAD_MAX_DEPTH) {
-            $failed[] = ['name' => $name, 'error' => 'Path too deep (max ' . FILECARTON_UPLOAD_MAX_DEPTH . ' levels)'];
-            continue;
-        }
-
-        if (!empty($relParts)) {
-            $subDir = $targetAbs;
-            foreach ($relParts as $part) {
-                $part = $pathSec->sanitizeFileName($part);
-                $subDir .= '/' . $part;
-                if (!is_dir($subDir)) {
-                    mkdir($subDir, 0755, true);
-                }
+            if (!empty($relParts)) {
+                $subRelPath = ($targetDir === '' ? '' : $targetDir . '/') . implode('/', $relParts);
+                $subDir = $pathSec->resolveOrCreate($subRelPath);
+                $destination = $subDir . '/' . $pathSec->sanitizeFileName($name);
+            } else {
+                $destination = $targetAbs . '/' . $pathSec->sanitizeFileName($name);
             }
-            $pathSec->assertWithinRoot($subDir);
-            $destination = $subDir . '/' . $pathSec->sanitizeFileName($name);
         } else {
             $destination = $targetAbs . '/' . $pathSec->sanitizeFileName($name);
         }
-    } else {
-        $destination = $targetAbs . '/' . $pathSec->sanitizeFileName($name);
-    }
 
-    try {
         $pathSec->assertWithinRoot($destination);
         if (!move_uploaded_file($tmpName, $destination)) {
             throw new \RuntimeException('move_uploaded_file failed');

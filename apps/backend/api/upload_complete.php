@@ -20,10 +20,7 @@ if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $uploadId)) {
     Response::error('Invalid uploadId format', 400);
 }
 
-$targetAbs = $pathSec->resolve($input['targetPath']);
-if (!is_dir($targetAbs)) {
-    Response::error('Target directory not found', 404);
-}
+$targetAbs = $pathSec->resolveOrCreate($input['targetPath']);
 
 $sanitizedName = $pathSec->sanitizeFileName($fileName);
 $finalPath = $targetAbs . '/' . $sanitizedName;
@@ -33,6 +30,8 @@ $tempDir = sys_get_temp_dir() . '/filecarton_chunks/' . $uploadId;
 if (!is_dir($tempDir)) {
     Response::error('Upload session not found', 404);
 }
+
+$tempOutputPath = $finalPath . '.' . bin2hex(random_bytes(4)) . '.tmp';
 
 $lockFile = $tempDir . '/.merge_lock';
 $lockFp = fopen($lockFile, 'c');
@@ -45,13 +44,20 @@ if (!flock($lockFp, LOCK_EX | LOCK_NB)) {
 }
 
 try {
+    $totalSize = 0;
     for ($i = 0; $i < $totalChunks; $i++) {
-        if (!is_file($tempDir . '/chunk_' . $i)) {
+        $chunkPath = $tempDir . '/chunk_' . $i;
+        if (!is_file($chunkPath)) {
             Response::error('Missing chunk: ' . $i, 400);
         }
+        $totalSize += filesize($chunkPath);
     }
 
-    $outFile = fopen($finalPath, 'wb');
+    if ($totalSize > FILECARTON_UPLOAD_MAX_FILE_SIZE) {
+        Response::error('File too large (max ' . round(FILECARTON_UPLOAD_MAX_FILE_SIZE / 1024 / 1024) . ' MB)', 413);
+    }
+
+    $outFile = fopen($tempOutputPath, 'wb');
     if ($outFile === false) {
         Response::error('Cannot create target file', 500);
     }
@@ -61,12 +67,29 @@ try {
         $chunkFp = fopen($chunkPath, 'rb');
         if ($chunkFp === false) {
             fclose($outFile);
+            @unlink($tempOutputPath);
             Response::error('Failed to read chunk: ' . $i, 500);
         }
-        stream_copy_to_stream($chunkFp, $outFile);
+        $chunkSize = filesize($chunkPath);
+        $written = stream_copy_to_stream($chunkFp, $outFile);
         fclose($chunkFp);
+        if ($written === false || ($chunkSize > 0 && $written !== $chunkSize)) {
+            fclose($outFile);
+            @unlink($tempOutputPath);
+            Response::error('Failed to write chunk: ' . $i, 500);
+        }
+    }
+    if (!fflush($outFile)) {
+        fclose($outFile);
+        @unlink($tempOutputPath);
+        Response::error('Failed to flush output file', 500);
     }
     fclose($outFile);
+
+    if (!rename($tempOutputPath, $finalPath)) {
+        @unlink($tempOutputPath);
+        Response::error('Failed to finalize uploaded file', 500);
+    }
 
     $chunkFiles = glob($tempDir . '/chunk_*');
     if ($chunkFiles) {
@@ -76,6 +99,7 @@ try {
     }
     @unlink($lockFile);
 } finally {
+    @unlink($tempOutputPath);
     flock($lockFp, LOCK_UN);
     fclose($lockFp);
 }

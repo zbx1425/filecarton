@@ -92,6 +92,51 @@ class FileOps {
         }
     }
 
+    /**
+     * Merge-move a directory into an existing destination directory.
+     * Moves files one by one (overwriting existing), creates subdirs as needed,
+     * then removes the now-empty source directory tree.
+     */
+    public function mergeMove(string $src, string $dst): void {
+        $src = rtrim(str_replace('\\', '/', $src), '/');
+        $dst = rtrim(str_replace('\\', '/', $dst), '/');
+
+        $iter = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($src, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        $srcLen = strlen($src) + 1;
+
+        foreach ($iter as $item) {
+            $itemPath = str_replace('\\', '/', $item->getPathname());
+            $relativePath = substr($itemPath, $srcLen);
+            $targetPath = $dst . '/' . $relativePath;
+
+            if ($item->isDir()) {
+                if (!is_dir($targetPath)) {
+                    if (!mkdir($targetPath, 0755, true) && !is_dir($targetPath)) {
+                        throw new \RuntimeException('Failed to create directory during merge: ' . $relativePath);
+                    }
+                }
+            } else {
+                $targetDir = dirname($targetPath);
+                if (!is_dir($targetDir)) {
+                    mkdir($targetDir, 0755, true);
+                }
+                if (file_exists($targetPath)) {
+                    @unlink($targetPath);
+                }
+                if (!rename($itemPath, $targetPath)) {
+                    throw new \RuntimeException('Failed to move file during merge: ' . $relativePath);
+                }
+            }
+        }
+
+        // Clean up source directory (should be empty now)
+        Platform::deleteRecursive($src);
+    }
+
     public function deleteItem(string $absPath): void {
         if (!file_exists($absPath) && !is_link($absPath)) {
             return;

@@ -14,12 +14,14 @@ $dirPath = $input['path'];
 $oldName = $input['oldName'];
 $newName = $input['newName'];
 
+if (!$pathSec->isValidFileName($newName)) {
+    Response::error('Invalid new filename', 400);
+}
+
 $dirAbs = $pathSec->resolve($dirPath);
 if (!is_dir($dirAbs)) {
     Response::error('Directory not found', 404);
 }
-
-$sanitizedNew = $pathSec->sanitizeFileName($newName);
 
 $oldAbs = $pathSec->resolveItemIn($dirAbs, $oldName);
 
@@ -27,12 +29,11 @@ if (!file_exists($oldAbs)) {
     Response::error('Source not found', 404);
 }
 
-$newAbs = $dirAbs . '/' . $sanitizedNew;
-$pathSec->assertWithinRoot($newAbs);
+$newRelPath = ($dirPath === '' || $dirPath === '/') ? $newName : rtrim($dirPath, '/') . '/' . $newName;
+$newAbs = $pathSec->resolveParent($newRelPath);
 
-if (basename($oldAbs) === $sanitizedNew) {
-    $relativePath = ($dirPath === '' ? '' : $dirPath . '/') . $sanitizedNew;
-    Response::ok(['renamed' => $relativePath]);
+if (basename($oldAbs) === $newName) {
+    Response::ok(['renamed' => $newRelPath]);
 }
 
 if (file_exists($newAbs)) {
@@ -45,5 +46,4 @@ if (file_exists($newAbs)) {
 
 $fileOps->moveItem($oldAbs, $newAbs);
 
-$relativePath = ($dirPath === '' ? '' : $dirPath . '/') . $sanitizedNew;
-Response::ok(['renamed' => $relativePath]);
+Response::ok(['renamed' => $newRelPath]);

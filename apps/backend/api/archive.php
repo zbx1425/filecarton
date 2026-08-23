@@ -88,27 +88,66 @@ function archiveExtract(array $input, PathSecurity $pathSec): never {
         Response::error('Target directory not found', 404);
     }
 
+    $dryRun = !empty($input['dryRun']);
     $createSubdir = !empty($input['createSubdir']);
+
     if ($createSubdir) {
         $baseName = $pathSec->sanitizeFileName(pathinfo($archiveAbs, PATHINFO_FILENAME));
         $targetAbs .= '/' . $baseName;
         $pathSec->assertWithinRoot($targetAbs);
-        if (!is_dir($targetAbs)) {
+        if (!$dryRun && !is_dir($targetAbs)) {
             mkdir($targetAbs, 0755, true);
         }
     }
 
     $normalizedTarget = str_replace('\\', '/', $targetAbs);
     $ext = strtolower(pathinfo($archiveAbs, PATHINFO_EXTENSION));
-    $extracted = 0;
 
-    if ($ext === 'zip') {
-        $extracted = extractZipSafe($archiveAbs, $targetAbs, $normalizedTarget, $pathSec);
-    } elseif ($ext === 'tar' || $ext === 'gz' || $ext === 'tgz') {
-        $extracted = extractTarSafe($archiveAbs, $targetAbs, $normalizedTarget, $pathSec);
-    } else {
-        Response::error('Unsupported archive format', 400);
+    if ($dryRun) {
+        $result = ['wouldExtract' => 0, 'conflicts' => []];
+        if ($ext === 'zip') {
+            $result = dryRunZip($archiveAbs, $normalizedTarget, $pathSec);
+        } elseif ($ext === 'tar' || $ext === 'gz' || $ext === 'tgz') {
+            $result = dryRunTar($archiveAbs, $normalizedTarget, $pathSec);
+        } else {
+            Response::error('Unsupported archive format', 400);
+        }
+
+        $relTarget = substr($normalizedTarget, strlen($pathSec->getRootPath()) + 1);
+        Response::ok([
+            'wouldExtract' => $result['wouldExtract'],
+            'conflicts'    => $result['conflicts'],
+            'targetPath'   => $relTarget ?: '',
+        ]);
     }
+
+    $tempExtractDir = $targetAbs . '/.fc_extract_' . bin2hex(random_bytes(4));
+    if (!mkdir($tempExtractDir, 0755, true)) {
+        Response::error('Cannot create temporary extraction directory', 500);
+    }
+    $normalizedTemp = str_replace('\\', '/', $tempExtractDir);
+
+    $extracted = 0;
+    try {
+        $bytesExtracted = 0;
+        $maxBytes = FILECARTON_ARCHIVE_MAX_SIZE;
+
+        if ($ext === 'zip') {
+            $extracted = extractZipSafe($archiveAbs, $tempExtractDir, $normalizedTemp, $pathSec, $bytesExtracted, $maxBytes);
+        } elseif ($ext === 'tar' || $ext === 'gz' || $ext === 'tgz') {
+            $extracted = extractTarSafe($archiveAbs, $tempExtractDir, $normalizedTemp, $pathSec, $bytesExtracted, $maxBytes);
+        } else {
+            Platform::deleteRecursive($tempExtractDir);
+            Response::error('Unsupported archive format', 400);
+        }
+
+        mergeExtractedToTarget($tempExtractDir, $targetAbs);
+    } catch (\Throwable $e) {
+        Platform::deleteRecursive($tempExtractDir);
+        throw $e;
+    }
+
+    Platform::deleteRecursive($tempExtractDir);
 
     $relTarget = substr(str_replace('\\', '/', $targetAbs), strlen($pathSec->getRootPath()) + 1);
 
@@ -118,7 +157,30 @@ function archiveExtract(array $input, PathSecurity $pathSec): never {
     ]);
 }
 
-function extractZipSafe(string $archiveAbs, string $targetAbs, string $normalizedTarget, PathSecurity $pathSec): int {
+function mergeExtractedToTarget(string $tempDir, string $targetDir): void {
+    $entries = @scandir($tempDir);
+    if ($entries === false) return;
+
+    foreach ($entries as $entry) {
+        if ($entry === '.' || $entry === '..') continue;
+        $src = $tempDir . '/' . $entry;
+        $dst = $targetDir . '/' . $entry;
+
+        if (is_dir($src) && is_dir($dst)) {
+            mergeExtractedToTarget($src, $dst);
+            @rmdir($src);
+        } else {
+            if (file_exists($dst) || is_link($dst)) {
+                Platform::deleteRecursive($dst);
+            }
+            if (!rename($src, $dst)) {
+                throw new \RuntimeException('Failed to move extracted item: ' . $entry);
+            }
+        }
+    }
+}
+
+function extractZipSafe(string $archiveAbs, string $targetAbs, string $normalizedTarget, PathSecurity $pathSec, int &$bytesExtracted, int $maxBytes): int {
     $zip = new ZipArchive();
     if ($zip->open($archiveAbs) !== true) {
         Response::error('Cannot open ZIP archive', 400);
@@ -148,8 +210,22 @@ function extractZipSafe(string $archiveAbs, string $targetAbs, string $normalize
             if ($stream === false) continue;
             $outFile = fopen($destPath, 'wb');
             if ($outFile === false) { fclose($stream); continue; }
-            stream_copy_to_stream($stream, $outFile);
+
+            while (!feof($stream)) {
+                $chunk = fread($stream, 65536);
+                if ($chunk === false || $chunk === '') break;
+                fwrite($outFile, $chunk);
+                $bytesExtracted += strlen($chunk);
+                if ($bytesExtracted > $maxBytes) {
+                    fclose($stream);
+                    fclose($outFile);
+                    $zip->close();
+                    throw new \RuntimeException('Extracted data exceeds size limit (' . round($maxBytes / 1024 / 1024 / 1024, 1) . ' GB)', 413);
+                }
+            }
+
             fclose($stream);
+            fflush($outFile);
             fclose($outFile);
             $extracted++;
         }
@@ -158,7 +234,7 @@ function extractZipSafe(string $archiveAbs, string $targetAbs, string $normalize
     return $extracted;
 }
 
-function extractTarSafe(string $archiveAbs, string $targetAbs, string $normalizedTarget, PathSecurity $pathSec): int {
+function extractTarSafe(string $archiveAbs, string $targetAbs, string $normalizedTarget, PathSecurity $pathSec, int &$bytesExtracted, int $maxBytes): int {
     try {
         $phar = new PharData($archiveAbs);
     } catch (\Throwable $e) {
@@ -188,8 +264,26 @@ function extractTarSafe(string $archiveAbs, string $targetAbs, string $normalize
             $parentDir = dirname($destPath);
             if (!is_dir($parentDir)) mkdir($parentDir, 0755, true);
 
-            $content = $item->getContent();
-            file_put_contents($destPath, $content);
+            $inStream = @fopen($item->getPathname(), 'rb');
+            if ($inStream === false) continue;
+            $outFile = @fopen($destPath, 'wb');
+            if ($outFile === false) { fclose($inStream); continue; }
+
+            while (!feof($inStream)) {
+                $chunk = fread($inStream, 65536);
+                if ($chunk === false || $chunk === '') break;
+                fwrite($outFile, $chunk);
+                $bytesExtracted += strlen($chunk);
+                if ($bytesExtracted > $maxBytes) {
+                    fclose($inStream);
+                    fclose($outFile);
+                    throw new \RuntimeException('Extracted data exceeds size limit (' . round($maxBytes / 1024 / 1024 / 1024, 1) . ' GB)', 413);
+                }
+            }
+
+            fclose($inStream);
+            fflush($outFile);
+            fclose($outFile);
             $extracted++;
         }
     }
@@ -197,11 +291,79 @@ function extractTarSafe(string $archiveAbs, string $targetAbs, string $normalize
     return $extracted;
 }
 
+function dryRunZip(string $archiveAbs, string $normalizedTarget, PathSecurity $pathSec): array {
+    $zip = new ZipArchive();
+    if ($zip->open($archiveAbs) !== true) {
+        Response::error('Cannot open ZIP archive', 400);
+    }
+
+    $wouldExtract = 0;
+    $conflicts = [];
+
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $entryName = $zip->getNameIndex($i);
+        $entryPath = str_replace('\\', '/', $entryName);
+
+        $normalized = $pathSec->normalizePath($entryPath);
+        if ($normalized === '') continue;
+
+        if (str_ends_with($entryPath, '/')) continue; // skip directories
+
+        $destPath = $normalizedTarget . '/' . $normalized;
+        if (!str_starts_with($destPath, $normalizedTarget . '/')) continue;
+
+        $wouldExtract++;
+        if (file_exists($destPath)) {
+            $conflicts[] = $normalized;
+        }
+    }
+    $zip->close();
+
+    return ['wouldExtract' => $wouldExtract, 'conflicts' => $conflicts];
+}
+
+function dryRunTar(string $archiveAbs, string $normalizedTarget, PathSecurity $pathSec): array {
+    try {
+        $phar = new PharData($archiveAbs);
+    } catch (\Throwable $e) {
+        Response::error('Cannot open TAR archive: ' . $e->getMessage(), 400);
+    }
+
+    $wouldExtract = 0;
+    $conflicts = [];
+    $iter = new RecursiveIteratorIterator($phar, RecursiveIteratorIterator::SELF_FIRST);
+
+    foreach ($iter as $item) {
+        if ($item->isDir()) continue;
+
+        $entryPath = $item->getPathname();
+        $entryPath = preg_replace('#^phar://.*?\.tar(?:\.gz)?/#', '', $entryPath);
+        $entryPath = str_replace('\\', '/', $entryPath);
+
+        $normalized = $pathSec->normalizePath($entryPath);
+        if ($normalized === '') continue;
+
+        $destPath = $normalizedTarget . '/' . $normalized;
+        if (!str_starts_with($destPath, $normalizedTarget . '/')) continue;
+
+        $wouldExtract++;
+        if (file_exists($destPath)) {
+            $conflicts[] = $normalized;
+        }
+    }
+
+    return ['wouldExtract' => $wouldExtract, 'conflicts' => $conflicts];
+}
+
 function countItemsForArchive(string $baseDir, array $items, PathSecurity $pathSec, int &$fileCount, int &$totalSize): void {
     foreach ($items as $name) {
-        $sanitized = $pathSec->sanitizeFileName($name);
-        $itemPath = $baseDir . '/' . $sanitized;
-        if (!file_exists($itemPath)) continue;
+        if (!is_string($name) || $name === '') continue;
+        try {
+            $itemPath = $pathSec->resolveItemIn($baseDir, $name);
+        } catch (\Throwable $e) {
+            continue;
+        }
+        if (!file_exists($itemPath) || is_link($itemPath)) continue;
 
         if (is_file($itemPath)) {
             $fileCount++;
@@ -212,6 +374,7 @@ function countItemsForArchive(string $baseDir, array $items, PathSecurity $pathS
                 RecursiveIteratorIterator::SELF_FIRST
             );
             foreach ($iter as $item) {
+                if (is_link($item->getPathname())) continue;
                 if ($item->isFile()) {
                     $fileCount++;
                     $totalSize += $item->getSize();
@@ -229,16 +392,19 @@ function createZip(string $baseDir, array $items, string $archivePath, PathSecur
     }
 
     foreach ($items as $name) {
-        $sanitized = $pathSec->sanitizeFileName($name);
-        $itemPath = $baseDir . '/' . $sanitized;
-        $pathSec->assertWithinRoot($itemPath);
+        if (!is_string($name) || $name === '') continue;
+        try {
+            $itemPath = $pathSec->resolveItemIn($baseDir, $name);
+        } catch (\Throwable $e) {
+            continue;
+        }
+        if (!file_exists($itemPath) || is_link($itemPath)) continue;
 
-        if (!file_exists($itemPath)) continue;
-
+        $entryName = basename($itemPath);
         if (is_file($itemPath)) {
-            $zip->addFile($itemPath, $sanitized);
+            $zip->addFile($itemPath, $entryName);
         } elseif (is_dir($itemPath)) {
-            addDirToZip($zip, $itemPath, $sanitized);
+            addDirToZip($zip, $itemPath, $entryName);
         }
     }
 
@@ -253,6 +419,7 @@ function addDirToZip(ZipArchive $zip, string $dirPath, string $prefix): void {
     foreach ($entries as $entry) {
         if ($entry === '.' || $entry === '..') continue;
         $full = $dirPath . '/' . $entry;
+        if (is_link($full)) continue;
         $zipPath = $prefix . '/' . $entry;
 
         if (is_file($full)) {
@@ -267,16 +434,19 @@ function createTar(string $baseDir, array $items, string $archivePath, PathSecur
     $phar = new PharData($archivePath);
 
     foreach ($items as $name) {
-        $sanitized = $pathSec->sanitizeFileName($name);
-        $itemPath = $baseDir . '/' . $sanitized;
-        $pathSec->assertWithinRoot($itemPath);
+        if (!is_string($name) || $name === '') continue;
+        try {
+            $itemPath = $pathSec->resolveItemIn($baseDir, $name);
+        } catch (\Throwable $e) {
+            continue;
+        }
+        if (!file_exists($itemPath) || is_link($itemPath)) continue;
 
-        if (!file_exists($itemPath)) continue;
-
+        $entryName = basename($itemPath);
         if (is_file($itemPath)) {
-            $phar->addFile($itemPath, $sanitized);
+            $phar->addFile($itemPath, $entryName);
         } elseif (is_dir($itemPath)) {
-            addDirToTar($phar, $itemPath, $sanitized);
+            addDirToTar($phar, $itemPath, $entryName);
         }
     }
 }
@@ -289,6 +459,7 @@ function addDirToTar(PharData $phar, string $dirPath, string $prefix): void {
     foreach ($entries as $entry) {
         if ($entry === '.' || $entry === '..') continue;
         $full = $dirPath . '/' . $entry;
+        if (is_link($full)) continue;
         $tarPath = $prefix . '/' . $entry;
 
         if (is_file($full)) {

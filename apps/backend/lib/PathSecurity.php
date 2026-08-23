@@ -41,6 +41,62 @@ class PathSecurity {
     }
 
     /**
+     * Resolve a relative directory path, creating missing intermediate
+     * directories as needed. Existing segments are verified via realpath()
+     * to catch symlink traversal. New segments are validated then mkdir'd.
+     * Final realpath() + assertWithinRoot() provides a closing security check.
+     */
+    public function resolveOrCreate(string $relativePath): string {
+        $this->rejectNullBytes($relativePath);
+        $relativePath = str_replace('\\', '/', $relativePath);
+        $relativePath = ltrim($relativePath, '/');
+        if ($relativePath === '') return $this->rootPath;
+
+        $parts = explode('/', $relativePath);
+        if (count($parts) > FILECARTON_UPLOAD_MAX_DEPTH) {
+            throw new \RuntimeException('Path too deep (max ' . FILECARTON_UPLOAD_MAX_DEPTH . ' levels)', 400);
+        }
+
+        $current = $this->rootPath;
+
+        foreach ($parts as $part) {
+            if ($part === '' || $part === '.' || $part === '..') {
+                throw new \InvalidArgumentException('Invalid path component');
+            }
+            if (!$this->isValidFileName($part)) {
+                throw new \InvalidArgumentException('Invalid character in path component: ' . $part);
+            }
+
+            $next = $current . '/' . $part;
+
+            if (is_dir($next)) {
+                $resolved = realpath($next);
+                if ($resolved === false) {
+                    throw new \RuntimeException('Path resolution failed: ' . $part);
+                }
+                $resolved = str_replace('\\', '/', $resolved);
+                $this->assertWithinRoot($resolved);
+                $current = $resolved;
+            } elseif (file_exists($next) || is_link($next)) {
+                throw new \RuntimeException('Path component is not a directory: ' . $part, 409);
+            } else {
+                if (!mkdir($next, 0755)) {
+                    throw new \RuntimeException('Failed to create directory: ' . $part, 500);
+                }
+                $current = $next;
+            }
+        }
+
+        $final = realpath($current);
+        if ($final === false) {
+            throw new \RuntimeException('Final path resolution failed');
+        }
+        $final = str_replace('\\', '/', $final);
+        $this->assertWithinRoot($final);
+        return $final;
+    }
+
+    /**
      * Resolve for create operations where the target doesn't exist yet.
      * Validates that the parent directory exists and is within root,
      * then appends the sanitized basename.
@@ -70,7 +126,9 @@ class PathSecurity {
             throw new \RuntimeException('Parent directory not found', 404);
         }
 
-        return $parentAbs . '/' . $basename;
+        $result = $parentAbs . '/' . $basename;
+        $this->assertWithinRoot($result);
+        return $result;
     }
 
     /**
@@ -89,9 +147,9 @@ class PathSecurity {
     public function sanitizeFileName(string $name): string {
         $name = str_replace("\0", '', $name);
         $name = str_replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], '', $name);
-        $name = trim($name, '. ');
-        if ($name === '') {
-            throw new \InvalidArgumentException('Filename is empty after sanitization');
+        $name = rtrim($name, '. ');
+        if ($name === '' || $name === '.' || $name === '..') {
+            throw new \InvalidArgumentException('Invalid filename');
         }
         return $name;
     }

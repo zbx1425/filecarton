@@ -1,10 +1,14 @@
 <?php
 /**
- * API: paste — Copy or move files/directories (batch, partial success).
+ * API: paste — Copy or move files/directories.
  * POST ?api=1&action=paste
  * Body: { mode: "copy"|"cut", sourcePath, items: string[], targetPath, overwrite: bool }
  *
- * Self-reference checks for both copy and cut modes.
+ * Atomic semantics for overwrite=false:
+ *   Phase 1: check all items for conflicts (no side effects)
+ *   If conflicts exist → return immediately with completed=0
+ *   If no conflicts → Phase 2: execute all items
+ *
  * Copy to same directory auto-renames (e.g. "file - Copy.txt").
  * Returns { completed, conflicts, failed, renamed }.
  */
@@ -37,6 +41,60 @@ if (!is_dir($targetAbs)) {
 
 $normalizedSource = str_replace('\\', '/', $sourceAbs);
 $normalizedTarget = str_replace('\\', '/', $targetAbs);
+
+// Phase 1: When overwrite=false, scan ALL items for conflicts first (no execution).
+if (!$overwrite) {
+    $conflicts = [];
+    $failed = [];
+
+    foreach ($input['items'] as $name) {
+        if (!is_string($name) || $name === '') continue;
+
+        try {
+            $srcAbs = $pathSec->resolveItemIn($sourceAbs, $name);
+        } catch (\Throwable $e) {
+            $failed[] = ['name' => $name, 'error' => 'Invalid item name'];
+            continue;
+        }
+
+        if (!file_exists($srcAbs) && !is_link($srcAbs)) {
+            $failed[] = ['name' => $name, 'error' => 'Source not found'];
+            continue;
+        }
+
+        $itemBaseName = basename($srcAbs);
+        $dstAbs = $normalizedTarget . '/' . $itemBaseName;
+
+        $srcNormalized = str_replace('\\', '/', $srcAbs);
+        if ($srcNormalized === $dstAbs && $mode === 'copy') {
+            continue;
+        }
+
+        if ($srcNormalized !== $dstAbs && file_exists($dstAbs)) {
+            if (is_dir($srcAbs) && is_dir($dstAbs)) {
+                // Directory merge: report individual file conflicts
+                $dirConflicts = collectMergeConflicts($srcAbs, $dstAbs, $itemBaseName);
+                foreach ($dirConflicts as $c) {
+                    $conflicts[] = $c;
+                }
+            } else {
+                $conflicts[] = $name;
+            }
+        }
+    }
+
+    if (!empty($conflicts)) {
+        Response::ok([
+            'completed' => 0,
+            'conflicts' => $conflicts,
+            'failed'    => $failed,
+            'renamed'   => [],
+        ]);
+    }
+    // No conflicts found — fall through to Phase 2 (execute all)
+}
+
+// Phase 2: Execute all items
 $completed = 0;
 $conflicts = [];
 $failed = [];
@@ -93,9 +151,26 @@ foreach ($input['items'] as $name) {
 
     try {
         if ($mode === 'copy') {
-            $fileOps->copyItem($srcAbs, $dstAbs);
+            if (is_dir($srcAbs) && is_dir($dstAbs)) {
+                // Directory merge copy (copyRecursive already merges)
+                $fileOps->copyItem($srcAbs, $dstAbs);
+            } else {
+                // For type mismatch (file→dir or dir→file), remove dest first
+                if (file_exists($dstAbs) && $overwrite) {
+                    $fileOps->deleteItem($dstAbs);
+                }
+                $fileOps->copyItem($srcAbs, $dstAbs);
+            }
         } else {
-            $fileOps->moveItem($srcAbs, $dstAbs);
+            if (is_dir($srcAbs) && is_dir($dstAbs)) {
+                $fileOps->mergeMove($srcAbs, $dstAbs);
+            } else {
+                // For type mismatch (file→dir or dir→file), remove dest first
+                if (file_exists($dstAbs) && $overwrite && is_dir($dstAbs) !== is_dir($srcAbs)) {
+                    $fileOps->deleteItem($dstAbs);
+                }
+                $fileOps->moveItem($srcAbs, $dstAbs);
+            }
         }
         $completed++;
     } catch (\Throwable $e) {
@@ -131,4 +206,35 @@ function generateCopyName(string $originalName, string $dirAbs): string {
 
     $unique = substr(bin2hex(random_bytes(4)), 0, 8);
     return $ext !== '' ? "$stem - Copy ($unique).$ext" : "$stem - Copy ($unique)";
+}
+
+/**
+ * Recursively collect file paths that would conflict when merging srcDir into dstDir.
+ * Returns paths relative to targetPath (prefixed with the top-level item name).
+ */
+function collectMergeConflicts(string $srcDir, string $dstDir, string $prefix): array {
+    $conflicts = [];
+    $srcDir = rtrim(str_replace('\\', '/', $srcDir), '/');
+    $dstDir = rtrim(str_replace('\\', '/', $dstDir), '/');
+
+    $iter = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($srcDir, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::SELF_FIRST
+    );
+
+    $srcLen = strlen($srcDir) + 1;
+
+    foreach ($iter as $item) {
+        if ($item->isDir()) continue;
+
+        $itemPath = str_replace('\\', '/', $item->getPathname());
+        $relativePath = substr($itemPath, $srcLen);
+        $dstPath = $dstDir . '/' . $relativePath;
+
+        if (file_exists($dstPath)) {
+            $conflicts[] = $prefix . '/' . $relativePath;
+        }
+    }
+
+    return $conflicts;
 }

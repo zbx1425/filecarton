@@ -15,4 +15,13 @@ if (!is_file($absPath)) {
     Response::error('Not a file', 404);
 }
 
-Response::stream($absPath, MimeType::detect($absPath));
+$mime = MimeType::detect($absPath);
+
+if ($mime === 'image/svg+xml') {
+    header('Content-Security-Policy: sandbox');
+    Response::stream($absPath, $mime);
+} elseif (MimeType::isSafeForInline($mime)) {
+    Response::stream($absPath, $mime);
+} else {
+    Response::file($absPath);
+}

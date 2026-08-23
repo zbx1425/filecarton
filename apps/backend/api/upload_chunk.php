@@ -19,6 +19,22 @@ if ($chunkIndex < 0 || $totalChunks < 1 || $chunkIndex >= $totalChunks) {
     Response::error('Invalid chunkIndex or totalChunks', 400);
 }
 
+if ($totalChunks > FILECARTON_UPLOAD_MAX_CHUNKS) {
+    Response::error('Too many chunks (max: ' . FILECARTON_UPLOAD_MAX_CHUNKS . ')', 400);
+}
+
+$phpMaxUpload = parsePhpSize(ini_get('upload_max_filesize') ?: '0');
+$phpMaxPost = parsePhpSize(ini_get('post_max_size') ?: '0');
+$effectivePhpLimit = ($phpMaxPost > 0) ? min($phpMaxUpload, $phpMaxPost) : $phpMaxUpload;
+if ($effectivePhpLimit > 0 && FILECARTON_UPLOAD_CHUNK_SIZE > $effectivePhpLimit) {
+    Response::error(
+        'Server misconfiguration: FILECARTON_UPLOAD_CHUNK_SIZE (' .
+        round(FILECARTON_UPLOAD_CHUNK_SIZE / 1024 / 1024, 1) . ' MB) exceeds PHP upload limit (' .
+        round($effectivePhpLimit / 1024 / 1024, 1) . ' MB). Adjust php.ini or FileCarton config.',
+        500
+    );
+}
+
 if (empty($_FILES['chunk']) || $_FILES['chunk']['error'] !== UPLOAD_ERR_OK) {
     Response::error('Chunk upload failed', 400);
 }
@@ -37,6 +53,19 @@ if (!move_uploaded_file($_FILES['chunk']['tmp_name'], $chunkFile)) {
 cleanupExpiredChunks($chunksBase);
 
 Response::ok(['received' => $chunkIndex]);
+
+function parsePhpSize(string $size): int {
+    $size = trim($size);
+    if ($size === '' || $size === '0') return 0;
+    $unit = strtolower(substr($size, -1));
+    $value = (int)$size;
+    return match ($unit) {
+        'g' => $value * 1024 * 1024 * 1024,
+        'm' => $value * 1024 * 1024,
+        'k' => $value * 1024,
+        default => $value,
+    };
+}
 
 function cleanupExpiredChunks(string $chunksBase): void {
     if (!is_dir($chunksBase)) return;

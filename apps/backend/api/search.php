@@ -27,7 +27,17 @@ $iterator = new RecursiveIteratorIterator(
     RecursiveIteratorIterator::SELF_FIRST
 );
 
+$scanned = 0;
+$scanLimit = FILECARTON_SEARCH_MAX_SCAN;
+$scanLimitReached = false;
+
 foreach ($iterator as $item) {
+    if (++$scanned > $scanLimit) {
+        $truncated = true;
+        $scanLimitReached = true;
+        break;
+    }
+
     $name = $item->getFilename();
     if (mb_stripos($name, $query) === false) {
         continue;
@@ -58,6 +68,7 @@ foreach ($iterator as $item) {
 }
 
 Response::ok([
-    'results'   => $results,
-    'truncated' => $truncated,
+    'results'          => $results,
+    'truncated'        => $truncated,
+    'scanLimitReached' => $scanLimitReached,
 ]);

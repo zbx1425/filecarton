@@ -9,21 +9,46 @@
 require_once __DIR__ . '/lib/Csrf.php';
 
 $csrfToken = Csrf::getToken();
-$apiBase = $_SERVER['SCRIPT_NAME'] . '/' . $auCrntRepo;
-$repoName = FM_REPO_NAME;
-$readonly = FM_GLOBAL_READONLY ? true : false;
+$repoName = FILECARTON_REPO_NAME;
+$readonly = FILECARTON_READONLY ? true : false;
+$branding = FILECARTON_BRANDING;
+
+// Compute apiBase: SCRIPT_NAME + the consumed PATH_INFO prefix (offset segments)
 $pathInfo = $_SERVER['PATH_INFO'] ?? '';
-$resBase = $_SERVER['SCRIPT_NAME'] . $pathInfo . '_res/';
+if (FILECARTON_PATHINFO_OFFSET > 0) {
+    $segments = explode('/', ltrim($pathInfo, '/'));
+    $prefix = implode('/', array_slice($segments, 0, FILECARTON_PATHINFO_OFFSET));
+    $apiBase = $_SERVER['SCRIPT_NAME'] . '/' . $prefix;
+} else {
+    $apiBase = $_SERVER['SCRIPT_NAME'];
+}
+
+// Compute resBase for asset URLs
+if (FILECARTON_ASSET_URL !== '') {
+    $resBase = FILECARTON_ASSET_URL;
+} else {
+    $resBase = $_SERVER['SCRIPT_NAME'] . '/__fcres/';
+}
 
 $isDevMode = defined('FILECARTON_DEV_SERVER') && FILECARTON_DEV_SERVER;
 $devServerUrl = $isDevMode ? rtrim(FILECARTON_DEV_SERVER, '/') : '';
 
-$configJson = json_encode([
+$configData = [
     'apiBase'   => $apiBase,
     'csrfToken' => $csrfToken,
     'readonly'  => $readonly,
     'repoName'  => $repoName,
-], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+];
+if ($branding !== '') {
+    $configData['branding'] = $branding;
+}
+if (!$readonly) {
+    $configData['upload'] = [
+        'maxFileSize' => FILECARTON_UPLOAD_MAX_FILE_SIZE,
+        'chunkSize'   => FILECARTON_UPLOAD_CHUNK_SIZE,
+    ];
+}
+$configJson = json_encode($configData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
 
 if (!$isDevMode) {
     $manifestPath = __DIR__ . '/public/.vite/manifest.json';
@@ -38,6 +63,9 @@ if (!$isDevMode) {
     } else {
         $manifestError = true;
     }
+
+    $cdnPath = __DIR__ . '/public/cdn.json';
+    $cdn = is_file($cdnPath) ? json_decode(file_get_contents($cdnPath), true) : null;
 }
 
 ?><!DOCTYPE html>
@@ -48,6 +76,11 @@ if (!$isDevMode) {
     <title>FileCarton - <?= htmlspecialchars($repoName, ENT_QUOTES, 'UTF-8') ?></title>
 <?php if ($isDevMode): ?>
 <?php elseif (!$manifestError):
+    if (!empty($cdn['stylesheets'])):
+        foreach ($cdn['stylesheets'] as $href): ?>
+    <link rel="stylesheet" href="<?= htmlspecialchars($href) ?>">
+<?php       endforeach;
+    endif;
     $entry = $manifest['src/main.ts'];
     if (!empty($entry['css'])):
         foreach ($entry['css'] as $cssFile): ?>
@@ -66,11 +99,16 @@ if (!$isDevMode) {
 endif; ?>
 </head>
 <body>
-    <div id="app"></div>
+    <div id="app">
+        <div id="app-splash" style="margin-left: 4em; margin-top: 4em; font-family: Arial, Helvetica, sans-serif;">
+            <h1>FileCarton Loading</h1>
+            <p>Please wait while FileCarton is being loaded.</p>
+        </div>
+    </div>
     <script>window.__FILECARTON__ = <?= $configJson ?>;</script>
 <?php if ($isDevMode): ?>
-    <script type="module" src="<?= $devServerUrl ?>/@vite/client"></script>
-    <script type="module" src="<?= $devServerUrl ?>/src/main.ts"></script>
+    <script type="module" src="<?= htmlspecialchars($devServerUrl, ENT_QUOTES, 'UTF-8') ?>/@vite/client"></script>
+    <script type="module" src="<?= htmlspecialchars($devServerUrl, ENT_QUOTES, 'UTF-8') ?>/src/main.ts"></script>
 <?php elseif ($manifestError): ?>
     <div style="font-family:system-ui,sans-serif;max-width:480px;margin:80px auto;text-align:center;color:#555">
         <h2>Frontend Not Built</h2>
@@ -78,10 +116,13 @@ endif; ?>
         <pre style="background:#f3f3f3;padding:12px;border-radius:6px;text-align:left">cd filecarton-frontend
 pnpm install
 pnpm run build</pre>
-        <p>Or enable dev mode by defining <code>FILECARTON_DEV_SERVER</code> in <code>conf/config.php</code>.</p>
+        <p>Or enable dev mode by defining <code>FILECARTON_DEV_SERVER</code> in your config.</p>
     </div>
 <?php else:
-    $entry = $manifest['src/main.ts']; ?>
+    $entry = $manifest['src/main.ts'];
+    if (!empty($cdn['importmap'])): ?>
+    <script type="importmap"><?= json_encode($cdn['importmap'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
+<?php endif; ?>
     <script type="module" src="<?= htmlspecialchars($resBase . $entry['file']) ?>"></script>
 <?php endif; ?>
 </body>

@@ -4,8 +4,6 @@
  *
  * Validates action, enforces CSRF + readonly for POST, dispatches to api/*.php.
  * Global try-catch converts exceptions into JSON error responses.
- *
- * Available from parent scope: $auCrntRepo, $auRepos, FM_ROOT_PATH, etc.
  */
 
 require_once __DIR__ . '/config.php';
@@ -17,7 +15,7 @@ require_once __DIR__ . '/lib/Csrf.php';
 require_once __DIR__ . '/lib/Response.php';
 
 $action = $_GET['action'] ?? '';
-$pathSec = new PathSecurity(FM_ROOT_PATH);
+$pathSec = new PathSecurity(FILECARTON_ROOT_PATH);
 $fileOps = new FileOps();
 
 $binaryActions = ['raw', 'download'];
@@ -31,6 +29,12 @@ $validActions = [
     'list', 'tree_node', 'read', 'write', 'raw', 'download',
     'search', 'create', 'delete', 'rename', 'paste', 'upload',
     'upload_chunk', 'upload_complete', 'archive', 'archive_list',
+    'check_upload_conflicts',
+];
+
+$postActions = [
+    'write', 'create', 'delete', 'rename', 'paste', 'upload',
+    'upload_chunk', 'upload_complete', 'archive', 'check_upload_conflicts',
 ];
 
 try {
@@ -38,9 +42,13 @@ try {
         Response::error('Unknown action: ' . $action, 400);
     }
 
+    if (in_array($action, $postActions, true) && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+        Response::error('Method not allowed', 405);
+    }
+
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         Csrf::validate();
-        if (FM_GLOBAL_READONLY) {
+        if (FILECARTON_READONLY) {
             Response::error('Read-only mode', 403);
         }
     }

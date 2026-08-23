@@ -109,4 +109,17 @@ class MimeType {
         $ext = strtolower($ext);
         return self::EXTENSION_MAP[$ext] ?? 'application/octet-stream';
     }
+
+    /**
+     * Whether a MIME type is safe for inline serving (no script execution risk).
+     * Unsafe types (HTML, SVG, XML) are either sandboxed or force-downloaded.
+     */
+    public static function isSafeForInline(string $mime): bool {
+        static $unsafeMimes = [
+            'text/html', 'application/xhtml+xml',
+            'image/svg+xml',
+            'application/xml',
+        ];
+        return !in_array($mime, $unsafeMimes, true) && $mime !== 'application/octet-stream';
+    }
 }

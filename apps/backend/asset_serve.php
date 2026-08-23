@@ -40,9 +40,9 @@ header('Content-Type: ' . $contentType);
 header('Content-Length: ' . filesize($targetPath));
 header('Cache-Control: public, max-age=31536000, immutable');
 
-if (defined('FILECARTON_NGINX_INTERNAL_PREFIX')) {
-    $internalPath = FILECARTON_NGINX_INTERNAL_PREFIX . '/' . $assetRelPath;
-    header('X-Accel-Redirect: ' . $internalPath);
+require_once __DIR__ . '/lib/Response.php';
+
+if (Response::trySendfile($targetPath)) {
     exit;
 }
 
