@@ -1,0 +1,13 @@
+{
+  "name": "filecarton",
+  "private": true,
+  "packageManager": "pnpm@10.14.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @filecarton/frontend dev",
+    "build": "pnpm --filter @filecarton/frontend build",
+    "lint": "pnpm --filter @filecarton/frontend lint"
+  }
+}
