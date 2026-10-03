@@ -1,0 +1,66 @@
+name: Build
+
+on:
+  push:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+
+      - name: Build multi-file distribution
+        run: |
+          mkdir -p dist/multifile/filecarton/public
+          cp -r apps/backend/* dist/multifile/
+          cp -r apps/frontend/dist/* dist/multifile/filecarton/public/
+
+      - name: Build single-file distribution
+        run: |
+          php scripts/compile_single_file.php
+          cp apps/backend/filecarton.config.php dist/singlefile/
+
+      - name: Create ZIP archives
+        run: |
+          (cd dist/multifile  && zip -r ../../filecarton-multifile.zip .)
+          (cd dist/singlefile && zip -r ../../filecarton-singlefile.zip .)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: filecarton-multifile
+          path: filecarton-multifile.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: filecarton-singlefile
+          path: filecarton-singlefile.zip
+
+      - name: Upload release assets & publish
+        if: github.event_name == 'release' && github.event.release.draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            filecarton-multifile.zip \
+            filecarton-singlefile.zip \
+            --clobber
+          gh release edit "${{ github.event.release.tag_name }}" --draft=false
