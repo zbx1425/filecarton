@@ -15,7 +15,7 @@ define_default('FILECARTON_READONLY', false);
 define_default('FILECARTON_REPO_NAME', 'Files');
 
 // Brand name displayed in the top bar (passed to frontend as branding).
-define_default('FILECARTON_BRANDING', '');
+define_default('FILECARTON_BRANDING', 'FileCarton');
 
 
 // --- Routing ---
@@ -23,13 +23,18 @@ define_default('FILECARTON_BRANDING', '');
 // E.g. set to 1 when mounted under fm_bootstrap.php/{repoKey}/.
 define_default('FILECARTON_PATHINFO_OFFSET', 0);
 
-// Base URL for static assets. When empty, assets are served from '.../entry_point.php/__fcres/'.
+// Base URL for static assets. When empty, assets are served from '.../<entry_point>.php/__fcres/'.
 define_default('FILECARTON_ASSET_URL', '');
 
 
 // --- Editor ---
 // Maximum file size for text read/write API (bytes).
-define_default('FILECARTON_MAX_EDIT_SIZE', 5 * 1024 * 1024); // 5 MB
+// Should be less than PHP's upload_max_filesize and post_max_size,
+// and your web server (e.g. Nginx)'s body size limit.
+// NOTE: It's likely that you need to edit those configurations,
+// to either increase them, or decrease FILECARTON_UPLOAD_CHUNK_SIZE,
+// as the values in PHP and Nginx's default configurations are quite small!
+define_default('FILECARTON_MAX_EDIT_SIZE', 4 * 1024 * 1024); // 4 MB
 
 
 // --- Archive ---

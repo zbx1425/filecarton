@@ -1,2 +1,6 @@
 packages:
-  - "apps/frontend"
+  - apps/frontend
+
+onlyBuiltDependencies:
+  - esbuild
+  - vue-demi
