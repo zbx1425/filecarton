@@ -2,8 +2,12 @@ name: Build
 
 on:
   push:
-  release:
-    types: [created]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag of the draft release to build and publish
+        required: true
+        type: string
 
 jobs:
   build:
@@ -11,7 +15,22 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Resolve draft release
+        if: github.event_name == 'workflow_dispatch'
+        id: rel
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          json=$(gh release view "${{ inputs.tag }}" --json isDraft,targetCommitish)
+          if [ "$(jq -r .isDraft <<<"$json")" != "true" ]; then
+            echo "Release ${{ inputs.tag }} is not a draft" >&2
+            exit 1
+          fi
+          echo "ref=$(jq -r .targetCommitish <<<"$json")" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.rel.outputs.ref || github.sha }}
 
       - uses: pnpm/action-setup@v6
 
@@ -54,12 +73,12 @@ jobs:
           archive: false
 
       - name: Upload release assets & publish
-        if: github.event_name == 'release' && github.event.release.draft
+        if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload "${{ github.event.release.tag_name }}" \
+          gh release upload "${{ inputs.tag }}" \
             filecarton-singlefile.zip \
             filecarton-dev.zip \
             --clobber
-          gh release edit "${{ github.event.release.tag_name }}" --draft=false
+          gh release edit "${{ inputs.tag }}" --draft=false
