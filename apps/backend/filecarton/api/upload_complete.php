@@ -1,4 +1,7 @@
 <?php
+
+namespace FileCarton;
+
 /**
  * API: upload_complete — Merge chunks into final file.
  * POST ?api=1&action=upload_complete
@@ -7,6 +10,7 @@
  * Overwrites existing files silently. Uses file locking to prevent concurrent merges.
  */
 
+function api_upload_complete(PathSecurity $pathSec, FileOps $fileOps): void {
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input || !isset($input['uploadId'], $input['targetPath'], $input['fileName'], $input['totalChunks'])) {
     Response::error('Missing required fields: uploadId, targetPath, fileName, totalChunks', 400);
@@ -110,3 +114,4 @@ Response::ok([
     'name' => $sanitizedName,
     'size' => filesize($finalPath),
 ]);
+}

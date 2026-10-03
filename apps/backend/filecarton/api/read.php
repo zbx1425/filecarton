@@ -1,4 +1,7 @@
 <?php
+
+namespace FileCarton;
+
 /**
  * API: read — Read file content for editor/preview.
  * GET ?api=1&action=read&path={filePath}
@@ -6,6 +9,7 @@
  * Returns UTF-8 text content. Rejects files > 5MB or non-UTF-8.
  */
 
+function api_read(PathSecurity $pathSec, FileOps $fileOps): void {
 $path = $_GET['path'] ?? '';
 $absPath = $pathSec->resolve($path);
 
@@ -33,3 +37,4 @@ Response::ok([
     'mime'     => $mime,
     'encoding' => 'utf-8',
 ]);
+}

@@ -1,4 +1,7 @@
 <?php
+
+namespace FileCarton;
+
 /**
  * FileCarton Platform Utilities
  *
@@ -92,9 +95,9 @@ class Platform {
             return @unlink($path);
         }
 
-        $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS | RecursiveDirectoryIterator::CURRENT_AS_FILEINFO),
-            RecursiveIteratorIterator::CHILD_FIRST
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($path, \RecursiveDirectoryIterator::SKIP_DOTS | \RecursiveDirectoryIterator::CURRENT_AS_FILEINFO),
+            \RecursiveIteratorIterator::CHILD_FIRST
         );
 
         foreach ($iterator as $item) {
@@ -120,9 +123,9 @@ class Platform {
             }
         }
 
-        $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($source, RecursiveDirectoryIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::SELF_FIRST
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($source, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
         );
 
         $sourceLen = strlen(rtrim(str_replace('\\', '/', $source), '/')) + 1;

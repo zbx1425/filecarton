@@ -20,7 +20,7 @@ define_default('FILECARTON_BRANDING', '');
 
 // --- Routing ---
 // Number of leading PATH_INFO segments to skip (consumed by parent router).
-// E.g. set to 1 when mounted under fm_bootstrap.php/{repoKey/.
+// E.g. set to 1 when mounted under fm_bootstrap.php/{repoKey}/.
 define_default('FILECARTON_PATHINFO_OFFSET', 0);
 
 // Base URL for static assets. When empty, assets are served from '.../entry_point.php/__fcres/'.
@@ -37,15 +37,20 @@ define_default('FILECARTON_MAX_EDIT_SIZE', 5 * 1024 * 1024); // 5 MB
 define_default('FILECARTON_ARCHIVE_MAX_FILES', 10000);
 
 // Maximum total (uncompressed) size for archive creation (bytes).
-define_default('FILECARTON_ARCHIVE_MAX_SIZE', 2 * 1024 * 1024 * 1024); // 2 GB
+define_default('FILECARTON_ARCHIVE_MAX_SIZE', 1 * 1024 * 1024 * 1024); // 1 GB
 
 
 // --- Upload ---
 // Maximum file size for a single upload (bytes). Applies to chunked uploads.
-define_default('FILECARTON_UPLOAD_MAX_FILE_SIZE', 10 * 1024 * 1024 * 1024); // 10 GB
+define_default('FILECARTON_UPLOAD_MAX_FILE_SIZE', 1 * 1024 * 1024 * 1024); // 1 GB
 
-// Expected chunk size for chunked uploads (bytes). Should be less than PHP's upload_max_filesize and post_max_size.
-define_default('FILECARTON_UPLOAD_CHUNK_SIZE', 5 * 1024 * 1024); // 5 MB
+// Expected chunk size for chunked uploads (bytes).
+// Should be less than PHP's upload_max_filesize and post_max_size,
+// and your web server (e.g. Nginx)'s body size limit.
+// NOTE: It's likely that you need to edit those configurations,
+// to either increase them, or decrease FILECARTON_UPLOAD_CHUNK_SIZE,
+// as the values in PHP and Nginx's default configurations are quite small!
+define_default('FILECARTON_UPLOAD_CHUNK_SIZE', 4 * 1024 * 1024); // 4 MB
 
 // Maximum number of chunks per chunked upload session.
 define_default('FILECARTON_UPLOAD_MAX_CHUNKS', 10000);

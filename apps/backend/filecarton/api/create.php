@@ -1,10 +1,14 @@
 <?php
+
+namespace FileCarton;
+
 /**
  * API: create — Create a new file or directory.
  * POST ?api=1&action=create
  * Body: { path, name, type: "file"|"dir" }
  */
 
+function api_create(PathSecurity $pathSec, FileOps $fileOps): void {
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input || !isset($input['path'], $input['name'], $input['type'])) {
     Response::error('Missing required fields: path, name, type', 400);
@@ -36,3 +40,4 @@ if ($type === 'dir') {
 }
 
 Response::ok(['created' => $relativePath]);
+}

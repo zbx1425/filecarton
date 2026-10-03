@@ -1,4 +1,7 @@
 <?php
+
+namespace FileCarton;
+
 /**
  * API: delete — Delete files/directories (batch, partial success).
  * POST ?api=1&action=delete
@@ -8,6 +11,7 @@
  * Items that fail are added to the `failed` array.
  */
 
+function api_delete(PathSecurity $pathSec, FileOps $fileOps): void {
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input || !isset($input['path'], $input['items']) || !is_array($input['items'])) {
     Response::error('Missing required fields: path, items', 400);
@@ -45,3 +49,4 @@ foreach ($input['items'] as $name) {
 }
 
 Response::ok(['deleted' => $deleted, 'failed' => $failed]);
+}

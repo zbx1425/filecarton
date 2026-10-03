@@ -1,4 +1,7 @@
 <?php
+
+namespace FileCarton;
+
 /**
  * API: check_upload_conflicts — Check which files already exist before upload.
  * POST ?api=1&action=check_upload_conflicts
@@ -8,6 +11,7 @@
  * Only checks for files, not directories.
  */
 
+function api_check_upload_conflicts(PathSecurity $pathSec, FileOps $fileOps): void {
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input || !isset($input['paths']) || !is_array($input['paths'])) {
     Response::error('Missing required field: paths (array)', 400);
@@ -36,3 +40,4 @@ foreach ($input['paths'] as $relativePath) {
 }
 
 Response::ok(['existing' => $existing]);
+}

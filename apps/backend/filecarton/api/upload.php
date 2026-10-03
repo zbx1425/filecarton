@@ -1,4 +1,7 @@
 <?php
+
+namespace FileCarton;
+
 /**
  * API: upload — Small file upload (multipart/form-data).
  * POST ?api=1&action=upload
@@ -8,7 +11,7 @@
  * Overwrites existing files silently.
  */
 
-
+function api_upload(PathSecurity $pathSec, FileOps $fileOps): void {
 $targetDir = $_POST['path'] ?? '';
 $targetAbs = $pathSec->resolveOrCreate($targetDir);
 
@@ -64,3 +67,4 @@ for ($i = 0; $i < $count; $i++) {
 }
 
 Response::ok(['uploaded' => $uploaded, 'failed' => $failed]);
+}

@@ -1,4 +1,7 @@
 <?php
+
+namespace FileCarton;
+
 /**
  * FileCarton API Handler
  *
@@ -6,6 +9,7 @@
  * Global try-catch converts exceptions into JSON error responses.
  */
 
+function handle_api(): void {
 require_once FILECARTON_SCRIPT_DIR . '/lib/Platform.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/PathSecurity.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/FileOps.php';
@@ -52,7 +56,9 @@ try {
         }
     }
 
-    require FILECARTON_SCRIPT_DIR . '/api/' . $action . '.php';
+    require_once FILECARTON_SCRIPT_DIR . '/api/' . $action . '.php';
+    $actionFn = __NAMESPACE__ . '\\api_' . $action;
+    $actionFn($pathSec, $fileOps);
 } catch (\InvalidArgumentException $e) {
     Response::error($e->getMessage(), 400);
 } catch (\RuntimeException $e) {
@@ -61,4 +67,5 @@ try {
 } catch (\Throwable $e) {
     error_log('FileCarton error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
     Response::error('Internal server error', 500);
+}
 }

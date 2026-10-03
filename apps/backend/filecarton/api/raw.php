@@ -1,4 +1,7 @@
 <?php
+
+namespace FileCarton;
+
 /**
  * API: raw — Serve file inline with correct MIME type.
  * GET ?api=1&action=raw&path={filePath}
@@ -8,6 +11,7 @@
  * Supports ETag/304 caching via Response::stream().
  */
 
+function api_raw(PathSecurity $pathSec, FileOps $fileOps): void {
 $path = $_GET['path'] ?? '';
 $absPath = $pathSec->resolve($path);
 
@@ -24,4 +28,5 @@ if ($mime === 'image/svg+xml') {
     Response::stream($absPath, $mime);
 } else {
     Response::file($absPath);
+}
 }

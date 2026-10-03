@@ -1,4 +1,7 @@
 <?php
+
+namespace FileCarton;
+
 /**
  * API: write — Save file content (with optional optimistic locking).
  * POST ?api=1&action=write
@@ -8,6 +11,7 @@
  * returns 409 Conflict. If omitted, last-writer-wins.
  */
 
+function api_write(PathSecurity $pathSec, FileOps $fileOps): void {
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input || !isset($input['path'], $input['content'])) {
     Response::error('Missing required fields: path, content', 400);
@@ -41,3 +45,4 @@ Response::ok([
     'size'  => $bytes,
     'mtime' => filemtime($absPath),
 ]);
+}

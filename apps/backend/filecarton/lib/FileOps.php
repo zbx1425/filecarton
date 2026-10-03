@@ -1,5 +1,7 @@
 <?php
 
+namespace FileCarton;
+
 class FileOps {
 
     /**

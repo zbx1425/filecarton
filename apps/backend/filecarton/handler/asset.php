@@ -1,11 +1,15 @@
 <?php
+
+namespace FileCarton;
+
 /**
  * FileCarton Static Asset Server
  *
  * Maps /_res/{path} to inc/filecarton/public/{path} and serves with correct headers.
- * $assetRelPath is set by router.php before this file is included.
+ * $assetRelPath is passed in by the router.
  */
 
+function handle_asset(string $assetRelPath): void {
 if (!isset($assetRelPath) || $assetRelPath === '') {
     http_response_code(400);
     exit;
@@ -47,3 +51,4 @@ if (Response::trySendfile($targetPath)) {
 }
 
 readfile($targetPath);
+}

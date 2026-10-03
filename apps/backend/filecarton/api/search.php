@@ -1,9 +1,13 @@
 <?php
+
+namespace FileCarton;
+
 /**
  * API: search — Recursive filename search.
  * GET ?api=1&action=search&path={basePath}&q={query}&limit=200
  */
 
+function api_search(PathSecurity $pathSec, FileOps $fileOps): void {
 $basePath = $_GET['path'] ?? '';
 $query = $_GET['q'] ?? '';
 $limit = max(1, min(FILECARTON_SEARCH_MAX_LIMIT, (int)($_GET['limit'] ?? FILECARTON_SEARCH_DEFAULT_LIMIT)));
@@ -22,9 +26,9 @@ $rootPath = $pathSec->getRootPath();
 $results = [];
 $truncated = false;
 
-$iterator = new RecursiveIteratorIterator(
-    new RecursiveDirectoryIterator($absBase, RecursiveDirectoryIterator::SKIP_DOTS),
-    RecursiveIteratorIterator::SELF_FIRST
+$iterator = new \RecursiveIteratorIterator(
+    new \RecursiveDirectoryIterator($absBase, \RecursiveDirectoryIterator::SKIP_DOTS),
+    \RecursiveIteratorIterator::SELF_FIRST
 );
 
 $scanned = 0;
@@ -72,3 +76,4 @@ Response::ok([
     'truncated'        => $truncated,
     'scanLimitReached' => $scanLimitReached,
 ]);
+}

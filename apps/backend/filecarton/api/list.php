@@ -1,9 +1,13 @@
 <?php
+
+namespace FileCarton;
+
 /**
  * API: list — List directory contents.
  * GET ?api=1&action=list&path={dirPath}
  */
 
+function api_list(PathSecurity $pathSec, FileOps $fileOps): void {
 $path = $_GET['path'] ?? '';
 $absPath = $pathSec->resolve($path);
 
@@ -13,3 +17,4 @@ if (!is_dir($absPath)) {
 
 $result = $fileOps->listDir($absPath);
 Response::ok($result);
+}

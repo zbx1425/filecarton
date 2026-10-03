@@ -1,5 +1,7 @@
 <?php
 
+namespace FileCarton;
+
 class Response {
 
     private static function discardOutputBuffer(): void {

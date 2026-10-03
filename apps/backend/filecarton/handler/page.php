@@ -1,4 +1,7 @@
 <?php
+
+namespace FileCarton;
+
 /**
  * FileCarton Page Renderer
  *
@@ -6,6 +9,7 @@
  * Supports both Vite dev server mode and production manifest mode.
  */
 
+function handle_page(): void {
 require_once FILECARTON_SCRIPT_DIR . '/lib/Csrf.php';
 
 $csrfToken = Csrf::getToken();
@@ -127,3 +131,5 @@ pnpm run build</pre>
 <?php endif; ?>
 </body>
 </html>
+<?php
+}

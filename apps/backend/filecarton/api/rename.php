@@ -1,10 +1,14 @@
 <?php
+
+namespace FileCarton;
+
 /**
  * API: rename — Rename a file or directory.
  * POST ?api=1&action=rename
  * Body: { path, oldName, newName }
  */
 
+function api_rename(PathSecurity $pathSec, FileOps $fileOps): void {
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input || !isset($input['path'], $input['oldName'], $input['newName'])) {
     Response::error('Missing required fields: path, oldName, newName', 400);
@@ -47,3 +51,4 @@ if (file_exists($newAbs)) {
 $fileOps->moveItem($oldAbs, $newAbs);
 
 Response::ok(['renamed' => $newRelPath]);
+}

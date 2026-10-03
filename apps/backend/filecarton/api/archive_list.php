@@ -1,9 +1,13 @@
 <?php
+
+namespace FileCarton;
+
 /**
  * API: archive_list — List contents of a ZIP or TAR archive.
  * GET ?api=1&action=archive_list&path={archivePath}
  */
 
+function api_archive_list(PathSecurity $pathSec, FileOps $fileOps): void {
 $path = $_GET['path'] ?? '';
 $absPath = $pathSec->resolve($path);
 
@@ -18,7 +22,7 @@ $totalSize = 0;
 $compressedSize = filesize($absPath);
 
 if ($ext === 'zip') {
-    $zip = new ZipArchive();
+    $zip = new \ZipArchive();
     if ($zip->open($absPath) !== true) {
         Response::error('Cannot open ZIP archive', 400);
     }
@@ -40,8 +44,8 @@ if ($ext === 'zip') {
     $zip->close();
 } elseif ($ext === 'tar' || $ext === 'gz' || $ext === 'tgz') {
     try {
-        $phar = new PharData($absPath);
-        $iter = new RecursiveIteratorIterator($phar, RecursiveIteratorIterator::SELF_FIRST);
+        $phar = new \PharData($absPath);
+        $iter = new \RecursiveIteratorIterator($phar, \RecursiveIteratorIterator::SELF_FIRST);
         foreach ($iter as $item) {
             $entryPath = $item->getPathname();
             $entryPath = preg_replace('#^phar://.*?\.tar(?:\.gz)?/#', '', $entryPath);
@@ -71,3 +75,4 @@ Response::ok([
     'totalSize'      => $totalSize,
     'compressedSize' => $compressedSize,
 ]);
+}
