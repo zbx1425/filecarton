@@ -12,14 +12,8 @@
 <img src="images/fc-demo-2.png" width="640" alt="FileCarton Demo 2 showing the editor" />
 </p>
 
-## Note
 
-**This project is currently a work in progress!**
-
-There is no ready-to-use build available yet, and the single-file packing is also under development.
-
-
-## ✨ Why FileCarton? (When it's ready, that is)
+## ✨ Why FileCarton?
 
 *   🚀 **SPA Experience**: By packing a decoupled frontend and backend architecture into a single file, FileCarton has a snappy user experience without page reloads.
 *   🧩 **Built to Embed**: Easily embed and integrate FileCarton into your existing logic or custom dashboards with minimal configuration.

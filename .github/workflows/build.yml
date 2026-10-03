@@ -32,7 +32,7 @@ jobs:
         run: |
           mkdir -p dist/dev/filecarton/public
           cp -r apps/backend/* dist/dev/
-          cp -r apps/frontend/dist/* dist/dev/filecarton/public/
+          cp -r apps/frontend/dist/. dist/dev/filecarton/public/
 
       - name: Build single-file distribution
         run: |
