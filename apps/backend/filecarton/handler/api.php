@@ -6,13 +6,12 @@
  * Global try-catch converts exceptions into JSON error responses.
  */
 
-require_once __DIR__ . '/config.php';
-require_once __DIR__ . '/lib/Platform.php';
-require_once __DIR__ . '/lib/PathSecurity.php';
-require_once __DIR__ . '/lib/FileOps.php';
-require_once __DIR__ . '/lib/MimeType.php';
-require_once __DIR__ . '/lib/Csrf.php';
-require_once __DIR__ . '/lib/Response.php';
+require_once FILECARTON_SCRIPT_DIR . '/lib/Platform.php';
+require_once FILECARTON_SCRIPT_DIR . '/lib/PathSecurity.php';
+require_once FILECARTON_SCRIPT_DIR . '/lib/FileOps.php';
+require_once FILECARTON_SCRIPT_DIR . '/lib/MimeType.php';
+require_once FILECARTON_SCRIPT_DIR . '/lib/Csrf.php';
+require_once FILECARTON_SCRIPT_DIR . '/lib/Response.php';
 
 $action = $_GET['action'] ?? '';
 $pathSec = new PathSecurity(FILECARTON_ROOT_PATH);
@@ -53,7 +52,7 @@ try {
         }
     }
 
-    require __DIR__ . '/api/' . $action . '.php';
+    require FILECARTON_SCRIPT_DIR . '/api/' . $action . '.php';
 } catch (\InvalidArgumentException $e) {
     Response::error($e->getMessage(), 400);
 } catch (\RuntimeException $e) {

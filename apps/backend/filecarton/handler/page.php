@@ -6,7 +6,7 @@
  * Supports both Vite dev server mode and production manifest mode.
  */
 
-require_once __DIR__ . '/lib/Csrf.php';
+require_once FILECARTON_SCRIPT_DIR . '/lib/Csrf.php';
 
 $csrfToken = Csrf::getToken();
 $repoName = FILECARTON_REPO_NAME;
@@ -51,7 +51,7 @@ if (!$readonly) {
 $configJson = json_encode($configData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
 
 if (!$isDevMode) {
-    $manifestPath = __DIR__ . '/public/.vite/manifest.json';
+    $manifestPath = FILECARTON_SCRIPT_DIR . '/public/.vite/manifest.json';
     $manifest = null;
     $manifestError = false;
 
@@ -64,7 +64,7 @@ if (!$isDevMode) {
         $manifestError = true;
     }
 
-    $cdnPath = __DIR__ . '/public/cdn.json';
+    $cdnPath = FILECARTON_SCRIPT_DIR . '/public/cdn.json';
     $cdn = is_file($cdnPath) ? json_decode(file_get_contents($cdnPath), true) : null;
 }
 

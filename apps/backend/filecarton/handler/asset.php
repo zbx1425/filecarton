@@ -16,7 +16,7 @@ if (str_contains($assetRelPath, '..')) {
     exit;
 }
 
-$publicDir = __DIR__ . '/public';
+$publicDir = FILECARTON_SCRIPT_DIR . '/public';
 $targetPath = realpath($publicDir . '/' . $assetRelPath);
 
 if ($targetPath === false || !is_file($targetPath)) {
@@ -33,14 +33,14 @@ if (!str_starts_with($normalizedTarget, $normalizedPublic . '/')) {
 
 $ext = strtolower(pathinfo($targetPath, PATHINFO_EXTENSION));
 
-require_once __DIR__ . '/lib/MimeType.php';
+require_once FILECARTON_SCRIPT_DIR . '/lib/MimeType.php';
 $contentType = MimeType::contentTypeForServing($ext);
 
 header('Content-Type: ' . $contentType);
 header('Content-Length: ' . filesize($targetPath));
 header('Cache-Control: public, max-age=31536000, immutable');
 
-require_once __DIR__ . '/lib/Response.php';
+require_once FILECARTON_SCRIPT_DIR . '/lib/Response.php';
 
 if (Response::trySendfile($targetPath)) {
     exit;

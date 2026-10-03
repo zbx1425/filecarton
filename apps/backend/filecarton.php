@@ -12,7 +12,8 @@
  *   FILECARTON_ASSET_URL       - string, static asset base URL (empty = auto)
  */
 
-require_once __DIR__ . '/config.php';
+define("FILECARTON_SCRIPT_DIR", __DIR__ . '/filecarton');
+require_once __DIR__ . '/filecarton_config.php';
 
 if (FILECARTON_ROOT_PATH === '') {
     http_response_code(500);
@@ -26,7 +27,7 @@ $pathInfo = $_SERVER['PATH_INFO'] ?? '';
 // This allows a single globally-cacheable asset URL even when subrouted.
 if (str_starts_with($pathInfo, '/__fcres/')) {
     $assetRelPath = substr($pathInfo, strlen('/__fcres/'));
-    require __DIR__ . '/asset_serve.php';
+    require FILECARTON_SCRIPT_DIR . '/handler/asset.php';
     exit;
 }
 
@@ -43,9 +44,9 @@ if (FILECARTON_PATHINFO_OFFSET > 0) {
 // Route based on remaining path
 if (str_starts_with($remainingPath, '/_res/')) {
     $assetRelPath = substr($remainingPath, 6); // strlen('/_res/') = 6
-    require __DIR__ . '/asset_serve.php';
+    require FILECARTON_SCRIPT_DIR . '/handler/asset.php';
 } elseif (isset($_GET['api']) && $_GET['api'] === '1') {
-    require __DIR__ . '/api_handler.php';
+    require FILECARTON_SCRIPT_DIR . '/handler/api.php';
 } elseif ($remainingPath === '' || $remainingPath === '/' || $remainingPath === false) {
     // Ensure trailing slash for correct relative URL resolution
     $requestUri = $_SERVER['REQUEST_URI'];
@@ -66,7 +67,7 @@ if (str_starts_with($remainingPath, '/_res/')) {
         exit;
     }
 
-    require __DIR__ . '/page.php';
+    require FILECARTON_SCRIPT_DIR . '/handler/page.php';
 } else {
-    require __DIR__ . '/page.php';
+    require FILECARTON_SCRIPT_DIR . '/handler/page.php';
 }
