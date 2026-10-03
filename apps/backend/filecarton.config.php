@@ -5,29 +5,40 @@
 
 // --- Core ---
 
-// Absolute filesystem path to the managed root directory.
-define_default('FILECARTON_ROOT_PATH', '');
+// Filesystem path to the managed directory, preferably absolute.
+// If set to an empty string '', FileCarton will refuse to start. This is useful if you're
+// embedding FileCarton and want to disable invoking the script directly.
+// To allow browsing the current path, set it to __DIR__.
+// When embedding FileCarton, set it to ''.
+define_default('FILECARTON_ROOT_PATH', __DIR__);
 
-// Read-only mode: when true, all write APIs return 403.
+// Read-only mode, file mutation functions are disabled.
 define_default('FILECARTON_READONLY', false);
 
-// Display name shown in the page title and UI.
-define_default('FILECARTON_REPO_NAME', 'Files');
-
-// Brand name displayed in the top bar (passed to frontend as branding).
+// Brand name displayed in the top bar. Empty string '' means no branding.
 define_default('FILECARTON_BRANDING', 'FileCarton');
+
+// An informative label describing what directory the user is managing, shown in the top bar.
+define_default('FILECARTON_REPO_NAME', 'Files');
 
 
 // --- Routing ---
-// Number of leading PATH_INFO segments to skip (consumed by parent router).
-// E.g. set to 1 when mounted under fm_bootstrap.php/{repoKey}/.
+
+// Number of leading PATH_INFO segments to skip.
+// This can be useful if you are embedding FileCarton and your own logic wants additional arguments
+// to be passed through the PATH_INFO. Otherwise you can leave it at 0.
+// E.g. when set to 1, the format will be <entry_point>.php/<your customizable arg>/<normal path>.
 define_default('FILECARTON_PATHINFO_OFFSET', 0);
 
-// Base URL for static assets. When empty, assets are served from '.../<entry_point>.php/__fcres/'.
+// Base URL for static assets, if you have some good CDN.
+// The files are expected to be at <FILECARTON_ASSET_URL>/assets/main-xxxxxxxx.css (and .js).
+// If you're doing multi-file deployment, cdn.json and .vite/manifest.json still need to be at public/.
+// When empty, assets are served by the PHP script under '.../<entry_point>.php/__fcres/'.
 define_default('FILECARTON_ASSET_URL', '');
 
 
 // --- Editor ---
+
 // Maximum file size for text read/write API (bytes).
 // Should be less than PHP's upload_max_filesize and post_max_size,
 // and your web server (e.g. Nginx)'s body size limit.
@@ -37,15 +48,8 @@ define_default('FILECARTON_ASSET_URL', '');
 define_default('FILECARTON_MAX_EDIT_SIZE', 4 * 1024 * 1024); // 4 MB
 
 
-// --- Archive ---
-// Maximum number of files allowed in a single archive creation.
-define_default('FILECARTON_ARCHIVE_MAX_FILES', 10000);
-
-// Maximum total (uncompressed) size for archive creation (bytes).
-define_default('FILECARTON_ARCHIVE_MAX_SIZE', 1 * 1024 * 1024 * 1024); // 1 GB
-
-
 // --- Upload ---
+
 // Maximum file size for a single upload (bytes). Applies to chunked uploads.
 define_default('FILECARTON_UPLOAD_MAX_FILE_SIZE', 1 * 1024 * 1024 * 1024); // 1 GB
 
@@ -70,7 +74,17 @@ define_default('FILECARTON_CHUNK_EXPIRY', 86400); // 24 hours
 define_default('FILECARTON_CHUNK_CLEANUP_CHANCE', 10);
 
 
+// --- Archive ---
+
+// Maximum number of files allowed in a single archive creation.
+define_default('FILECARTON_ARCHIVE_MAX_FILES', 10000);
+
+// Maximum total (uncompressed) size for archive creation (bytes).
+define_default('FILECARTON_ARCHIVE_MAX_SIZE', 1 * 1024 * 1024 * 1024); // 1 GB
+
+
 // --- Search ---
+
 // Default maximum number of search results returned.
 define_default('FILECARTON_SEARCH_DEFAULT_LIMIT', 200);
 
@@ -82,6 +96,7 @@ define_default('FILECARTON_SEARCH_MAX_SCAN', 100000);
 
 
 // --- SendFile / X-Accel-Redirect ---
+
 // Offload file serving to the web server. Possible values:
 //   false                   - Disabled (default). PHP serves via readfile().
 //   'xsendfile'             - Apache mod_xsendfile. Sends absolute path via X-Sendfile header.
@@ -100,6 +115,7 @@ define_default('FILECARTON_SENDFILE', false);
 
 
 // --- Development ---
+
 // Vite dev server URL. When defined and truthy, page.php loads assets from
 // this server instead of the built manifest. Comment out for production.
 // define_default('FILECARTON_DEV_SERVER', 'http://localhost:5173');

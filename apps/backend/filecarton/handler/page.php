@@ -55,21 +55,27 @@ if (!$readonly) {
 $configJson = json_encode($configData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
 
 if (!$isDevMode) {
-    $manifestPath = FILECARTON_SCRIPT_DIR . '/public/.vite/manifest.json';
-    $manifest = null;
-    $manifestError = false;
+    if (defined('FILECARTON_SINGLE_FILE') && \FILECARTON_SINGLE_FILE) {
+        $manifest = defined('FILECARTON_MANIFEST') ? \FILECARTON_MANIFEST : null;
+        $cdn = defined('FILECARTON_CDN') ? \FILECARTON_CDN : null;
+        $manifestError = ($manifest === null || !isset($manifest['src/main.ts']));
+    } else {
+        $manifestPath = FILECARTON_SCRIPT_DIR . '/public/.vite/manifest.json';
+        $manifest = null;
+        $manifestError = false;
 
-    if (is_file($manifestPath)) {
-        $manifest = json_decode(file_get_contents($manifestPath), true);
-        if (!isset($manifest['src/main.ts'])) {
+        if (is_file($manifestPath)) {
+            $manifest = json_decode(file_get_contents($manifestPath), true);
+            if (!isset($manifest['src/main.ts'])) {
+                $manifestError = true;
+            }
+        } else {
             $manifestError = true;
         }
-    } else {
-        $manifestError = true;
-    }
 
-    $cdnPath = FILECARTON_SCRIPT_DIR . '/public/cdn.json';
-    $cdn = is_file($cdnPath) ? json_decode(file_get_contents($cdnPath), true) : null;
+        $cdnPath = FILECARTON_SCRIPT_DIR . '/public/cdn.json';
+        $cdn = is_file($cdnPath) ? json_decode(file_get_contents($cdnPath), true) : null;
+    }
 }
 
 ?><!DOCTYPE html>
