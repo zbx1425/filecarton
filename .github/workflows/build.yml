@@ -11,11 +11,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: pnpm
@@ -28,11 +28,11 @@ jobs:
 
       - run: pnpm build
 
-      - name: Build multi-file distribution
+      - name: Build multi-file (dev) distribution
         run: |
-          mkdir -p dist/multifile/filecarton/public
-          cp -r apps/backend/* dist/multifile/
-          cp -r apps/frontend/dist/* dist/multifile/filecarton/public/
+          mkdir -p dist/dev/filecarton/public
+          cp -r apps/backend/* dist/dev/
+          cp -r apps/frontend/dist/* dist/dev/filecarton/public/
 
       - name: Build single-file distribution
         run: |
@@ -41,18 +41,17 @@ jobs:
 
       - name: Create ZIP archives
         run: |
-          (cd dist/multifile  && zip -r ../../filecarton-multifile.zip .)
+          (cd dist/dev  && zip -r ../../filecarton-dev.zip .)
           (cd dist/singlefile && zip -r ../../filecarton-singlefile.zip .)
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          name: filecarton-multifile
-          path: filecarton-multifile.zip
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: filecarton-singlefile
           path: filecarton-singlefile.zip
+          archive: false
+      - uses: actions/upload-artifact@v7
+        with:
+          path: filecarton-dev.zip
+          archive: false
 
       - name: Upload release assets & publish
         if: github.event_name == 'release' && github.event.release.draft
@@ -60,7 +59,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release upload "${{ github.event.release.tag_name }}" \
-            filecarton-multifile.zip \
             filecarton-singlefile.zip \
+            filecarton-dev.zip \
             --clobber
           gh release edit "${{ github.event.release.tag_name }}" --draft=false
