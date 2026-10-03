@@ -210,10 +210,10 @@ JSON 响应辅助，减少重复代码。
 **接口设计：**
 ```
 class Response
-├── static ok(mixed $data = null): never       // 输出 200 + { ok: true, data }
-├── static error(string $msg, int $code = 400): never  // 输出错误
-├── static file(string $absPath, string $filename = null): never  // 文件下载
-└── static stream(string $absPath, string $mime): never  // 内联输出（图片等）
+├── static ok(mixed $data = null)       // 输出 200 + { ok: true, data }
+├── static error(string $msg, int $code = 400)  // 输出错误
+├── static file(string $absPath, string $filename = null)  // 文件下载
+└── static stream(string $absPath, string $mime)  // 内联输出（图片等）
 ```
 
 ---

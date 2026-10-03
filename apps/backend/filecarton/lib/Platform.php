@@ -13,8 +13,10 @@ namespace FileCarton;
 
 class Platform {
 
-    private static ?bool $canExec = null;
-    private static ?bool $isWindows = null;
+    /** @var bool|null */
+    private static $canExec = null;
+    /** @var bool|null */
+    private static $isWindows = null;
 
     /**
      * Recursively delete a file, symlink, or directory and all its contents.
@@ -168,7 +170,7 @@ class Platform {
 
     private static function useNativeCommands(): bool {
         if (self::$isWindows === null) {
-            self::$isWindows = (PHP_OS_FAMILY === 'Windows');
+            self::$isWindows = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN');
         }
 
         if (self::$isWindows) {

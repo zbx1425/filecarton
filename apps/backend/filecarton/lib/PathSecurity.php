@@ -3,7 +3,8 @@
 namespace FileCarton;
 
 class PathSecurity {
-    private string $rootPath;
+    /** @var string */
+    private $rootPath;
 
     public function __construct(string $rootPath) {
         $real = realpath($rootPath);

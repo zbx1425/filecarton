@@ -36,6 +36,7 @@ if (!is_file($manifestPath)) {
 // ---------------------------------------------------------------------------
 
 $libFiles = [
+    $fcDir . '/lib/Polyfill.php',
     $fcDir . '/lib/Platform.php',
     $fcDir . '/lib/PathSecurity.php',
     $fcDir . '/lib/FileOps.php',
@@ -100,7 +101,7 @@ $mergedCode .= "\n" . stripBoilerplate(file_get_contents($routerFile), true);
 // ---------------------------------------------------------------------------
 
 
-function var_export_square_brackets(mixed $expression, bool $return=false) {
+function var_export_square_brackets($expression, bool $return=false) {
     $export = var_export($expression, TRUE);
     $patterns = [
         "/array \(/" => '[',

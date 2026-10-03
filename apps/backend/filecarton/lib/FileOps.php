@@ -60,8 +60,8 @@ class FileOps {
             }
         }
 
-        usort($dirItems, fn($a, $b) => strnatcasecmp($a['name'], $b['name']));
-        usort($fileItems, fn($a, $b) => strnatcasecmp($a['name'], $b['name']));
+        usort($dirItems, function($a, $b) { return strnatcasecmp($a['name'], $b['name']); });
+        usort($fileItems, function($a, $b) { return strnatcasecmp($a['name'], $b['name']); });
 
         return array_merge($dirItems, $fileItems);
     }
@@ -180,6 +180,6 @@ class FileOps {
      * Sort an array of items by 'name' using natural case-insensitive ordering.
      */
     public function naturalSort(array &$items): void {
-        usort($items, fn($a, $b) => strnatcasecmp($a['name'], $b['name']));
+        usort($items, function($a, $b) { return strnatcasecmp($a['name'], $b['name']); });
     }
 }

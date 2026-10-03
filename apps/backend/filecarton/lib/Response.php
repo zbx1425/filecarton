@@ -13,14 +13,14 @@ class Response {
         }
     }
 
-    public static function ok(mixed $data = null): never {
+    public static function ok($data = null) {
         self::discardOutputBuffer();
         http_response_code(200);
         echo json_encode(['ok' => true, 'data' => $data], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
 
-    public static function error(string $msg, int $code = 400): never {
+    public static function error(string $msg, int $code = 400) {
         self::discardOutputBuffer();
         http_response_code($code);
         echo json_encode(['ok' => false, 'error' => $msg], JSON_UNESCAPED_UNICODE);
@@ -32,7 +32,7 @@ class Response {
      * Used by the `raw` endpoint for image/audio preview.
      * Supports X-Sendfile / X-Accel-Redirect offload via FILECARTON_SENDFILE.
      */
-    public static function stream(string $absPath, string $mime): never {
+    public static function stream(string $absPath, string $mime) {
         self::discardOutputBuffer();
         $mtime = filemtime($absPath);
         $size = filesize($absPath);
@@ -61,7 +61,7 @@ class Response {
      * Force-download a file (Content-Disposition: attachment).
      * Supports X-Sendfile / X-Accel-Redirect offload via FILECARTON_SENDFILE.
      */
-    public static function file(string $absPath, ?string $filename = null): never {
+    public static function file(string $absPath, ?string $filename = null) {
         self::discardOutputBuffer();
         $filename = $filename ?? basename($absPath);
         $size = filesize($absPath);

@@ -16,6 +16,7 @@ namespace FileCarton;
  */
 
 define("FILECARTON_SCRIPT_DIR", __DIR__ . '/filecarton');
+require_once FILECARTON_SCRIPT_DIR . '/lib/Polyfill.php';
 require_once __DIR__ . '/filecarton.config.php';
 
 dispatch();

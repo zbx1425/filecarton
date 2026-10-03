@@ -64,12 +64,12 @@ function parse_php_size(string $size): int {
     if ($size === '' || $size === '0') return 0;
     $unit = strtolower(substr($size, -1));
     $value = (int)$size;
-    return match ($unit) {
-        'g' => $value * 1024 * 1024 * 1024,
-        'm' => $value * 1024 * 1024,
-        'k' => $value * 1024,
-        default => $value,
-    };
+    switch ($unit) {
+        case 'g': return $value * 1024 * 1024 * 1024;
+        case 'm': return $value * 1024 * 1024;
+        case 'k': return $value * 1024;
+        default:  return $value;
+    }
 }
 
 function cleanup_expired_chunks(string $chunksBase): void {

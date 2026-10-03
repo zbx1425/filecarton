@@ -28,7 +28,7 @@ function api_archive(PathSecurity $pathSec, FileOps $fileOps): void {
     }
 }
 
-function archive_create(array $input, PathSecurity $pathSec, FileOps $fileOps): never {
+function archive_create(array $input, PathSecurity $pathSec, FileOps $fileOps) {
     if (!isset($input['format'], $input['path'], $input['items']) || !is_array($input['items'])) {
         Response::error('Missing fields: format, path, items', 400);
     }
@@ -77,7 +77,7 @@ function archive_create(array $input, PathSecurity $pathSec, FileOps $fileOps): 
     ]);
 }
 
-function archive_extract(array $input, PathSecurity $pathSec): never {
+function archive_extract(array $input, PathSecurity $pathSec) {
     if (!isset($input['path'], $input['targetPath'])) {
         Response::error('Missing fields: path, targetPath', 400);
     }

@@ -121,6 +121,6 @@ define_default('FILECARTON_SENDFILE', false);
 // define_default('FILECARTON_DEV_SERVER', 'http://localhost:5173');
 
 
-function define_default(string $key, mixed $value) {
+function define_default(string $key, $value) {
     if (!defined($key)) define($key, $value);
 }
