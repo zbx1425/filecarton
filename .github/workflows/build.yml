@@ -20,14 +20,16 @@ jobs:
         id: rel
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
         run: |
-          json=$(gh release view "${{ inputs.tag }}" --json isDraft,targetCommitish)
+          json=$(gh release view "$TAG" --repo "$GH_REPO" --json isDraft,targetCommitish)
           if [ "$(jq -r .isDraft <<<"$json")" != "true" ]; then
-            echo "Release ${{ inputs.tag }} is not a draft" >&2
+            echo "Release $TAG is not a draft" >&2
             exit 1
           fi
           echo "ref=$(jq -r .targetCommitish <<<"$json")" >> "$GITHUB_OUTPUT"
-
+      
       - uses: actions/checkout@v7
         with:
           ref: ${{ steps.rel.outputs.ref || github.sha }}
