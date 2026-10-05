@@ -4,7 +4,7 @@ namespace FileCarton;
 
 /**
  * API: check_upload_conflicts — Check which files already exist before upload.
- * POST ?api=1&action=check_upload_conflicts
+ * POST ?fcapi=check_upload_conflicts
  * Body: { paths: string[] }
  *
  * Returns the subset of paths that already exist as files on the server.

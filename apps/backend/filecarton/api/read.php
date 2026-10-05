@@ -4,7 +4,7 @@ namespace FileCarton;
 
 /**
  * API: read — Read file content for editor/preview.
- * GET ?api=1&action=read&path={filePath}
+ * GET ?fcapi=read&path={filePath}
  *
  * Returns UTF-8 text content. Rejects files > 5MB or non-UTF-8.
  */

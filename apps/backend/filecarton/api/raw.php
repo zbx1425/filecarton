@@ -4,7 +4,7 @@ namespace FileCarton;
 
 /**
  * API: raw — Serve file inline with correct MIME type.
- * GET ?api=1&action=raw&path={filePath}
+ * GET ?fcapi=raw&path={filePath}
  *
  * Used by frontend for <img src> and <audio src> preview.
  * Frontend gates on file size before requesting.

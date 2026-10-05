@@ -4,7 +4,7 @@ namespace FileCarton;
 
 /**
  * API: write — Save file content (with optional optimistic locking).
- * POST ?api=1&action=write
+ * POST ?fcapi=write
  * Body: { path, content, expectedMtime? }
  *
  * If expectedMtime is provided and doesn't match the file's current mtime,

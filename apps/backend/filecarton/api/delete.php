@@ -4,7 +4,7 @@ namespace FileCarton;
 
 /**
  * API: delete — Delete files/directories (batch, partial success).
- * POST ?api=1&action=delete
+ * POST ?fcapi=delete
  * Body: { path, items: string[] }
  *
  * Items that don't exist are silently counted as deleted.

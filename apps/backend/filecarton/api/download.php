@@ -4,7 +4,7 @@ namespace FileCarton;
 
 /**
  * API: download — Force-download a file.
- * GET ?api=1&action=download&path={filePath}
+ * GET ?fcapi=download&path={filePath}
  */
 
 function api_download(PathSecurity $pathSec, FileOps $fileOps): void {

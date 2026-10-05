@@ -4,7 +4,7 @@ namespace FileCarton;
 
 /**
  * API: rename — Rename a file or directory.
- * POST ?api=1&action=rename
+ * POST ?fcapi=rename
  * Body: { path, oldName, newName }
  */
 

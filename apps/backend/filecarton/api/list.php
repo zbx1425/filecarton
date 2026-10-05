@@ -4,7 +4,7 @@ namespace FileCarton;
 
 /**
  * API: list — List directory contents.
- * GET ?api=1&action=list&path={dirPath}
+ * GET ?fcapi=list&path={dirPath}
  */
 
 function api_list(PathSecurity $pathSec, FileOps $fileOps): void {

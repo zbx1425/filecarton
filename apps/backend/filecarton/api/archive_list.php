@@ -4,7 +4,7 @@ namespace FileCarton;
 
 /**
  * API: archive_list — List contents of a ZIP or TAR archive.
- * GET ?api=1&action=archive_list&path={archivePath}
+ * GET ?fcapi=archive_list&path={archivePath}
  */
 
 function api_archive_list(PathSecurity $pathSec, FileOps $fileOps): void {

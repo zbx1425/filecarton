@@ -4,7 +4,7 @@ namespace FileCarton;
 
 /**
  * API: upload — Small file upload (multipart/form-data).
- * POST ?api=1&action=upload
+ * POST ?fcapi=upload
  * Fields: path (target directory), files[] (file array)
  * Optional: relativePaths[] (for folder upload, preserving subdirectory structure)
  *

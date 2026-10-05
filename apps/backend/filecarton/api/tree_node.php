@@ -4,7 +4,7 @@ namespace FileCarton;
 
 /**
  * API: tree_node — Tree node children (lazy load).
- * GET ?api=1&action=tree_node&path={dirPath}
+ * GET ?fcapi=tree_node&path={dirPath}
  */
 
 function api_tree_node(PathSecurity $pathSec, FileOps $fileOps): void {

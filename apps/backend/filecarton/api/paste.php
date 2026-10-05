@@ -4,7 +4,7 @@ namespace FileCarton;
 
 /**
  * API: paste — Copy or move files/directories.
- * POST ?api=1&action=paste
+ * POST ?fcapi=paste
  * Body: { mode: "copy"|"cut", sourcePath, items: string[], targetPath, overwrite: bool }
  *
  * Atomic semantics for overwrite=false:

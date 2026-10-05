@@ -41,7 +41,7 @@ function dispatch(): void {
         exit;
     }
 
-    if (isset($_GET['api']) && $_GET['api'] === '1') {
+    if (isset($_GET['fcapi'])) {
         require_once FILECARTON_SCRIPT_DIR . '/handler/api.php';
         handle_api();
     } else {

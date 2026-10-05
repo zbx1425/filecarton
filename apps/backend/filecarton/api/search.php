@@ -4,7 +4,7 @@ namespace FileCarton;
 
 /**
  * API: search — Recursive filename search.
- * GET ?api=1&action=search&path={basePath}&q={query}&limit=200
+ * GET ?fcapi=search&path={basePath}&q={query}&limit=200
  */
 
 function api_search(PathSecurity $pathSec, FileOps $fileOps): void {

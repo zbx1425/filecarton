@@ -4,7 +4,7 @@ namespace FileCarton;
 
 /**
  * API: create — Create a new file or directory.
- * POST ?api=1&action=create
+ * POST ?fcapi=create
  * Body: { path, name, type: "file"|"dir" }
  */
 

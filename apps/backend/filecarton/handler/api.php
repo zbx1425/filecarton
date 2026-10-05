@@ -17,7 +17,7 @@ require_once FILECARTON_SCRIPT_DIR . '/lib/MimeType.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/Csrf.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/Response.php';
 
-$action = $_GET['action'] ?? '';
+$action = $_GET['fcapi'] ?? '';
 $pathSec = new PathSecurity(FILECARTON_ROOT_PATH);
 $fileOps = new FileOps();
 

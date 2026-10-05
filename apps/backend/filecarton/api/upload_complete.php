@@ -4,7 +4,7 @@ namespace FileCarton;
 
 /**
  * API: upload_complete — Merge chunks into final file.
- * POST ?api=1&action=upload_complete
+ * POST ?fcapi=upload_complete
  * Body: { uploadId, targetPath, fileName, totalChunks }
  *
  * Overwrites existing files silently. Uses file locking to prevent concurrent merges.

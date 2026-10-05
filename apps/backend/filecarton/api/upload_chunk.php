@@ -4,7 +4,7 @@ namespace FileCarton;
 
 /**
  * API: upload_chunk — Receive a single chunk of a large file upload.
- * POST ?api=1&action=upload_chunk
+ * POST ?fcapi=upload_chunk
  * Fields: uploadId, chunkIndex, totalChunks, chunk (file blob)
  *
  * Also performs opportunistic cleanup of expired temp directories (>24h).

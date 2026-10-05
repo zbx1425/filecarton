@@ -4,7 +4,7 @@ namespace FileCarton;
 
 /**
  * API: archive — Create or extract an archive.
- * POST ?api=1&action=archive
+ * POST ?fcapi=archive
  * Body: { operation: "create"|"extract", ... }
  *
  * Create: { operation, format: "zip"|"tar", path, items: string[], archiveName? }
