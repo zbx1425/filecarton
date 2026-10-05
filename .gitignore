@@ -11,3 +11,6 @@ dist/
 !.env.example
 *.log
 .DS_Store
+
+# Probably shouldn't torture people with them...
+/docs/aislop

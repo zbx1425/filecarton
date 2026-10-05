@@ -5,7 +5,7 @@ namespace FileCarton;
 /**
  * FileCarton Static Asset Server
  *
- * Maps /_res/{path} and /__fcres/{path} onto a built asset and serves it.
+ * Serves built assets via ?fcres={path}.
  */
 
 function handle_asset(string $assetRelPath): void {

@@ -24,16 +24,10 @@ define_default('FILECARTON_REPO_NAME', 'Files');
 
 // --- Routing ---
 
-// Number of leading PATH_INFO segments to skip.
-// This can be useful if you are embedding FileCarton and your own logic wants additional arguments
-// to be passed through the PATH_INFO. Otherwise you can leave it at 0.
-// E.g. when set to 1, the format will be <entry_point>.php/<your customizable arg>/<normal path>.
-define_default('FILECARTON_PATHINFO_OFFSET', 0);
-
 // Base URL for static assets, if you have some good CDN.
 // The files are expected to be at <FILECARTON_ASSET_URL>/assets/main-xxxxxxxx.css (and .js).
 // If you're doing multi-file deployment, cdn.json and .vite/manifest.json still need to be at public/.
-// When empty, assets are served by the PHP script under '.../<entry_point>.php/__fcres/'.
+// When empty, assets are served by the PHP script via '?fcres=assets/main-xxxxxxxx.css'.
 define_default('FILECARTON_ASSET_URL', '');
 
 

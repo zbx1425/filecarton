@@ -15,10 +15,30 @@ function getConfig() {
   return window.__FILECARTON__
 }
 
+let cachedPassthrough: URLSearchParams | null = null
+
+function getPassthroughParams(): URLSearchParams {
+  if (cachedPassthrough) return cachedPassthrough
+  const current = new URLSearchParams(window.location.search)
+  const result = new URLSearchParams()
+  for (const [key, value] of current) {
+    if (key === 'state' || key.startsWith('state_') || key.startsWith('state[')) {
+      result.append(key, value)
+    }
+  }
+  cachedPassthrough = result
+  return result
+}
+
 function buildUrl(action: string, params?: Record<string, string>): string {
   const { apiBase } = getConfig()
-  const searchParams = new URLSearchParams({ api: '1', action, ...params })
-  return `${apiBase}/?${searchParams}`
+  const url = new URL(apiBase, window.location.href)
+  url.hash = ''
+  for (const [k, v] of getPassthroughParams()) url.searchParams.append(k, v)
+  url.searchParams.set('api', '1')
+  url.searchParams.set('action', action)
+  if (params) for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v)
+  return url.pathname + url.search
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {

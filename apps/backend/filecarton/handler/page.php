@@ -17,22 +17,14 @@ $repoName = FILECARTON_REPO_NAME;
 $readonly = FILECARTON_READONLY ? true : false;
 $branding = FILECARTON_BRANDING;
 
-// Compute apiBase: SCRIPT_NAME + the consumed PATH_INFO prefix (offset segments)
-$pathInfo = $_SERVER['PATH_INFO'] ?? '';
-if (FILECARTON_PATHINFO_OFFSET > 0) {
-    $segments = explode('/', ltrim($pathInfo, '/'));
-    $prefix = implode('/', array_slice($segments, 0, FILECARTON_PATHINFO_OFFSET));
-    $apiBase = $_SERVER['SCRIPT_NAME'] . '/' . $prefix;
-} else {
-    $apiBase = $_SERVER['SCRIPT_NAME'];
-}
+$apiBase = entry_url();
 
-// Compute resBase for asset URLs
-if (FILECARTON_ASSET_URL !== '') {
-    $resBase = FILECARTON_ASSET_URL;
-} else {
-    $resBase = $_SERVER['SCRIPT_NAME'] . '/__fcres/';
-}
+$assetUrl = function (string $file): string {
+    if (FILECARTON_ASSET_URL !== '') {
+        return FILECARTON_ASSET_URL . '/' . $file;
+    }
+    return script_url() . '?' . http_build_query(['fcres' => $file]);
+};
 
 $isDevMode = defined('FILECARTON_DEV_SERVER') && FILECARTON_DEV_SERVER;
 $devServerUrl = $isDevMode ? rtrim(FILECARTON_DEV_SERVER, '/') : '';
@@ -94,14 +86,14 @@ if (!$isDevMode) {
     $entry = $manifest['src/main.ts'];
     if (!empty($entry['css'])):
         foreach ($entry['css'] as $cssFile): ?>
-    <link rel="stylesheet" href="<?= htmlspecialchars($resBase . $cssFile) ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars($assetUrl($cssFile)) ?>">
 <?php       endforeach;
     endif;
     if (!empty($entry['imports'])):
         foreach ($entry['imports'] as $importKey):
             if (isset($manifest[$importKey]['css'])):
                 foreach ($manifest[$importKey]['css'] as $cssFile): ?>
-    <link rel="stylesheet" href="<?= htmlspecialchars($resBase . $cssFile) ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars($assetUrl($cssFile)) ?>">
 <?php               endforeach;
             endif;
         endforeach;
@@ -133,7 +125,7 @@ pnpm run build</pre>
     if (!empty($cdn['importmap'])): ?>
     <script type="importmap"><?= json_encode($cdn['importmap'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
 <?php endif; ?>
-    <script type="module" src="<?= htmlspecialchars($resBase . $entry['file']) ?>"></script>
+    <script type="module" src="<?= htmlspecialchars($assetUrl($entry['file'])) ?>"></script>
 <?php endif; ?>
 </body>
 </html>

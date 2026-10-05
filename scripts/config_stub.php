@@ -10,7 +10,6 @@ define('FILECARTON_READONLY', false);
 define('FILECARTON_REPO_NAME', 'Files');
 define('FILECARTON_BRANDING', '');
 
-define('FILECARTON_PATHINFO_OFFSET', 0);
 define('FILECARTON_ASSET_URL', '');
 
 define('FILECARTON_MAX_EDIT_SIZE', 5 * 1024 * 1024);
