@@ -10,7 +10,7 @@
 // embedding FileCarton and want to disable invoking the script directly.
 // To allow browsing the current path, set it to __DIR__.
 // When embedding FileCarton, set it to ''.
-define_default('FILECARTON_ROOT_PATH', __DIR__);
+define_default('FILECARTON_ROOT_PATH', dirname(realpath($_SERVER['SCRIPT_FILENAME'])));
 
 // Read-only mode, file mutation functions are disabled.
 define_default('FILECARTON_READONLY', false);
@@ -19,7 +19,7 @@ define_default('FILECARTON_READONLY', false);
 define_default('FILECARTON_BRANDING', 'FileCarton');
 
 // An informative label describing what directory the user is managing, shown in the top bar.
-define_default('FILECARTON_REPO_NAME', 'Files');
+define_default('FILECARTON_REPO_NAME', '');
 
 
 // --- Dotfiles ---

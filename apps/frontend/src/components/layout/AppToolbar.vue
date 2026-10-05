@@ -135,64 +135,66 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
     </Breadcrumb>
 
     <div class="flex items-center gap-2">
-      <div class="flex items-center me-1">
-        <div class="relative">
-          <Search class="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-          <Input
-            v-model="ui.searchQuery"
-            placeholder="Search..."
-            class="h-8 w-48 pl-7 pr-7 text-xs"
-          />
+      <template v-if="navigation.viewMode === 'list'">
+        <div class="flex items-center me-1">
+          <div class="relative">
+            <Search class="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              v-model="ui.searchQuery"
+              placeholder="Search..."
+              class="h-8 w-48 pl-7 pr-7 text-xs"
+            />
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger as-child>
+              <Button variant="ghost" size="icon-xs" class="-ml-7 relative z-10">
+                <ChevronDown class="size-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuCheckboxItem
+                :model-value="!ui.searchRecursive"
+                @update:model-value="ui.searchRecursive = false"
+              >
+                Current directory
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                :model-value="ui.searchRecursive"
+                @update:model-value="ui.searchRecursive = true"
+              >
+                All subfolders
+              </DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger as-child>
-            <Button variant="ghost" size="icon-xs" class="-ml-7 relative z-10">
-              <ChevronDown class="size-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuCheckboxItem
-              :model-value="!ui.searchRecursive"
-              @update:model-value="ui.searchRecursive = false"
-            >
-              Current directory
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem
-              :model-value="ui.searchRecursive"
-              @update:model-value="ui.searchRecursive = true"
-            >
-              All subfolders
-            </DropdownMenuCheckboxItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
 
-      <ClipboardBadge />
+        <ClipboardBadge />
 
-      <template v-if="!ui.readonly">
-        <DropdownMenu>
-          <DropdownMenuTrigger as-child>
-            <Button variant="outline" size="sm">
-              <Plus class="size-4" />
-              New
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem @select="createItem('file')">
-              <File class="size-4" />
-              New File
-            </DropdownMenuItem>
-            <DropdownMenuItem @select="createItem('dir')">
-              <Folder class="size-4" />
-              New Folder
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <template v-if="!ui.readonly">
+          <DropdownMenu>
+            <DropdownMenuTrigger as-child>
+              <Button variant="outline" size="sm">
+                <Plus class="size-4" />
+                New
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem @select="createItem('file')">
+                <File class="size-4" />
+                New File
+              </DropdownMenuItem>
+              <DropdownMenuItem @select="createItem('dir')">
+                <Folder class="size-4" />
+                New Folder
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-        <Button variant="outline" size="sm" @click="upload.openUploadDialog()">
-          <Upload class="size-4" />
-          Upload
-        </Button>
+          <Button variant="outline" size="sm" @click="upload.openUploadDialog()">
+            <Upload class="size-4" />
+            Upload
+          </Button>
+        </template>
       </template>
 
       <Button variant="ghost" size="icon-sm" @click="ui.settingsOpen = true">

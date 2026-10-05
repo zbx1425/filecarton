@@ -225,7 +225,7 @@ function setEditorFontSize(val: number | undefined) {
                   >
                     Shown
                   </Button>
-                  <div class="flex-1" ></div>
+                  <div class="flex-1 px-1 text-xs" ></div>
                 </div>
                 <div
                   v-if="prefs.dotFilesLocked"

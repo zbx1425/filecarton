@@ -91,7 +91,7 @@ export async function extractArchive(archivePath: string, targetDir: string) {
     })
     if (result.failed && result.failed.length > 0) {
       await showOperationReport({
-        title: 'Extraction Incomplete',
+        title: 'Partial Extraction',
         description: `Extracted ${result.extracted} file(s), ${result.failed.length} skipped.`,
         items: result.failed.map(f => ({ name: f.path, reason: f.reason })),
       })

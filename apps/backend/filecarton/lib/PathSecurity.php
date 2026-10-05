@@ -24,6 +24,13 @@ class PathSecurity {
                 $resolved = realpath($path);
                 if ($resolved !== false) {
                     $this->ignorePaths[] = str_replace('\\', '/', $resolved);
+                } else {
+                    $parent = realpath(dirname($path));
+                    if ($parent !== false) {
+                        $this->ignorePaths[] = str_replace('\\', '/', $parent) . '/' . basename($path);
+                    } else {
+                        $this->ignorePaths[] = rtrim(str_replace('\\', '/', $path), '/');
+                    }
                 }
             }
         }
