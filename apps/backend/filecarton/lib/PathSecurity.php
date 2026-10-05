@@ -12,6 +12,12 @@ class PathSecurity {
     /** @var string[] Compiled regex patterns from IGNORE_PATTERN */
     private $ignoreRegexes = [];
 
+    /** @var array[] Pattern metadata for hasProtectedDescendants optimization */
+    private $ignorePatternMeta = [];
+
+    /** @var bool Whether any pattern requires filesystem scanning */
+    private $hasDeepPatterns = false;
+
     public function __construct(string $rootPath) {
         $real = realpath($rootPath);
         if ($real === false) {
@@ -37,10 +43,22 @@ class PathSecurity {
 
         if (defined('FILECARTON_IGNORE_PATTERN') && is_array(FILECARTON_IGNORE_PATTERN)) {
             foreach (FILECARTON_IGNORE_PATTERN as $pattern) {
-                $regex = $this->patternToRegex($pattern);
-                if ($regex !== null) {
-                    $this->ignoreRegexes[] = $regex;
-                }
+                $this->addIgnorePattern($pattern);
+            }
+        }
+
+        if (FILECARTON_DOTFILES_BLOCK) {
+            $this->addIgnorePattern('.*');
+        }
+    }
+
+    private function addIgnorePattern(string $pattern): void {
+        $compiled = $this->patternToRegex($pattern);
+        if ($compiled !== null) {
+            $this->ignoreRegexes[] = $compiled['regex'];
+            $this->ignorePatternMeta[] = $compiled;
+            if ($compiled['needsScan']) {
+                $this->hasDeepPatterns = true;
             }
         }
     }
@@ -102,6 +120,10 @@ class PathSecurity {
             }
 
             $next = $current . '/' . $part;
+
+            if ($this->wouldBeIgnored($next, true)) {
+                throw new \RuntimeException('Access denied', 403);
+            }
 
             if (is_dir($next)) {
                 $resolved = realpath($next);
@@ -196,6 +218,7 @@ class PathSecurity {
         if (str_contains($name, "\0")) return false;
         if (preg_match('#[/\\\\:*?"<>|]#', $name)) return false;
         if (trim($name, '. ') === '') return false;
+        if (str_ends_with($name, '.') || str_ends_with($name, ' ')) return false;
         return true;
     }
 
@@ -255,16 +278,11 @@ class PathSecurity {
 
     /**
      * Check if a basename starts with a dot (dotfile / hidden file).
+     * Used by frontend config and display logic; security enforcement
+     * is handled via the implicit '.*' ignore pattern when DOTFILES_BLOCK is on.
      */
     public function isDotFile(string $basename): bool {
         return $basename !== '' && $basename[0] === '.' && $basename !== '.' && $basename !== '..';
-    }
-
-    /**
-     * Returns true when dotfile operations should be blocked by config.
-     */
-    public function isDotFileBlocked(string $basename): bool {
-        return FILECARTON_DOTFILES_BLOCK && $this->isDotFile($basename);
     }
 
     // ------------------------------------------------------------------
@@ -375,10 +393,16 @@ class PathSecurity {
 
     /**
      * Convert a simplified gitignore pattern to a regex.
-     * Supports: * (non-slash wildcard), ** (any depth), leading / (root anchor),
+     * Supports: * (non-slash wildcard), ** (zero or more directories),
+     * ? (single non-slash char), leading / (root anchor),
      * trailing / (directory-only match).
+     *
+     * Returns null for empty/comment patterns, or an array:
+     *   'regex'    => compiled regex string
+     *   'needsScan' => bool, whether hasProtectedDescendants needs filesystem scan
+     *   'segments' => array of original segments (only when needsScan=false)
      */
-    private function patternToRegex(string $pattern): ?string {
+    private function patternToRegex(string $pattern): ?array {
         $pattern = trim($pattern);
         if ($pattern === '' || $pattern[0] === '#') return null;
 
@@ -391,20 +415,44 @@ class PathSecurity {
         if ($pattern === '') return null;
 
         $segments = explode('/', $pattern);
-        $regexParts = [];
+        $hasGlobstar = in_array('**', $segments, true);
+
+        $inner = '';
+        $prevWasGlobstar = false;
+        $emittedAnything = false;
 
         foreach ($segments as $seg) {
             if ($seg === '**') {
-                $regexParts[] = '.*';
-            } else {
-                $escaped = preg_quote($seg, '#');
-                $escaped = str_replace('\\*', '[^/]*', $escaped);
-                $escaped = str_replace('\\?', '[^/]', $escaped);
-                $regexParts[] = $escaped;
+                $prevWasGlobstar = true;
+                continue;
             }
+
+            $escaped = preg_quote($seg, '#');
+            $escaped = str_replace('\\*', '[^/]*', $escaped);
+            $escaped = str_replace('\\?', '[^/]', $escaped);
+
+            if ($prevWasGlobstar) {
+                if ($emittedAnything) {
+                    $inner .= '(?:/[^/]+)*/';
+                } else {
+                    $inner .= '(?:[^/]+/)*';
+                }
+                $prevWasGlobstar = false;
+            } elseif ($emittedAnything) {
+                $inner .= '/';
+            }
+
+            $inner .= $escaped;
+            $emittedAnything = true;
         }
 
-        $inner = implode('/', $regexParts);
+        if ($prevWasGlobstar) {
+            if ($emittedAnything) {
+                $inner .= '(?:/.*)?';
+            } else {
+                $inner = '.*';
+            }
+        }
 
         if ($anchored) {
             $regex = '^' . $inner;
@@ -418,7 +466,13 @@ class PathSecurity {
             $regex .= '(?:$|/)';
         }
 
-        return '#' . $regex . '#';
+        $needsScan = !$anchored || $hasGlobstar;
+
+        return [
+            'regex'     => '#' . $regex . '#',
+            'needsScan' => $needsScan,
+            'segments'  => $needsScan ? null : $segments,
+        ];
     }
 
     // ------------------------------------------------------------------
@@ -449,35 +503,121 @@ class PathSecurity {
 
     /**
      * Validate that a new file can be created with the given name.
-     * Checks dotfile + extension rules. Does NOT check ignore rules
-     * (caller should check the target path separately).
+     * Checks extension rules only. Dotfile and ignore rules are enforced
+     * by wouldBeIgnored() on the full target path.
      */
     public function assertCanCreate(string $basename): void {
-        if ($this->isDotFileBlocked($basename)) {
-            throw new \RuntimeException('Dotfiles are not allowed', 403);
-        }
         if ($this->isExtensionBlocked($basename)) {
             throw new \RuntimeException('File type is restricted', 403);
         }
     }
 
     /**
-     * Filter a list of directory entries, removing ignored and
-     * (when DOTFILES_BLOCK is enabled) dotfile entries.
-     * Each entry must have a 'name' key.
+     * Filter a list of directory entries, removing ignored entries.
+     * When DOTFILES_BLOCK is enabled, dotfiles are caught by the implicit
+     * '.*' ignore pattern. Each entry must have a 'name' key.
      */
     public function filterEntries(array $entries, string $parentAbsPath): array {
         return array_values(array_filter($entries, function ($entry) use ($parentAbsPath) {
-            $name = $entry['name'];
-            if (FILECARTON_DOTFILES_BLOCK && $this->isDotFile($name)) {
-                return false;
-            }
-            $childAbs = $parentAbsPath . '/' . $name;
-            if ($this->isIgnored($childAbs)) {
-                return false;
-            }
-            return true;
+            $childAbs = $parentAbsPath . '/' . $entry['name'];
+            return !$this->isIgnored($childAbs);
         }));
+    }
+
+    // ------------------------------------------------------------------
+    // Directory descendant protection
+    // ------------------------------------------------------------------
+
+    /**
+     * Check if a directory contains any protected (ignored) descendants.
+     * Uses a tiered approach: quick prefix checks first, filesystem scan only when needed.
+     */
+    public function hasProtectedDescendants(string $dirPath): bool {
+        $normalized = str_replace('\\', '/', $dirPath);
+
+        foreach ($this->ignorePaths as $ip) {
+            if (str_starts_with($ip, $normalized . '/')) {
+                return true;
+            }
+        }
+
+        $dirRel = $this->getRelativePath($normalized);
+        if ($dirRel === null) return false;
+
+        foreach ($this->ignorePatternMeta as $meta) {
+            if ($meta['needsScan']) {
+                continue;
+            }
+            if ($this->patternCouldMatchInside($meta['segments'], $dirRel)) {
+                return true;
+            }
+        }
+
+        if (!$this->hasDeepPatterns) {
+            return false;
+        }
+
+        return $this->scanForProtectedDescendant($dirPath);
+    }
+
+    /**
+     * Check whether a root-anchored pattern (without **) could match
+     * items inside the given directory. Uses segment-by-segment matching
+     * with wildcard support, no filesystem access needed.
+     */
+    private function patternCouldMatchInside(array $patternSegments, string $dirRelPath): bool {
+        if ($dirRelPath === '') return true;
+
+        $dirSegments = explode('/', trim($dirRelPath, '/'));
+
+        for ($i = 0; $i < count($dirSegments); $i++) {
+            if ($i >= count($patternSegments)) {
+                return false;
+            }
+            if (!$this->segmentMatches($dirSegments[$i], $patternSegments[$i])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if a concrete path segment matches a pattern segment
+     * (supports * and ? wildcards).
+     */
+    private function segmentMatches(string $actual, string $pattern): bool {
+        if ($pattern === $actual) return true;
+        $escaped = preg_quote($pattern, '#');
+        $escaped = str_replace('\\*', '[^/]*', $escaped);
+        $escaped = str_replace('\\?', '[^/]', $escaped);
+        return preg_match('#^' . $escaped . '$#', $actual) === 1;
+    }
+
+    /**
+     * Scan a directory tree for any protected (ignored) descendant.
+     * Returns true at the first match (early exit).
+     */
+    private function scanForProtectedDescendant(string $dirPath): bool {
+        $entries = @scandir($dirPath);
+        if ($entries === false) return false;
+
+        foreach ($entries as $entry) {
+            if ($entry === '.' || $entry === '..') continue;
+            $full = str_replace('\\', '/', $dirPath . '/' . $entry);
+
+            if ($this->isIgnored($full)) {
+                return true;
+            }
+
+            if (is_dir($full) && !is_link($full)) {
+                if ($this->scanForProtectedDescendant($full)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     // ------------------------------------------------------------------

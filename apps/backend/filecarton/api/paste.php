@@ -75,17 +75,22 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
 
             $itemBaseName = basename($srcAbs);
 
-            if ($pathSec->isDotFileBlocked($itemBaseName)) {
-                $failed[] = ['name' => $name, 'error' => 'Dotfiles are not allowed'];
-                continue;
-            }
-
             if (is_file($srcAbs) && $pathSec->isExtensionBlocked($itemBaseName)) {
                 $failed[] = ['name' => $name, 'error' => 'File type is restricted'];
                 continue;
             }
 
+            if (is_dir($srcAbs) && $pathSec->hasProtectedDescendants($srcAbs)) {
+                $failed[] = ['name' => $name, 'error' => 'Directory contains protected items'];
+                continue;
+            }
+
             $dstAbs = $normalizedTarget . '/' . $itemBaseName;
+
+            if ($pathSec->wouldBeIgnored($dstAbs, is_dir($srcAbs))) {
+                $failed[] = ['name' => $name, 'error' => 'Access denied'];
+                continue;
+            }
 
             $srcNormalized = str_replace('\\', '/', $srcAbs);
             if ($srcNormalized === $dstAbs && $mode === 'copy') {
@@ -94,7 +99,6 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
 
             if ($srcNormalized !== $dstAbs && file_exists($dstAbs)) {
                 if (is_dir($srcAbs) && is_dir($dstAbs)) {
-                    // Directory merge: report individual file conflicts
                     $dirConflicts = collect_merge_conflicts($srcAbs, $dstAbs, $itemBaseName);
                     foreach ($dirConflicts as $c) {
                         $conflicts[] = $c;
@@ -144,17 +148,22 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
 
         $itemBaseName = basename($srcAbs);
 
-        if ($pathSec->isDotFileBlocked($itemBaseName)) {
-            $failed[] = ['name' => $name, 'error' => 'Dotfiles are not allowed'];
-            continue;
-        }
-
         if (is_file($srcAbs) && $pathSec->isExtensionBlocked($itemBaseName)) {
             $failed[] = ['name' => $name, 'error' => 'File type is restricted'];
             continue;
         }
 
+        if (is_dir($srcAbs) && $pathSec->hasProtectedDescendants($srcAbs)) {
+            $failed[] = ['name' => $name, 'error' => 'Directory contains protected items'];
+            continue;
+        }
+
         $dstAbs = $normalizedTarget . '/' . $itemBaseName;
+
+        if ($pathSec->wouldBeIgnored($dstAbs, is_dir($srcAbs))) {
+            $failed[] = ['name' => $name, 'error' => 'Access denied'];
+            continue;
+        }
 
         try {
             $pathSec->assertWithinRoot($dstAbs);
@@ -188,12 +197,15 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
         }
 
         try {
+            if (file_exists($dstAbs) && $overwrite && is_dir($dstAbs) && $pathSec->hasProtectedDescendants($dstAbs)) {
+                $failed[] = ['name' => $name, 'error' => 'Target directory contains protected items'];
+                continue;
+            }
+
             if ($mode === 'copy') {
                 if (is_dir($srcAbs) && is_dir($dstAbs)) {
-                    // Directory merge copy (copyRecursive already merges)
                     $fileOps->copyItem($srcAbs, $dstAbs);
                 } else {
-                    // For type mismatch (file→dir or dir→file), remove dest first
                     if (file_exists($dstAbs) && $overwrite) {
                         $fileOps->deleteItem($dstAbs);
                     }
@@ -203,7 +215,6 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
                 if (is_dir($srcAbs) && is_dir($dstAbs)) {
                     $fileOps->mergeMove($srcAbs, $dstAbs);
                 } else {
-                    // For type mismatch (file→dir or dir→file), remove dest first
                     if (file_exists($dstAbs) && $overwrite && is_dir($dstAbs) !== is_dir($srcAbs)) {
                         $fileOps->deleteItem($dstAbs);
                     }

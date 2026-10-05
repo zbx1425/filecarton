@@ -40,6 +40,11 @@ foreach ($input['items'] as $name) {
         continue;
     }
 
+    if (is_dir($itemPath) && $pathSec->hasProtectedDescendants($itemPath)) {
+        $failed[] = ['name' => $name, 'error' => 'Directory contains protected items'];
+        continue;
+    }
+
     if (!file_exists($itemPath) && !is_link($itemPath)) {
         $deleted++;
         continue;

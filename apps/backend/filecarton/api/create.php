@@ -26,10 +26,6 @@ if (!$pathSec->isValidFileName($name)) {
     Response::error('Invalid filename', 400);
 }
 
-if ($pathSec->isDotFileBlocked($name)) {
-    Response::error('Dotfiles are not allowed', 403);
-}
-
 if ($type === 'file' && $pathSec->isExtensionBlocked($name)) {
     Response::error('File type is restricted', 403);
 }

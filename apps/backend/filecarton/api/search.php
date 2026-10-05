@@ -26,8 +26,16 @@ $rootPath = $pathSec->getRootPath();
 $results = [];
 $truncated = false;
 
-$iterator = new \RecursiveIteratorIterator(
+$filteredDir = new \RecursiveCallbackFilterIterator(
     new \RecursiveDirectoryIterator($absBase, \RecursiveDirectoryIterator::SKIP_DOTS),
+    function ($item) use ($pathSec) {
+        $fullPath = str_replace('\\', '/', $item->getPathname());
+        return !$pathSec->isIgnored($fullPath);
+    }
+);
+
+$iterator = new \RecursiveIteratorIterator(
+    $filteredDir,
     \RecursiveIteratorIterator::SELF_FIRST
 );
 
@@ -43,16 +51,6 @@ foreach ($iterator as $item) {
     }
 
     $name = $item->getFilename();
-
-    if (FILECARTON_DOTFILES_BLOCK && $pathSec->isDotFile($name)) {
-        continue;
-    }
-
-    $fullPath = str_replace('\\', '/', $item->getPathname());
-
-    if ($pathSec->isIgnored($fullPath)) {
-        continue;
-    }
 
     if (mb_stripos($name, $query) === false) {
         continue;

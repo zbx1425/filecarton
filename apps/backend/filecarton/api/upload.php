@@ -41,11 +41,6 @@ for ($i = 0; $i < $count; $i++) {
     try {
         $sanitizedName = $pathSec->sanitizeFileName($name);
 
-        if ($pathSec->isDotFileBlocked($sanitizedName)) {
-            $failed[] = ['name' => $name, 'error' => 'Dotfiles are not allowed'];
-            continue;
-        }
-
         if ($pathSec->isExtensionBlocked($sanitizedName)) {
             $failed[] = ['name' => $name, 'error' => 'File type is restricted'];
             continue;

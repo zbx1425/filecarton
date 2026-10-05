@@ -35,13 +35,14 @@ if (!file_exists($oldAbs)) {
 
 $pathSec->assertNotIgnored($oldAbs);
 
-if ($pathSec->isDotFileBlocked($newName)) {
-    Response::error('Dotfiles are not allowed', 403);
-}
-
 $isFile = is_file($oldAbs);
+
 if ($isFile && $pathSec->isExtensionBlocked($newName)) {
     Response::error('File type is restricted', 403);
+}
+
+if (!$isFile && $pathSec->hasProtectedDescendants($oldAbs)) {
+    Response::error('Directory contains protected items', 403);
 }
 
 $newRelPath = ($dirPath === '' || $dirPath === '/') ? $newName : rtrim($dirPath, '/') . '/' . $newName;

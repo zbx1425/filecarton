@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { apiGet } from '@/api/client'
 import type { SearchResponse, SearchResult } from '@/api/types'
 import { useNavigationStore } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
+import { usePreferencesStore } from '@/stores/preferences'
 import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
 import { formatSize } from '@/utils/format'
 import { splitPath } from '@/utils/path'
@@ -12,8 +13,20 @@ import { Loader2, Search } from '@lucide/vue'
 
 const navigation = useNavigationStore()
 const ui = useUiStore()
+const prefs = usePreferencesStore()
 
-const results = ref<SearchResult[]>([])
+const rawResults = ref<SearchResult[]>([])
+const results = computed(() => {
+  if (prefs.showDotFiles) return rawResults.value
+  return rawResults.value.filter(r => {
+    if (r.name.startsWith('.')) return false
+    if (r.path) {
+      const segments = r.path.split('/')
+      if (segments.some(s => s.startsWith('.'))) return false
+    }
+    return true
+  })
+})
 const loading = ref(false)
 const truncated = ref(false)
 const scanLimitReached = ref(false)
@@ -21,7 +34,7 @@ const error = ref<string | null>(null)
 
 async function doSearch(query: string) {
   if (!query.trim()) {
-    results.value = []
+    rawResults.value = []
     return
   }
   loading.value = true
@@ -32,7 +45,7 @@ async function doSearch(query: string) {
       q: query.trim(),
       limit: '200',
     })
-    results.value = data.results
+    rawResults.value = data.results
     truncated.value = data.truncated
     scanLimitReached.value = data.scanLimitReached ?? false
   } catch (e: unknown) {

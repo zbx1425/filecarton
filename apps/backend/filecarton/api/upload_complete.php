@@ -26,10 +26,6 @@ if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $uploadId)) {
 
 $sanitizedName = $pathSec->sanitizeFileName($fileName);
 
-if ($pathSec->isDotFileBlocked($sanitizedName)) {
-    Response::error('Dotfiles are not allowed', 403);
-}
-
 if ($pathSec->isExtensionBlocked($sanitizedName)) {
     Response::error('File type is restricted', 403);
 }

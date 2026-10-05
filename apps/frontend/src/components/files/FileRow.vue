@@ -112,7 +112,7 @@ async function handlePaste() {
 }
 
 async function handleRename() {
-  await renameItem(navigation.currentPathStr, props.name)
+  await renameItem(navigation.currentPathStr, props.name, props.isDir)
 }
 
 async function handleDelete() {

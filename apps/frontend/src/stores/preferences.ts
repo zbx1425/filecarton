@@ -156,19 +156,21 @@ export const usePreferencesStore = defineStore('preferences', () => {
   }
 
   const systemDarkQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  const _systemDark = ref(systemDarkQuery.matches)
 
-  function resolvedTheme(): 'light' | 'dark' {
-    if (theme.value === 'system') return systemDarkQuery.matches ? 'dark' : 'light'
-    return theme.value
-  }
-
-  function applyTheme() {
-    document.documentElement.classList.toggle('dark', resolvedTheme() === 'dark')
-  }
-
-  systemDarkQuery.addEventListener('change', () => {
+  systemDarkQuery.addEventListener('change', (e) => {
+    _systemDark.value = e.matches
     if (theme.value === 'system') applyTheme()
   })
+
+  const resolvedTheme = computed<'light' | 'dark'>(() => {
+    if (theme.value === 'system') return _systemDark.value ? 'dark' : 'light'
+    return theme.value
+  })
+
+  function applyTheme() {
+    document.documentElement.classList.toggle('dark', resolvedTheme.value === 'dark')
+  }
 
   function applyTypography() {
     const root = document.documentElement.style
@@ -232,6 +234,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
     dotFilesLocked,
     dotFilesLockedReason,
     dotfilesConfig,
+    resolvedTheme,
     isExtensionBlocked,
     isDotFileBlocked,
     setTableMaxWidth,

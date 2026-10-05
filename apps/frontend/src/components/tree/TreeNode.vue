@@ -135,7 +135,7 @@ const dirPath = computed(() => {
 })
 
 async function handleRename() {
-  await renameItem(dirPath.value, props.name)
+  await renameItem(dirPath.value, props.name, isDir.value)
 }
 
 async function handleDelete() {

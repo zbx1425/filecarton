@@ -168,13 +168,25 @@ export const useUploadStore = defineStore('upload', () => {
     processQueue()
   }
 
+  function hasBlockedPathComponent(relativePath: string): boolean {
+    if (!relativePath) return false
+    const prefs = usePreferencesStore()
+    const segments = relativePath.split('/').slice(0, -1)
+    return segments.some(seg => prefs.isDotFileBlocked(seg))
+  }
+
   function filterRestricted(files: File[]): File[] {
     const prefs = usePreferencesStore()
     const blocked: string[] = []
     const passed: File[] = []
     for (const file of files) {
-      if (prefs.isDotFileBlocked(file.name) || prefs.isExtensionBlocked(file.name)) {
-        blocked.push(file.name)
+      const relPath = (file as any).webkitRelativePath || ''
+      if (
+        prefs.isDotFileBlocked(file.name) ||
+        prefs.isExtensionBlocked(file.name) ||
+        hasBlockedPathComponent(relPath)
+      ) {
+        blocked.push(relPath || file.name)
       } else {
         passed.push(file)
       }
@@ -242,8 +254,12 @@ export const useUploadStore = defineStore('upload', () => {
     const blocked: string[] = []
     const passed: typeof files = []
     for (const entry of files) {
-      if (prefs.isDotFileBlocked(entry.file.name) || prefs.isExtensionBlocked(entry.file.name)) {
-        blocked.push(entry.file.name)
+      if (
+        prefs.isDotFileBlocked(entry.file.name) ||
+        prefs.isExtensionBlocked(entry.file.name) ||
+        hasBlockedPathComponent(entry.relativePath)
+      ) {
+        blocked.push(entry.relativePath || entry.file.name)
       } else {
         passed.push(entry)
       }

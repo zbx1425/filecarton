@@ -33,7 +33,7 @@ onMounted(async () => {
     editor = monaco.editor.create(containerRef.value, {
       value: fileData.content,
       language: monacoLanguage(props.name),
-      theme: prefs.theme === 'dark' ? 'vs-dark' : 'vs',
+      theme: prefs.resolvedTheme === 'dark' ? 'vs-dark' : 'vs',
       readOnly: true,
       minimap: { enabled: false },
       wordWrap: prefs.editorWordWrap ? 'on' : 'off',
@@ -47,7 +47,7 @@ onMounted(async () => {
     resizeObserver = new ResizeObserver(() => editor?.layout())
     resizeObserver.observe(containerRef.value)
 
-    watch(() => prefs.theme, (t) => {
+    watch(() => prefs.resolvedTheme, (t) => {
       editor?.updateOptions({ theme: t === 'dark' ? 'vs-dark' : 'vs' })
     })
     watch(() => prefs.editorFontSize, (s) => editor?.updateOptions({ fontSize: s }))

@@ -10,6 +10,19 @@ define('FILECARTON_READONLY', false);
 define('FILECARTON_REPO_NAME', 'Files');
 define('FILECARTON_BRANDING', '');
 
+define('FILECARTON_DOTFILES_BLOCK', false);
+define('FILECARTON_DOTFILES_FORCE_VISIBLE', false);
+
+define('FILECARTON_EXTENSIONS_ALLOWLIST', []);
+define('FILECARTON_EXTENSIONS_BLOCKLIST', ['.php']);
+
+define('FILECARTON_IGNORE_PATTERN', []);
+define('FILECARTON_IGNORE_REALPATH', [
+    __DIR__ . '/filecarton.php',
+    __DIR__ . '/filecarton.config.php',
+    __DIR__ . '/filecarton',
+]);
+
 define('FILECARTON_ASSET_URL', '');
 
 define('FILECARTON_MAX_EDIT_SIZE', 5 * 1024 * 1024);

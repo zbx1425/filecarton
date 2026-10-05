@@ -122,12 +122,15 @@ export async function deleteItems(dirPath: string, itemNames: string[]) {
     const fileList = useFileListStore()
     const tree = useTreeStore()
 
-    if (isAffectingActiveFile(dirPath, itemNames)) {
+    const failedNames = new Set(result.failed.map(f => f.name))
+    const succeededNames = itemNames.filter(n => !failedNames.has(n))
+
+    if (isAffectingActiveFile(dirPath, succeededNames)) {
       navigation.editDirty = false
       navigation.backToList()
     }
 
-    const navigatedAway = isAffectingCurrentPath(dirPath, itemNames)
+    const navigatedAway = isAffectingCurrentPath(dirPath, succeededNames)
     if (navigatedAway) {
       navigation.editDirty = false
       const parentSegments = dirPath ? dirPath.split('/') : []
@@ -150,7 +153,7 @@ export async function deleteItems(dirPath: string, itemNames: string[]) {
   }
 }
 
-export async function renameItem(dirPath: string, oldName: string) {
+export async function renameItem(dirPath: string, oldName: string, isDir?: boolean) {
   const ui = useUiStore()
   if (ui.readonly) return
 
@@ -184,7 +187,7 @@ export async function renameItem(dirPath: string, oldName: string) {
     toast.error('Dotfiles are not allowed')
     return
   }
-  if (prefs.isExtensionBlocked(newName)) {
+  if (!isDir && prefs.isExtensionBlocked(newName)) {
     toast.error('This file type is restricted')
     return
   }
@@ -235,6 +238,7 @@ export async function pasteItems(targetPath: string) {
 
     const hasConflicts = check.conflicts.length > 0
     const hasFailed = check.failed.length > 0
+    let totalCompleted = check.completed
 
     if ((hasConflicts || hasFailed) && check.completed === 0) {
       const totalItems = clipboard.items.length
@@ -276,6 +280,7 @@ export async function pasteItems(targetPath: string) {
         targetPath,
         overwrite: true,
       })
+      totalCompleted = result.completed
 
       const verb = clipboard.mode === 'copy' ? 'Copied' : 'Moved'
       if (result.failed.length > 0 && result.completed === 0) {
@@ -310,7 +315,9 @@ export async function pasteItems(targetPath: string) {
       const tree = useTreeStore()
       tree.invalidate(clipboard.sourcePath)
       tree.loadChildren(clipboard.sourcePath)
-      clipboard.clear()
+      if (totalCompleted > 0) {
+        clipboard.clear()
+      }
     }
 
     const navigation = useNavigationStore()
@@ -372,5 +379,6 @@ export async function renameSelected() {
   const navigation = useNavigationStore()
   if (fileList.selectedCount !== 1) return
   const name = Array.from(fileList.selected)[0]
-  await renameItem(navigation.currentPathStr, name)
+  const entry = fileList.allEntries.find(e => e.name === name)
+  await renameItem(navigation.currentPathStr, name, entry?.isDir)
 }

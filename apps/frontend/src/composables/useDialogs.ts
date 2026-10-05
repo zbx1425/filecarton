@@ -134,12 +134,21 @@ export function showOperationReport(options: {
 
 export function showPasteConflict(files: string[]): Promise<boolean> {
   let activePath: string | null = null
+  let activeFile: string | null = null
   try {
     const nav = useNavigationStore()
-    if (nav.viewMode === 'editor' && nav.activeFilePath) {
+    if (nav.viewMode === 'editor') {
       activePath = nav.activeFilePath
+      activeFile = nav.activeFile
     }
   } catch { /* guard against call before pinia init */ }
+
+  const affectsEditor = activePath != null && (
+    files.includes(activePath) ||
+    (activeFile != null && files.includes(activeFile))
+  )
+  const highlightName = activePath && files.includes(activePath) ? activePath
+    : (activeFile && files.includes(activeFile) ? activeFile : '')
 
   return showOperationReport({
     title: 'File Conflict',
@@ -147,8 +156,8 @@ export function showPasteConflict(files: string[]): Promise<boolean> {
     items: files.map(f => ({ name: f, reason: 'File already exists' })),
     continueLabel: 'Overwrite All',
     dangerContinue: true,
-    highlightItem: activePath ?? '',
-    warningBanner: activePath && files.includes(activePath)
+    highlightItem: highlightName,
+    warningBanner: affectsEditor
       ? 'One of these files is currently open in the editor. Overwriting will discard your changes.'
       : '',
   })

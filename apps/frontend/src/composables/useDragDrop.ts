@@ -53,9 +53,42 @@ export async function handleDrop(e: DragEvent, targetPath: string) {
       overwrite: false,
     })
 
-    if (check.conflicts.length > 0 && check.completed === 0) {
-      const overwrite = await showPasteConflict(check.conflicts)
-      if (!overwrite) return
+    const hasConflicts = check.conflicts.length > 0
+    const hasFailed = check.failed.length > 0
+
+    if ((hasConflicts || hasFailed) && check.completed === 0) {
+      const totalItems = payload.items.length
+      const passCount = totalItems - check.failed.length
+
+      if (hasFailed && !hasConflicts) {
+        if (passCount <= 0) {
+          await showOperationReport({
+            title: 'Move Failed',
+            description: 'All items were rejected due to restrictions.',
+            items: check.failed.map(f => ({ name: f.name, reason: f.error })),
+          })
+          return
+        }
+        const proceed = await showOperationReport({
+          title: 'Items Restricted',
+          description: `${check.failed.length} item(s) will be skipped. Continue with the remaining ${passCount} item(s)?`,
+          items: check.failed.map(f => ({ name: f.name, reason: f.error })),
+          continueLabel: `Continue (${passCount})`,
+        })
+        if (!proceed) return
+      } else if (hasConflicts) {
+        if (hasFailed) {
+          const ok = await showOperationReport({
+            title: 'Items Restricted',
+            description: `${check.failed.length} item(s) will be skipped due to restrictions.`,
+            items: check.failed.map(f => ({ name: f.name, reason: f.error })),
+            continueLabel: 'Continue',
+          })
+          if (!ok) return
+        }
+        const overwrite = await showPasteConflict(check.conflicts)
+        if (!overwrite) return
+      }
 
       const result = await apiPost<PasteResponse>('paste', {
         mode: 'cut',
@@ -65,10 +98,16 @@ export async function handleDrop(e: DragEvent, targetPath: string) {
         overwrite: true,
       })
 
-      if (result.failed.length > 0) {
+      if (result.failed.length > 0 && result.completed === 0) {
         await showOperationReport({
           title: 'Move Failed',
-          description: `${result.failed.length} item(s) could not be moved.`,
+          description: 'All items failed.',
+          items: result.failed.map(f => ({ name: f.name, reason: f.error })),
+        })
+      } else if (result.failed.length > 0) {
+        await showOperationReport({
+          title: 'Move Partial',
+          description: `Moved ${result.completed} item(s), ${result.failed.length} failed.`,
           items: result.failed.map(f => ({ name: f.name, reason: f.error })),
         })
       } else {
@@ -77,8 +116,10 @@ export async function handleDrop(e: DragEvent, targetPath: string) {
     } else {
       if (check.failed.length > 0) {
         await showOperationReport({
-          title: 'Move Failed',
-          description: `${check.failed.length} item(s) could not be moved.`,
+          title: check.completed > 0 ? 'Move Partial' : 'Move Failed',
+          description: check.completed > 0
+            ? `Moved ${check.completed} item(s), ${check.failed.length} skipped.`
+            : `${check.failed.length} item(s) could not be moved.`,
           items: check.failed.map(f => ({ name: f.name, reason: f.error })),
         })
       } else if (check.conflicts.length > 0) {

@@ -45,8 +45,17 @@ function archive_create(array $input, PathSecurity $pathSec, FileOps $fileOps) {
 
     $archiveName = $input['archiveName'] ?? ('archive_' . date('ymd_His') . '.' . $format);
     $sanitizedName = $pathSec->sanitizeFileName($archiveName);
+
+    if ($pathSec->isExtensionBlocked($sanitizedName)) {
+        Response::error('Archive file type is restricted', 403);
+    }
+
     $archivePath = $dirAbs . '/' . $sanitizedName;
     $pathSec->assertWithinRoot($archivePath);
+
+    if ($pathSec->wouldBeIgnored($archivePath, false)) {
+        Response::error('Access denied', 403);
+    }
 
     if (file_exists($archivePath)) {
         Response::error('Archive name already exists', 409);
@@ -82,13 +91,6 @@ function archive_create(array $input, PathSecurity $pathSec, FileOps $fileOps) {
  * Returns a reason string (e.g. 'blocked_dotfile') or null if allowed.
  */
 function check_extract_entry(string $normalized, string $finalTarget, PathSecurity $pathSec, bool $isDir): ?string {
-    $parts = explode('/', $normalized);
-    foreach ($parts as $part) {
-        if (FILECARTON_DOTFILES_BLOCK && $pathSec->isDotFile($part)) {
-            return 'blocked_dotfile';
-        }
-    }
-
     if (!$isDir) {
         $basename = basename($normalized);
         if ($pathSec->isExtensionBlocked($basename)) {
@@ -104,12 +106,28 @@ function check_extract_entry(string $normalized, string $finalTarget, PathSecuri
     return null;
 }
 
+/**
+ * Sanitize an archive entry path by trimming trailing dots/spaces from each segment.
+ */
+function sanitize_entry_path(string $entryPath): string {
+    $parts = explode('/', $entryPath);
+    $result = [];
+    foreach ($parts as $part) {
+        $cleaned = rtrim($part, '. ');
+        if ($cleaned !== '' && $cleaned !== '.' && $cleaned !== '..') {
+            $result[] = $cleaned;
+        }
+    }
+    return implode('/', $result);
+}
+
 function archive_extract(array $input, PathSecurity $pathSec) {
     if (!isset($input['path'], $input['targetPath'])) {
         Response::error('Missing fields: path, targetPath', 400);
     }
 
     $archiveAbs = $pathSec->resolve($input['path']);
+    $pathSec->assertNotIgnored($archiveAbs);
     if (!is_file($archiveAbs)) {
         Response::error('Archive file not found', 404);
     }
@@ -126,6 +144,9 @@ function archive_extract(array $input, PathSecurity $pathSec) {
         $baseName = $pathSec->sanitizeFileName(pathinfo($archiveAbs, PATHINFO_FILENAME));
         $targetAbs .= '/' . $baseName;
         $pathSec->assertWithinRoot($targetAbs);
+        if ($pathSec->wouldBeIgnored($targetAbs, true)) {
+            Response::error('Access denied', 403);
+        }
         if (!$dryRun && !is_dir($targetAbs)) {
             mkdir($targetAbs, 0755, true);
         }
@@ -227,6 +248,8 @@ function extract_zip_safe(string $archiveAbs, string $targetAbs, string $normali
 
         $normalized = $pathSec->normalizePath($entryPath);
         if ($normalized === '') continue;
+        $normalized = sanitize_entry_path($normalized);
+        if ($normalized === '') continue;
 
         $destPath = $normalizedTarget . '/' . $normalized;
 
@@ -237,9 +260,7 @@ function extract_zip_safe(string $archiveAbs, string $targetAbs, string $normali
         $isDir = str_ends_with($entryPath, '/');
         $blockReason = check_extract_entry($normalized, $finalTarget, $pathSec, $isDir);
         if ($blockReason !== null) {
-            if (!$isDir) {
-                $failed[] = ['path' => $normalized, 'reason' => $blockReason];
-            }
+            $failed[] = ['path' => $normalized, 'reason' => $blockReason];
             continue;
         }
 
@@ -301,6 +322,8 @@ function extract_tar_safe(string $archiveAbs, string $targetAbs, string $normali
 
         $normalized = $pathSec->normalizePath($entryPath);
         if ($normalized === '') continue;
+        $normalized = sanitize_entry_path($normalized);
+        if ($normalized === '') continue;
 
         $destPath = $normalizedTarget . '/' . $normalized;
 
@@ -311,9 +334,7 @@ function extract_tar_safe(string $archiveAbs, string $targetAbs, string $normali
         $isDir = $item->isDir();
         $blockReason = check_extract_entry($normalized, $finalTarget, $pathSec, $isDir);
         if ($blockReason !== null) {
-            if (!$isDir) {
-                $failed[] = ['path' => $normalized, 'reason' => $blockReason];
-            }
+            $failed[] = ['path' => $normalized, 'reason' => $blockReason];
             continue;
         }
 
@@ -373,18 +394,21 @@ function dry_run_zip(string $archiveAbs, string $normalizedTarget, PathSecurity 
 
         $normalized = $pathSec->normalizePath($entryPath);
         if ($normalized === '') continue;
+        $normalized = sanitize_entry_path($normalized);
+        if ($normalized === '') continue;
 
         $isDir = str_ends_with($entryPath, '/');
-        if ($isDir) continue;
 
         $destPath = $normalizedTarget . '/' . $normalized;
         if (!str_starts_with($destPath, $normalizedTarget . '/')) continue;
 
-        $blockReason = check_extract_entry($normalized, $normalizedTarget, $pathSec, false);
+        $blockReason = check_extract_entry($normalized, $normalizedTarget, $pathSec, $isDir);
         if ($blockReason !== null) {
             $failed[] = ['path' => $normalized, 'reason' => $blockReason];
             continue;
         }
+
+        if ($isDir) continue;
 
         $wouldExtract++;
         if (file_exists($destPath)) {
@@ -409,23 +433,27 @@ function dry_run_tar(string $archiveAbs, string $normalizedTarget, PathSecurity 
     $iter = new \RecursiveIteratorIterator($phar, \RecursiveIteratorIterator::SELF_FIRST);
 
     foreach ($iter as $item) {
-        if ($item->isDir()) continue;
-
         $entryPath = $item->getPathname();
         $entryPath = preg_replace('#^phar://.*?\.tar(?:\.gz)?/#', '', $entryPath);
         $entryPath = str_replace('\\', '/', $entryPath);
 
         $normalized = $pathSec->normalizePath($entryPath);
         if ($normalized === '') continue;
+        $normalized = sanitize_entry_path($normalized);
+        if ($normalized === '') continue;
+
+        $isDir = $item->isDir();
 
         $destPath = $normalizedTarget . '/' . $normalized;
         if (!str_starts_with($destPath, $normalizedTarget . '/')) continue;
 
-        $blockReason = check_extract_entry($normalized, $normalizedTarget, $pathSec, false);
+        $blockReason = check_extract_entry($normalized, $normalizedTarget, $pathSec, $isDir);
         if ($blockReason !== null) {
             $failed[] = ['path' => $normalized, 'reason' => $blockReason];
             continue;
         }
+
+        if ($isDir) continue;
 
         $wouldExtract++;
         if (file_exists($destPath)) {
