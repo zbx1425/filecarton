@@ -155,8 +155,11 @@ foreach ($assetFiles as $relPath => $_) {
 $assetData    = '';
 $assetOffsets = [];
 $offset       = 0;
+$rawTotal     = 0;
 foreach ($assetFiles as $relPath => $absPath) {
-    $content = file_get_contents($absPath);
+    $raw     = file_get_contents($absPath);
+    $rawTotal += strlen($raw);
+    $content = gzencode($raw, 9);
     $size    = strlen($content);
     $assetOffsets[$relPath] = [$offset, $size];
     $assetData .= $content;
@@ -312,8 +315,10 @@ $phpSize   = strlen($minified);
 $assetSize = strlen($assetData);
 $totalSize = $phpSize + $assetSize;
 $assetCount = count($assetOffsets);
+$ratio = $rawTotal > 0 ? round(100 - $assetSize / $rawTotal * 100, 1) : 0;
 
 echo "Single-file build complete: $outputFile\n";
 echo "  PHP code:  " . number_format($phpSize)  . " bytes\n";
-echo "  Assets:    " . number_format($assetSize) . " bytes ($assetCount files)\n";
+echo "  Assets:    " . number_format($assetSize) . " bytes gzipped from "
+     . number_format($rawTotal) . " bytes ($assetCount files, {$ratio}% smaller)\n";
 echo "  Total:     " . number_format($totalSize) . " bytes\n";

@@ -79,14 +79,25 @@ if ($fp === false) {
     exit;
 }
 
-$start = $base + $offset;
+fseek($fp, $base + $offset);
+$data = fread($fp, $size);
+fclose($fp);
 
 $ext = strtolower(pathinfo($assetRelPath, PATHINFO_EXTENSION));
 header('Content-Type: ' . MimeType::contentTypeForServing($ext));
-header('Content-Length: ' . $size);
 header('Cache-Control: public, max-age=31536000, immutable');
+header('Vary: Accept-Encoding');
 
-fseek($fp, $start);
-echo fread($fp, $size);
-fclose($fp);
+$acceptGzip = str_contains($_SERVER['HTTP_ACCEPT_ENCODING'] ?? '', 'gzip');
+if ($acceptGzip) {
+    ini_set('zlib.output_compression', 'Off');
+    while (ob_get_level()) ob_end_clean();
+    header('Content-Encoding: gzip');
+    header('Content-Length: ' . $size);
+    echo $data;
+} else {
+    $raw = gzdecode($data);
+    header('Content-Length: ' . strlen($raw));
+    echo $raw;
+}
 }
