@@ -72,10 +72,11 @@ function archive_create(array $input, PathSecurity $pathSec, FileOps $fileOps) {
         Response::error('Total size too large to archive (limit: ' . round(FILECARTON_ARCHIVE_MAX_SIZE / 1024 / 1024 / 1024, 1) . ' GB)', 400);
     }
 
+    $skipped = [];
     if ($format === 'zip') {
-        create_zip($dirAbs, $input['items'], $archivePath, $pathSec, true);
+        create_zip($dirAbs, $input['items'], $archivePath, $pathSec, true, $skipped);
     } else {
-        create_tar($dirAbs, $input['items'], $archivePath, $pathSec, true);
+        create_tar($dirAbs, $input['items'], $archivePath, $pathSec, true, $skipped);
     }
 
     $relativePath = substr($archivePath, strlen($pathSec->getRootPath()) + 1);
@@ -83,6 +84,7 @@ function archive_create(array $input, PathSecurity $pathSec, FileOps $fileOps) {
     Response::ok([
         'archivePath' => $relativePath,
         'size'        => filesize($archivePath),
+        'skipped'     => $skipped,
     ]);
 }
 
@@ -465,10 +467,7 @@ function dry_run_tar(string $archiveAbs, string $normalizedTarget, PathSecurity 
 }
 
 function should_skip_archive_entry(string $fullPath, PathSecurity $pathSec): bool {
-    $name = basename($fullPath);
-    if (FILECARTON_DOTFILES_BLOCK && $pathSec->isDotFile($name)) return true;
-    if ($pathSec->isIgnored($fullPath)) return true;
-    return false;
+    return $pathSec->isIgnored($fullPath);
 }
 
 function count_items_for_archive(string $baseDir, array $items, PathSecurity $pathSec, int &$fileCount, int &$totalSize): void {
@@ -504,7 +503,7 @@ function count_items_for_archive(string $baseDir, array $items, PathSecurity $pa
     }
 }
 
-function create_zip(string $baseDir, array $items, string $archivePath, PathSecurity $pathSec, bool $filter = false): void {
+function create_zip(string $baseDir, array $items, string $archivePath, PathSecurity $pathSec, bool $filter = false, array &$skipped = []): void {
     $zip = new \ZipArchive();
     if ($zip->open($archivePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
         throw new \RuntimeException('Cannot create ZIP file');
@@ -518,20 +517,23 @@ function create_zip(string $baseDir, array $items, string $archivePath, PathSecu
             continue;
         }
         if (!file_exists($itemPath) || is_link($itemPath)) continue;
-        if ($filter && should_skip_archive_entry($itemPath, $pathSec)) continue;
+        if ($filter && should_skip_archive_entry($itemPath, $pathSec)) {
+            $skipped[] = basename($itemPath);
+            continue;
+        }
 
         $entryName = basename($itemPath);
         if (is_file($itemPath)) {
             $zip->addFile($itemPath, $entryName);
         } elseif (is_dir($itemPath)) {
-            add_dir_to_zip($zip, $itemPath, $entryName, $filter ? $pathSec : null);
+            add_dir_to_zip($zip, $itemPath, $entryName, $filter ? $pathSec : null, $skipped);
         }
     }
 
     $zip->close();
 }
 
-function add_dir_to_zip(\ZipArchive $zip, string $dirPath, string $prefix, ?PathSecurity $pathSec = null): void {
+function add_dir_to_zip(\ZipArchive $zip, string $dirPath, string $prefix, ?PathSecurity $pathSec = null, array &$skipped = []): void {
     $zip->addEmptyDir($prefix);
     $entries = scandir($dirPath);
     if ($entries === false) return;
@@ -540,18 +542,21 @@ function add_dir_to_zip(\ZipArchive $zip, string $dirPath, string $prefix, ?Path
         if ($entry === '.' || $entry === '..') continue;
         $full = $dirPath . '/' . $entry;
         if (is_link($full)) continue;
-        if ($pathSec !== null && should_skip_archive_entry($full, $pathSec)) continue;
+        if ($pathSec !== null && should_skip_archive_entry($full, $pathSec)) {
+            $skipped[] = $prefix . '/' . $entry;
+            continue;
+        }
         $zipPath = $prefix . '/' . $entry;
 
         if (is_file($full)) {
             $zip->addFile($full, $zipPath);
         } elseif (is_dir($full)) {
-            add_dir_to_zip($zip, $full, $zipPath, $pathSec);
+            add_dir_to_zip($zip, $full, $zipPath, $pathSec, $skipped);
         }
     }
 }
 
-function create_tar(string $baseDir, array $items, string $archivePath, PathSecurity $pathSec, bool $filter = false): void {
+function create_tar(string $baseDir, array $items, string $archivePath, PathSecurity $pathSec, bool $filter = false, array &$skipped = []): void {
     $phar = new \PharData($archivePath);
 
     foreach ($items as $name) {
@@ -562,18 +567,21 @@ function create_tar(string $baseDir, array $items, string $archivePath, PathSecu
             continue;
         }
         if (!file_exists($itemPath) || is_link($itemPath)) continue;
-        if ($filter && should_skip_archive_entry($itemPath, $pathSec)) continue;
+        if ($filter && should_skip_archive_entry($itemPath, $pathSec)) {
+            $skipped[] = basename($itemPath);
+            continue;
+        }
 
         $entryName = basename($itemPath);
         if (is_file($itemPath)) {
             $phar->addFile($itemPath, $entryName);
         } elseif (is_dir($itemPath)) {
-            add_dir_to_tar($phar, $itemPath, $entryName, $filter ? $pathSec : null);
+            add_dir_to_tar($phar, $itemPath, $entryName, $filter ? $pathSec : null, $skipped);
         }
     }
 }
 
-function add_dir_to_tar(\PharData $phar, string $dirPath, string $prefix, ?PathSecurity $pathSec = null): void {
+function add_dir_to_tar(\PharData $phar, string $dirPath, string $prefix, ?PathSecurity $pathSec = null, array &$skipped = []): void {
     $phar->addEmptyDir($prefix);
     $entries = scandir($dirPath);
     if ($entries === false) return;
@@ -582,13 +590,16 @@ function add_dir_to_tar(\PharData $phar, string $dirPath, string $prefix, ?PathS
         if ($entry === '.' || $entry === '..') continue;
         $full = $dirPath . '/' . $entry;
         if (is_link($full)) continue;
-        if ($pathSec !== null && should_skip_archive_entry($full, $pathSec)) continue;
+        if ($pathSec !== null && should_skip_archive_entry($full, $pathSec)) {
+            $skipped[] = $prefix . '/' . $entry;
+            continue;
+        }
         $tarPath = $prefix . '/' . $entry;
 
         if (is_file($full)) {
             $phar->addFile($full, $tarPath);
         } elseif (is_dir($full)) {
-            add_dir_to_tar($phar, $full, $tarPath, $pathSec);
+            add_dir_to_tar($phar, $full, $tarPath, $pathSec, $skipped);
         }
     }
 }

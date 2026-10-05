@@ -18,8 +18,11 @@ if ($query === '') {
 
 $absBase = $pathSec->resolve($basePath);
 
+if (!file_exists($absBase)) {
+    Response::error('Directory not found', 404);
+}
 if (!is_dir($absBase)) {
-    Response::error('Not a directory', 404);
+    Response::error('Not a directory', 400);
 }
 
 $rootPath = $pathSec->getRootPath();

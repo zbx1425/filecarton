@@ -26,7 +26,16 @@ export async function createArchive(
       path: effectiveDirPath,
       items: effectiveItems,
     })
-    toast.success(`Archive created: ${result.archivePath.split('/').pop()}`)
+    const archiveName = result.archivePath.split('/').pop()
+    if (result.skipped && result.skipped.length > 0) {
+      await showOperationReport({
+        title: 'Archive Created',
+        description: `${archiveName} created. ${result.skipped.length} item(s) were skipped due to restrictions.`,
+        items: result.skipped.map(s => ({ name: s, reason: 'Restricted' })),
+      })
+    } else {
+      toast.success(`Archive created: ${archiveName}`)
+    }
     fileList.fetchDir(navigation.currentPathStr)
     tree.invalidate(effectiveDirPath)
     tree.loadChildren(effectiveDirPath)

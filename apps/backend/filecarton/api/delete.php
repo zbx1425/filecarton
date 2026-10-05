@@ -18,8 +18,11 @@ if (!$input || !isset($input['path'], $input['items']) || !is_array($input['item
 }
 
 $basePath = $pathSec->resolve($input['path']);
+if (!file_exists($basePath)) {
+    Response::error('Directory not found', 404);
+}
 if (!is_dir($basePath)) {
-    Response::error('Not a directory', 404);
+    Response::error('Not a directory', 400);
 }
 
 $deleted = 0;

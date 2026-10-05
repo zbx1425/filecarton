@@ -28,8 +28,11 @@ if (strlen($input['content']) > FILECARTON_MAX_EDIT_SIZE) {
 $absPath = $pathSec->resolve($input['path']);
 $pathSec->assertCanModify($absPath);
 
+if (!file_exists($absPath)) {
+    Response::error('File not found', 404);
+}
 if (!is_file($absPath)) {
-    Response::error('Not a file', 404);
+    Response::error('Not a file', 400);
 }
 
 if (isset($input['expectedMtime'])) {

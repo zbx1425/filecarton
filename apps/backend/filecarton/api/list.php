@@ -12,8 +12,11 @@ $path = $_GET['path'] ?? '';
 $absPath = $pathSec->resolve($path);
 $pathSec->assertNotIgnored($absPath);
 
+if (!file_exists($absPath)) {
+    Response::error('Directory not found', 404);
+}
 if (!is_dir($absPath)) {
-    Response::error('Not a directory', 404);
+    Response::error('Not a directory', 400);
 }
 
 $result = $fileOps->listDir($absPath);

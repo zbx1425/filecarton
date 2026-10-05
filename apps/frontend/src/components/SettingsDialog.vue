@@ -52,9 +52,27 @@ function setEditorFontSize(val: number | undefined) {
 <template>
   <Dialog v-model:open="ui.settingsOpen">
     <DialogContent class="sm:max-w-2xl max-h-[85vh] overflow-hidden p-0">
-      <div class="flex h-full min-h-[420px]">
-        <!-- Left navigation -->
-        <nav class="w-44 shrink-0 border-r bg-muted/30 p-3 pt-5 flex flex-col gap-0.5">
+      <div class="flex flex-col sm:flex-row h-full sm:min-h-[420px]">
+        <!-- Top navigation (narrow screens) -->
+        <nav class="flex sm:hidden border-b bg-muted/30 px-3 pt-4 pb-0 gap-1 overflow-x-auto">
+          <Button
+            v-for="item in navItems"
+            :key="item.id"
+            variant="ghost"
+            size="sm"
+            class="gap-1.5 text-xs rounded-b-none shrink-0"
+            :class="activeSection === item.id
+              ? 'bg-background text-foreground font-medium border border-b-0 border-border'
+              : 'text-muted-foreground'"
+            @click="activeSection = item.id"
+          >
+            <component :is="item.icon" class="size-3.5" />
+            {{ item.label }}
+          </Button>
+        </nav>
+
+        <!-- Left navigation (wide screens) -->
+        <nav class="hidden sm:flex w-44 shrink-0 border-r bg-muted/30 p-3 pt-5 flex-col gap-0.5">
           <Button
             v-for="item in navItems"
             :key="item.id"
@@ -72,7 +90,7 @@ function setEditorFontSize(val: number | undefined) {
         </nav>
 
         <!-- Right content -->
-        <div class="flex-1 overflow-y-auto p-6 pt-5">
+        <div class="flex-1 overflow-y-auto p-4 pt-4 sm:p-6 sm:pt-5">
           <DialogHeader class="mb-5">
             <DialogTitle>
               <Breadcrumb>
@@ -116,7 +134,7 @@ function setEditorFontSize(val: number | undefined) {
               <Badge variant="secondary">v{{ appVersion }}</Badge>
             </div>
 
-            <div class="grid grid-cols-[140px_1fr] items-center gap-x-4 gap-y-5">
+            <div class="grid grid-cols-1 sm:grid-cols-[140px_1fr] items-start sm:items-center gap-x-4 gap-y-3 sm:gap-y-5">
               <!-- Theme -->
               <label class="text-sm text-muted-foreground">Theme</label>
               <div class="flex gap-1">
@@ -173,7 +191,7 @@ function setEditorFontSize(val: number | undefined) {
 
           <!-- File List -->
           <div v-if="activeSection === 'filelist'" class="space-y-6">
-            <div class="grid grid-cols-[140px_1fr] items-center gap-x-4 gap-y-5">
+            <div class="grid grid-cols-1 sm:grid-cols-[140px_1fr] items-start sm:items-center gap-x-4 gap-y-3 sm:gap-y-5">
               <!-- Display Density -->
               <label class="text-sm text-muted-foreground">Density</label>
               <div class="flex gap-1">
@@ -240,7 +258,7 @@ function setEditorFontSize(val: number | undefined) {
 
           <!-- Editor -->
           <div v-if="activeSection === 'editor'" class="space-y-6">
-            <div class="grid grid-cols-[140px_1fr] items-center gap-x-4 gap-y-5">
+            <div class="grid grid-cols-1 sm:grid-cols-[140px_1fr] items-start sm:items-center gap-x-4 gap-y-3 sm:gap-y-5">
               <!-- Editor Font Size -->
               <label class="text-sm text-muted-foreground">Font Size</label>
               <div class="flex items-center gap-2">

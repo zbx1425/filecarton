@@ -100,6 +100,7 @@ export interface UploadCompleteResponse {
 export interface ArchiveCreateResponse {
   archivePath: string
   size: number
+  skipped: string[]
 }
 
 export interface ArchiveExtractFailedEntry {
