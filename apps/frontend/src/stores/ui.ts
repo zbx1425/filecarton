@@ -6,7 +6,7 @@ export const useUiStore = defineStore('ui', () => {
   const config = window.__FILECARTON__
 
   const readonly = ref(config.readonly)
-  const repoName = ref(config.repoName)
+  const repoName = ref(config.repoName ?? '')
   const branding = ref(config.branding ?? '')
 
   const searchQuery = ref('')

@@ -33,8 +33,10 @@ $configData = [
     'apiBase'   => $apiBase,
     'csrfToken' => $csrfToken,
     'readonly'  => $readonly,
-    'repoName'  => $repoName,
 ];
+if ($repoName !== '') {
+    $configData['repoName'] = $repoName;
+}
 if ($branding !== '') {
     $configData['branding'] = $branding;
 }
@@ -45,6 +47,10 @@ if (!$readonly) {
     ];
 }
 $configJson = json_encode($configData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
+
+$entry = null;
+$cdn = null;
+$manifestError = true;
 
 if (!$isDevMode) {
     if (defined('FILECARTON_SINGLE_FILE') && \FILECARTON_SINGLE_FILE) {
@@ -68,6 +74,10 @@ if (!$isDevMode) {
         $cdnPath = FILECARTON_SCRIPT_DIR . '/public/cdn.json';
         $cdn = is_file($cdnPath) ? json_decode(file_get_contents($cdnPath), true) : null;
     }
+
+    if (!$manifestError) {
+        $entry = $manifest['src/main.ts'];
+    }
 }
 
 ?><!DOCTYPE html>
@@ -75,7 +85,7 @@ if (!$isDevMode) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>FileCarton - <?= htmlspecialchars($repoName, ENT_QUOTES, 'UTF-8') ?></title>
+    <title><?= $repoName !== '' ? 'FileCarton - ' . htmlspecialchars($repoName, ENT_QUOTES, 'UTF-8') : 'FileCarton' ?></title>
 <?php if ($isDevMode): ?>
 <?php elseif (!$manifestError):
     if (!empty($cdn['stylesheets'])):
@@ -83,7 +93,6 @@ if (!$isDevMode) {
     <link rel="stylesheet" href="<?= htmlspecialchars($href) ?>">
 <?php       endforeach;
     endif;
-    $entry = $manifest['src/main.ts'];
     if (!empty($entry['css'])):
         foreach ($entry['css'] as $cssFile): ?>
     <link rel="stylesheet" href="<?= htmlspecialchars($assetUrl($cssFile)) ?>">
@@ -112,16 +121,8 @@ endif; ?>
     <script type="module" src="<?= htmlspecialchars($devServerUrl, ENT_QUOTES, 'UTF-8') ?>/@vite/client"></script>
     <script type="module" src="<?= htmlspecialchars($devServerUrl, ENT_QUOTES, 'UTF-8') ?>/src/main.ts"></script>
 <?php elseif ($manifestError): ?>
-    <div style="font-family:system-ui,sans-serif;max-width:480px;margin:80px auto;text-align:center;color:#555">
-        <h2>Frontend Not Built</h2>
-        <p>The Vite manifest was not found. Please build the frontend first:</p>
-        <pre style="background:#f3f3f3;padding:12px;border-radius:6px;text-align:left">cd filecarton-frontend
-pnpm install
-pnpm run build</pre>
-        <p>Or enable dev mode by defining <code>FILECARTON_DEV_SERVER</code> in your config.</p>
-    </div>
+    <p>Vite manifest was not found! Is it because the frontend was not built, because you did not copy the .vite directory, or because you did not set FILECARTON_DEV_SERVER?</p>
 <?php else:
-    $entry = $manifest['src/main.ts'];
     if (!empty($cdn['importmap'])): ?>
     <script type="importmap"><?= json_encode($cdn['importmap'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
 <?php endif; ?>

@@ -2,7 +2,7 @@ interface FileCartonConfig {
   apiBase: string
   csrfToken: string
   readonly: boolean
-  repoName: string
+  repoName?: string
   branding?: string
   upload?: {
     maxFileSize: number

@@ -90,7 +90,7 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
         <BreadcrumbItem>
           <BreadcrumbPage v-if="isAtRoot" class="flex items-center gap-1.5">
             <Home class="size-4" />
-            <span>{{ ui.repoName }}</span>
+            <span v-if="ui.repoName">{{ ui.repoName }}</span>
           </BreadcrumbPage>
           <BreadcrumbLink
             v-else

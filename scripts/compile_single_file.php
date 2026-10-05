@@ -221,6 +221,9 @@ function compressPhpSrc(string $src): string {
             [$tn, $ts] = $token;
 
             if ($tn === T_INLINE_HTML) {
+                $ts = preg_replace('/^[ \t]+/m', '', $ts);
+                $ts = preg_replace('/\n{2,}/', "\n", $ts);
+                $ts = trim($ts, "\n");
                 $new .= $ts;
                 $iw = false;
             } elseif ($tn === T_OPEN_TAG) {
