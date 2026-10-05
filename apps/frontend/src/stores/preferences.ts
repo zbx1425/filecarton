@@ -4,7 +4,7 @@ import { useWindowSize } from '@vueuse/core'
 
 const STORAGE_KEY = 'filecarton_preferences'
 
-type Theme = 'light' | 'dark'
+type Theme = 'system' | 'light' | 'dark'
 type Density = 'compact' | 'default' | 'comfortable'
 type TabSize = 2 | 4
 
@@ -18,10 +18,11 @@ interface StoredPreferences {
   editorAutoDetect: boolean
   displayDensity: Density
   tableMaxWidth: number | null
+  showDotFiles: boolean
 }
 
 const DEFAULTS: StoredPreferences = {
-  theme: 'light',
+  theme: 'system',
   baseFontSize: 18,
   editorFontSize: 16,
   editorWordWrap: true,
@@ -30,6 +31,7 @@ const DEFAULTS: StoredPreferences = {
   editorAutoDetect: true,
   displayDensity: 'default',
   tableMaxWidth: null,
+  showDotFiles: false,
 }
 
 const DENSITY_ROW_HEIGHT: Record<Density, number> = {
@@ -74,6 +76,32 @@ export const usePreferencesStore = defineStore('preferences', () => {
   const displayDensity = ref<Density>(saved.displayDensity)
   const tableMaxWidth = ref<number | null>(saved.tableMaxWidth)
 
+  const config = window.__FILECARTON__
+  const dotfilesConfig = config.dotfiles ?? { block: false, forceVisible: false }
+  const extensionsConfig = config.extensions ?? { allowlist: [], blocklist: [] }
+
+  const _showDotFiles = ref(saved.showDotFiles)
+
+  const showDotFiles = computed({
+    get() {
+      if (dotfilesConfig.block) return false
+      if (dotfilesConfig.forceVisible) return true
+      return _showDotFiles.value
+    },
+    set(val: boolean) {
+      if (dotfilesConfig.block || dotfilesConfig.forceVisible) return
+      _showDotFiles.value = val
+      persist()
+    },
+  })
+
+  const dotFilesLocked = computed(() => dotfilesConfig.block || dotfilesConfig.forceVisible)
+  const dotFilesLockedReason = computed(() => {
+    if (dotfilesConfig.block) return 'Setting managed by administrator.'
+    if (dotfilesConfig.forceVisible) return 'Setting managed by administrator.'
+    return ''
+  })
+
   const { width: windowWidth } = useWindowSize()
 
   const breakpointBracket = computed(() => {
@@ -102,12 +130,45 @@ export const usePreferencesStore = defineStore('preferences', () => {
       editorAutoDetect: editorAutoDetect.value,
       displayDensity: displayDensity.value,
       tableMaxWidth: tableMaxWidth.value,
+      showDotFiles: _showDotFiles.value,
     })
   }
 
-  function applyTheme() {
-    document.documentElement.classList.toggle('dark', theme.value === 'dark')
+  function getExtensionKey(filename: string): string {
+    if (filename.endsWith('.')) return '.'
+    const dot = filename.lastIndexOf('.')
+    if (dot <= 0) return ''
+    return '.' + filename.slice(dot + 1).toLowerCase()
   }
+
+  function isExtensionBlocked(filename: string): boolean {
+    const { allowlist, blocklist } = extensionsConfig
+    if (allowlist.length === 0 && blocklist.length === 0) return false
+    const key = getExtensionKey(filename)
+    if (allowlist.length > 0) {
+      return !allowlist.map(s => s.toLowerCase()).includes(key.toLowerCase())
+    }
+    return blocklist.map(s => s.toLowerCase()).includes(key.toLowerCase())
+  }
+
+  function isDotFileBlocked(filename: string): boolean {
+    return dotfilesConfig.block && filename.length > 0 && filename[0] === '.' && filename !== '.' && filename !== '..'
+  }
+
+  const systemDarkQuery = window.matchMedia('(prefers-color-scheme: dark)')
+
+  function resolvedTheme(): 'light' | 'dark' {
+    if (theme.value === 'system') return systemDarkQuery.matches ? 'dark' : 'light'
+    return theme.value
+  }
+
+  function applyTheme() {
+    document.documentElement.classList.toggle('dark', resolvedTheme() === 'dark')
+  }
+
+  systemDarkQuery.addEventListener('change', () => {
+    if (theme.value === 'system') applyTheme()
+  })
 
   function applyTypography() {
     const root = document.documentElement.style
@@ -144,7 +205,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
   watch(theme, () => { applyTheme(); persist() })
   watch(baseFontSize, () => { applyTypography(); persist() })
   watch(displayDensity, () => { applyDensity(); persist() })
-  watch([editorFontSize, editorWordWrap, editorTabSize, editorLineNumbers, editorAutoDetect], () => persist())
+  watch([editorFontSize, editorWordWrap, editorTabSize, editorLineNumbers, editorAutoDetect, _showDotFiles], () => persist())
 
   watch(breakpointBracket, (newBracket) => {
     if (newBracket !== prevBracket) {
@@ -167,6 +228,12 @@ export const usePreferencesStore = defineStore('preferences', () => {
     effectiveTableMaxWidth,
     rowHeight,
     breakpointBracket,
+    showDotFiles,
+    dotFilesLocked,
+    dotFilesLockedReason,
+    dotfilesConfig,
+    isExtensionBlocked,
+    isDotFileBlocked,
     setTableMaxWidth,
     init,
   }

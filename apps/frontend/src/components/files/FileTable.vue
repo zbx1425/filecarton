@@ -185,7 +185,8 @@ function startResize(e: MouseEvent) {
 
           <!-- Empty state -->
           <div v-if="isFilteredEmpty" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
-            <p class="text-sm">No matches for "{{ ui.searchQuery }}"</p>
+            <p v-if="ui.searchQuery.trim()" class="text-sm">No matches for "{{ ui.searchQuery }}"</p>
+            <p v-else class="text-sm">All files under this directory are hidden files</p>
           </div>
           <div v-else-if="isActuallyEmpty" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
             <p class="text-sm">This folder is empty</p>

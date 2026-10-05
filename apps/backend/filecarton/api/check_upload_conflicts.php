@@ -30,11 +30,11 @@ foreach ($input['paths'] as $relativePath) {
 
     try {
         $absPath = $pathSec->resolve($relativePath);
+        if ($pathSec->isIgnored($absPath)) continue;
         if (is_file($absPath)) {
             $existing[] = $relativePath;
         }
     } catch (\Throwable $e) {
-        // Path doesn't exist or is invalid — not a conflict
         continue;
     }
 }

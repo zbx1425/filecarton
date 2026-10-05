@@ -6,7 +6,8 @@ import { useTreeStore } from '@/stores/tree'
 import { useNavigationStore } from '@/stores/navigation'
 import { useClipboardStore } from '@/stores/clipboard'
 import { useUiStore } from '@/stores/ui'
-import { confirm, prompt, showPasteConflict } from '@/composables/useDialogs'
+import { confirm, prompt, showPasteConflict, showOperationReport } from '@/composables/useDialogs'
+import { usePreferencesStore } from '@/stores/preferences'
 import { joinPath, validateFileName } from '@/utils/path'
 
 function refreshCurrent() {
@@ -33,6 +34,16 @@ export async function createItem(type: 'file' | 'dir') {
   const validationError = validateFileName(name)
   if (validationError) {
     toast.error(validationError)
+    return
+  }
+
+  const prefs = usePreferencesStore()
+  if (prefs.isDotFileBlocked(name)) {
+    toast.error('Dotfiles are not allowed')
+    return
+  }
+  if (type === 'file' && prefs.isExtensionBlocked(name)) {
+    toast.error('This file type is restricted')
     return
   }
 
@@ -99,7 +110,11 @@ export async function deleteItems(dirPath: string, itemNames: string[]) {
       items: itemNames,
     })
     if (result.failed.length > 0) {
-      toast.error(`Failed to delete: ${result.failed.map(f => f.name).join(', ')}`)
+      await showOperationReport({
+        title: 'Delete Failed',
+        description: `${result.failed.length} of ${itemNames.length} item(s) could not be deleted.`,
+        items: result.failed.map(f => ({ name: f.name, reason: f.error })),
+      })
     } else {
       toast.success(`Deleted ${result.deleted} item(s)`)
     }
@@ -164,6 +179,16 @@ export async function renameItem(dirPath: string, oldName: string) {
     return
   }
 
+  const prefs = usePreferencesStore()
+  if (prefs.isDotFileBlocked(newName)) {
+    toast.error('Dotfiles are not allowed')
+    return
+  }
+  if (prefs.isExtensionBlocked(newName)) {
+    toast.error('This file type is restricted')
+    return
+  }
+
   try {
     await apiPost<RenameResponse>('rename', {
       path: dirPath,
@@ -208,9 +233,41 @@ export async function pasteItems(targetPath: string) {
       overwrite: false,
     })
 
-    if (check.conflicts.length > 0 && check.completed === 0) {
-      const overwrite = await showPasteConflict(check.conflicts)
-      if (!overwrite) return
+    const hasConflicts = check.conflicts.length > 0
+    const hasFailed = check.failed.length > 0
+
+    if ((hasConflicts || hasFailed) && check.completed === 0) {
+      const totalItems = clipboard.items.length
+      const passCount = totalItems - check.failed.length
+
+      if (hasFailed && !hasConflicts) {
+        if (passCount <= 0) {
+          await showOperationReport({
+            title: 'Paste Failed',
+            description: 'All items were rejected due to restrictions.',
+            items: check.failed.map(f => ({ name: f.name, reason: f.error })),
+          })
+          return
+        }
+        const proceed = await showOperationReport({
+          title: 'Items Restricted',
+          description: `${check.failed.length} item(s) will be skipped. Continue with the remaining ${passCount} item(s)?`,
+          items: check.failed.map(f => ({ name: f.name, reason: f.error })),
+          continueLabel: `Continue (${passCount})`,
+        })
+        if (!proceed) return
+      } else if (hasConflicts) {
+        if (hasFailed) {
+          await showOperationReport({
+            title: 'Items Restricted',
+            description: `${check.failed.length} item(s) will be skipped due to restrictions.`,
+            items: check.failed.map(f => ({ name: f.name, reason: f.error })),
+            continueLabel: 'Continue',
+          }).then(ok => { if (!ok) throw new Error('__cancelled__') })
+        }
+        const overwrite = await showPasteConflict(check.conflicts)
+        if (!overwrite) return
+      }
 
       const result = await apiPost<PasteResponse>('paste', {
         mode: clipboard.mode,
@@ -220,18 +277,30 @@ export async function pasteItems(targetPath: string) {
         overwrite: true,
       })
 
-      if (result.failed.length > 0) {
-        toast.error(`Failed: ${result.failed.map(f => `${f.name}: ${f.error}`).join(', ')}`)
+      const verb = clipboard.mode === 'copy' ? 'Copied' : 'Moved'
+      if (result.failed.length > 0 && result.completed === 0) {
+        await showOperationReport({
+          title: `${verb === 'Copied' ? 'Copy' : 'Move'} Failed`,
+          description: `All items failed.`,
+          items: result.failed.map(f => ({ name: f.name, reason: f.error })),
+        })
+      } else if (result.failed.length > 0) {
+        await showOperationReport({
+          title: `${verb === 'Copied' ? 'Copy' : 'Move'} Partial`,
+          description: `${verb} ${result.completed} item(s), ${result.failed.length} failed.`,
+          items: result.failed.map(f => ({ name: f.name, reason: f.error })),
+        })
       } else {
-        const verb = clipboard.mode === 'copy' ? 'Copied' : 'Moved'
         toast.success(`${verb} ${result.completed} item(s)`)
       }
     } else {
       const verb = clipboard.mode === 'copy' ? 'Copied' : 'Moved'
       if (check.failed.length > 0) {
-        toast.error(`Failed: ${check.failed.map(f => `${f.name}: ${f.error}`).join(', ')}`)
-      } else if (check.conflicts.length > 0) {
-        toast.warning(`${verb} ${check.completed} item(s), but ${check.conflicts.length} skipped due to conflicts`)
+        await showOperationReport({
+          title: `${verb === 'Copied' ? 'Copy' : 'Move'} Partial`,
+          description: `${verb} ${check.completed} item(s), ${check.failed.length} skipped.`,
+          items: check.failed.map(f => ({ name: f.name, reason: f.error })),
+        })
       } else {
         toast.success(`${verb} ${check.completed} item(s)`)
       }
@@ -251,6 +320,7 @@ export async function pasteItems(targetPath: string) {
     tree.invalidateSubtree(targetPath)
     tree.loadChildren(targetPath)
   } catch (e: unknown) {
+    if (e instanceof Error && e.message === '__cancelled__') return
     toast.error(e instanceof Error ? e.message : 'Paste failed')
   }
 }

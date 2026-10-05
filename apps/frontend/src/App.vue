@@ -55,7 +55,7 @@ watch(
       </ResizablePanel>
     </ResizablePanelGroup>
 
-    <Toaster position="bottom-right" :duration="4000" rich-colors :expand="true" />
+    <Toaster position="top-center" :duration="4000" rich-colors :expand="true" />
     <DialogHost />
     <Lightbox />
     <DropOverlay />

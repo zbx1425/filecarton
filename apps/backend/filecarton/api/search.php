@@ -43,11 +43,21 @@ foreach ($iterator as $item) {
     }
 
     $name = $item->getFilename();
-    if (mb_stripos($name, $query) === false) {
+
+    if (FILECARTON_DOTFILES_BLOCK && $pathSec->isDotFile($name)) {
         continue;
     }
 
     $fullPath = str_replace('\\', '/', $item->getPathname());
+
+    if ($pathSec->isIgnored($fullPath)) {
+        continue;
+    }
+
+    if (mb_stripos($name, $query) === false) {
+        continue;
+    }
+
     $dirPath = str_replace('\\', '/', $item->getPath());
 
     $relativeDirPath = ($dirPath === $rootPath)

@@ -102,14 +102,21 @@ export interface ArchiveCreateResponse {
   size: number
 }
 
+export interface ArchiveExtractFailedEntry {
+  path: string
+  reason: 'blocked_extension' | 'blocked_dotfile' | 'blocked_ignored' | 'io_error'
+}
+
 export interface ArchiveExtractResponse {
   extracted: number
+  failed: ArchiveExtractFailedEntry[]
   targetPath: string
 }
 
 export interface ArchiveExtractDryRunResponse {
   wouldExtract: number
   conflicts: string[]
+  failed: ArchiveExtractFailedEntry[]
   targetPath: string
 }
 

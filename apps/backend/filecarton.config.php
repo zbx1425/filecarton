@@ -22,6 +22,43 @@ define_default('FILECARTON_BRANDING', 'FileCarton');
 define_default('FILECARTON_REPO_NAME', 'Files');
 
 
+// --- Dotfiles ---
+
+// When true, the API never returns dotfiles and users cannot create them.
+define_default('FILECARTON_DOTFILES_BLOCK', false);
+
+// When true, the frontend forces dotfiles visible; users cannot hide them.
+define_default('FILECARTON_DOTFILES_FORCE_VISIBLE', false);
+
+
+// --- File Extensions ---
+
+// If non-empty, ONLY these extensions are allowed for file creation/modification.
+// Each entry includes the leading dot, e.g. ['.txt', '.md'].
+// '' matches files with no extension (e.g. Makefile); '.' matches trailing-dot names.
+define_default('FILECARTON_EXTENSIONS_ALLOWLIST', []);
+
+// Extensions blocked from file creation/modification (ignored when ALLOWLIST is non-empty).
+// Same format as ALLOWLIST. Case-insensitive.
+define_default('FILECARTON_EXTENSIONS_BLOCKLIST', ['.php']);
+
+
+// --- Ignore Rules ---
+
+// Gitignore-ish patterns matched against paths relative to FILECARTON_ROOT_PATH.
+// Supports * (single-level wildcard), ** (multi-level), leading / (anchor to root),
+// trailing / (directories only).
+define_default('FILECARTON_IGNORE_PATTERN', []);
+
+// Absolute filesystem paths to ignore. Paths are resolved via realpath() at runtime.
+// Matching is exact or prefix-based (a directory entry hides everything beneath it).
+define_default('FILECARTON_IGNORE_REALPATH', [
+    __DIR__ . '/filecarton.php',
+    __DIR__ . '/filecarton.config.php',
+    __DIR__ . '/filecarton',
+]);
+
+
 // --- Routing ---
 
 // Base URL for static assets, if you have some good CDN.

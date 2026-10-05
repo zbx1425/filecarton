@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { apiGet } from '@/api/client'
+import { usePreferencesStore } from '@/stores/preferences'
 import type { TreeChild, TreeNodeResponse } from '@/api/types'
 
 export const useTreeStore = defineStore('tree', () => {
@@ -86,7 +87,11 @@ export const useTreeStore = defineStore('tree', () => {
   }
 
   function getChildren(path: string): TreeChild[] | undefined {
-    return childrenCache.value.get(path)
+    const raw = childrenCache.value.get(path)
+    if (!raw) return undefined
+    const prefs = usePreferencesStore()
+    if (prefs.showDotFiles) return raw
+    return raw.filter(c => !c.name.startsWith('.'))
   }
 
   function isExpanded(path: string): boolean {

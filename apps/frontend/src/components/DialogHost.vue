@@ -20,6 +20,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { pathWithoutExtension } from '@/utils/path'
+import OperationReportDialog from './OperationReportDialog.vue'
 
 const promptValue = ref('')
 const promptInputRef = ref<InstanceType<typeof Input> | null>(null)
@@ -28,7 +29,6 @@ const confirmBtnRef = ref<InstanceType<typeof Button> | null>(null)
 function handleConfirmAutoFocus(e: Event) {
   e.preventDefault()
   nextTick(() => {
-    console.log(confirmBtnRef.value?.$el)
     confirmBtnRef.value?.$el.focus()
   })
 }
@@ -63,12 +63,6 @@ function resolvePrompt(value: string | null) {
   dialogState.prompt.resolve = null
 }
 
-function resolvePasteConflict(value: boolean) {
-  dialogState.pasteConflict.resolve?.(value)
-  dialogState.pasteConflict.open = false
-  dialogState.pasteConflict.resolve = null
-}
-
 function resolveEditorConflict(value: 'overwrite' | 'reload' | 'cancel') {
   dialogState.editorConflict.resolve?.(value)
   dialogState.editorConflict.open = false
@@ -82,10 +76,6 @@ function handlePromptSubmit() {
 
 function handlePromptOpenChange(open: boolean) {
   if (!open) resolvePrompt(null)
-}
-
-function handlePasteConflictOpenChange(open: boolean) {
-  if (!open) resolvePasteConflict(false)
 }
 
 function handleEditorConflictOpenChange(open: boolean) {
@@ -118,7 +108,7 @@ function handleEditorConflictOpenChange(open: boolean) {
 
   <!-- Prompt (Dialog) -->
   <Dialog :open="dialogState.prompt.open" @update:open="handlePromptOpenChange">
-      <DialogContent>
+    <DialogContent>
       <DialogHeader>
         <DialogTitle>{{ dialogState.prompt.title }}</DialogTitle>
         <DialogDescription class="sr-only">Enter a value</DialogDescription>
@@ -138,36 +128,8 @@ function handleEditorConflictOpenChange(open: boolean) {
     </DialogContent>
   </Dialog>
 
-  <!-- Paste Conflict (Dialog) -->
-  <Dialog :open="dialogState.pasteConflict.open" @update:open="handlePasteConflictOpenChange">
-    <DialogContent>
-      <form @submit.prevent="resolvePasteConflict(true)">
-        <DialogHeader>
-          <DialogTitle>File Conflict</DialogTitle>
-          <DialogDescription>
-            The following {{ dialogState.pasteConflict.files.length }} file(s) already exist in the target directory:
-          </DialogDescription>
-        </DialogHeader>
-        <div v-if="dialogState.pasteConflict.activeFilePath && dialogState.pasteConflict.files.includes(dialogState.pasteConflict.activeFilePath)" class="text-xs text-destructive mt-2 px-1">
-          Warning: One of these files is currently open in the editor. Overwriting will discard your changes.
-        </div>
-        <div class="max-h-48 overflow-auto border p-2 text-xs font-mono space-y-0.5 mt-2 break-all">
-          <div
-            v-for="f in dialogState.pasteConflict.files"
-            :key="f"
-            :class="f === dialogState.pasteConflict.activeFilePath ? 'text-destructive font-medium' : ''"
-          >
-            {{ f }}
-            <span v-if="f === dialogState.pasteConflict.activeFilePath" class="text-destructive opacity-70">(editing)</span>
-          </div>
-        </div>
-        <DialogFooter class="mt-4">
-          <Button variant="outline" type="button" @click="resolvePasteConflict(false)">Cancel</Button>
-          <Button variant="destructive" type="submit">Overwrite All</Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
-  </Dialog>
+  <!-- Operation Report (file list errors/conflicts) -->
+  <OperationReportDialog />
 
   <!-- Editor Conflict (Dialog) -->
   <Dialog :open="dialogState.editorConflict.open" @update:open="handleEditorConflictOpenChange">

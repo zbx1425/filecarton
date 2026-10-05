@@ -6,12 +6,36 @@ class PathSecurity {
     /** @var string */
     private $rootPath;
 
+    /** @var string[] Resolved absolute ignore paths */
+    private $ignorePaths = [];
+
+    /** @var string[] Compiled regex patterns from IGNORE_PATTERN */
+    private $ignoreRegexes = [];
+
     public function __construct(string $rootPath) {
         $real = realpath($rootPath);
         if ($real === false) {
             throw new \RuntimeException('Root path does not exist: ' . $rootPath);
         }
         $this->rootPath = rtrim(str_replace('\\', '/', $real), '/');
+
+        if (defined('FILECARTON_IGNORE_REALPATH') && is_array(FILECARTON_IGNORE_REALPATH)) {
+            foreach (FILECARTON_IGNORE_REALPATH as $path) {
+                $resolved = realpath($path);
+                if ($resolved !== false) {
+                    $this->ignorePaths[] = str_replace('\\', '/', $resolved);
+                }
+            }
+        }
+
+        if (defined('FILECARTON_IGNORE_PATTERN') && is_array(FILECARTON_IGNORE_PATTERN)) {
+            foreach (FILECARTON_IGNORE_PATTERN as $pattern) {
+                $regex = $this->patternToRegex($pattern);
+                if ($regex !== null) {
+                    $this->ignoreRegexes[] = $regex;
+                }
+            }
+        }
     }
 
     public function getRootPath(): string {
@@ -217,6 +241,241 @@ class PathSecurity {
         }
         return implode('/', $result);
     }
+
+    // ------------------------------------------------------------------
+    // Dotfile checks
+    // ------------------------------------------------------------------
+
+    /**
+     * Check if a basename starts with a dot (dotfile / hidden file).
+     */
+    public function isDotFile(string $basename): bool {
+        return $basename !== '' && $basename[0] === '.' && $basename !== '.' && $basename !== '..';
+    }
+
+    /**
+     * Returns true when dotfile operations should be blocked by config.
+     */
+    public function isDotFileBlocked(string $basename): bool {
+        return FILECARTON_DOTFILES_BLOCK && $this->isDotFile($basename);
+    }
+
+    // ------------------------------------------------------------------
+    // Extension checks
+    // ------------------------------------------------------------------
+
+    /**
+     * Get the normalized extension key for a filename.
+     *   'file.PHP'   => '.php'
+     *   'Makefile'   => ''
+     *   'file.'      => '.'
+     */
+    public function getExtensionKey(string $basename): string {
+        if (str_ends_with($basename, '.')) return '.';
+        $ext = pathinfo($basename, PATHINFO_EXTENSION);
+        return $ext !== '' ? '.' . strtolower($ext) : '';
+    }
+
+    /**
+     * Check whether a file extension is blocked by the configured allow/block lists.
+     * Directories are never blocked by extension.
+     */
+    public function isExtensionBlocked(string $basename): bool {
+        $allowList = defined('FILECARTON_EXTENSIONS_ALLOWLIST') ? FILECARTON_EXTENSIONS_ALLOWLIST : [];
+        $blockList = defined('FILECARTON_EXTENSIONS_BLOCKLIST') ? FILECARTON_EXTENSIONS_BLOCKLIST : [];
+
+        if (empty($allowList) && empty($blockList)) return false;
+
+        $key = $this->getExtensionKey($basename);
+
+        if (!empty($allowList)) {
+            return !in_array(strtolower($key), array_map('strtolower', $allowList), true);
+        }
+        return in_array(strtolower($key), array_map('strtolower', $blockList), true);
+    }
+
+    // ------------------------------------------------------------------
+    // Ignore checks
+    // ------------------------------------------------------------------
+
+    /**
+     * Check if an absolute path is ignored by any configured rule.
+     * Matches exact paths and prefixes (directory content is also ignored).
+     */
+    public function isIgnored(string $absPath): bool {
+        $normalized = str_replace('\\', '/', $absPath);
+
+        foreach ($this->ignorePaths as $ignorePath) {
+            if ($normalized === $ignorePath || str_starts_with($normalized, $ignorePath . '/')) {
+                return true;
+            }
+        }
+
+        if (!empty($this->ignoreRegexes)) {
+            $relative = $this->getRelativePath($normalized);
+            if ($relative !== null) {
+                $isDir = is_dir($absPath);
+                foreach ($this->ignoreRegexes as $regex) {
+                    if (preg_match($regex, $relative . ($isDir ? '/' : ''))) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if a relative path (which may not yet exist on disk) would be
+     * ignored, treating it as the given type. Used for creation and
+     * extraction checks where the target does not exist yet.
+     */
+    public function wouldBeIgnored(string $absPath, bool $isDir): bool {
+        $normalized = str_replace('\\', '/', $absPath);
+
+        foreach ($this->ignorePaths as $ignorePath) {
+            if ($normalized === $ignorePath || str_starts_with($normalized, $ignorePath . '/')) {
+                return true;
+            }
+        }
+
+        if (!empty($this->ignoreRegexes)) {
+            $relative = $this->getRelativePath($normalized);
+            if ($relative !== null) {
+                foreach ($this->ignoreRegexes as $regex) {
+                    if (preg_match($regex, $relative . ($isDir ? '/' : ''))) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Get the path relative to rootPath, or null if outside root.
+     */
+    public function getRelativePath(string $absPath): ?string {
+        $normalized = str_replace('\\', '/', $absPath);
+        if ($normalized === $this->rootPath) return '';
+        if (str_starts_with($normalized, $this->rootPath . '/')) {
+            return substr($normalized, strlen($this->rootPath) + 1);
+        }
+        return null;
+    }
+
+    /**
+     * Convert a simplified gitignore pattern to a regex.
+     * Supports: * (non-slash wildcard), ** (any depth), leading / (root anchor),
+     * trailing / (directory-only match).
+     */
+    private function patternToRegex(string $pattern): ?string {
+        $pattern = trim($pattern);
+        if ($pattern === '' || $pattern[0] === '#') return null;
+
+        $anchored = str_starts_with($pattern, '/');
+        if ($anchored) $pattern = substr($pattern, 1);
+
+        $dirOnly = str_ends_with($pattern, '/');
+        if ($dirOnly) $pattern = rtrim($pattern, '/');
+
+        if ($pattern === '') return null;
+
+        $segments = explode('/', $pattern);
+        $regexParts = [];
+
+        foreach ($segments as $seg) {
+            if ($seg === '**') {
+                $regexParts[] = '.*';
+            } else {
+                $escaped = preg_quote($seg, '#');
+                $escaped = str_replace('\\*', '[^/]*', $escaped);
+                $escaped = str_replace('\\?', '[^/]', $escaped);
+                $regexParts[] = $escaped;
+            }
+        }
+
+        $inner = implode('/', $regexParts);
+
+        if ($anchored) {
+            $regex = '^' . $inner;
+        } else {
+            $regex = '(?:^|/)' . $inner;
+        }
+
+        if ($dirOnly) {
+            $regex .= '/';
+        } else {
+            $regex .= '(?:$|/)';
+        }
+
+        return '#' . $regex . '#';
+    }
+
+    // ------------------------------------------------------------------
+    // Composite validation helpers
+    // ------------------------------------------------------------------
+
+    /**
+     * Validate that an existing path can be accessed (not ignored).
+     * Throws 403 if the path is ignored.
+     */
+    public function assertNotIgnored(string $absPath): void {
+        if ($this->isIgnored($absPath)) {
+            throw new \RuntimeException('Access denied', 403);
+        }
+    }
+
+    /**
+     * Validate that a file can be modified (not ignored, extension not blocked).
+     * For write/edit operations on existing files.
+     */
+    public function assertCanModify(string $absPath): void {
+        $this->assertNotIgnored($absPath);
+        $basename = basename($absPath);
+        if (is_file($absPath) && $this->isExtensionBlocked($basename)) {
+            throw new \RuntimeException('File type is restricted', 403);
+        }
+    }
+
+    /**
+     * Validate that a new file can be created with the given name.
+     * Checks dotfile + extension rules. Does NOT check ignore rules
+     * (caller should check the target path separately).
+     */
+    public function assertCanCreate(string $basename): void {
+        if ($this->isDotFileBlocked($basename)) {
+            throw new \RuntimeException('Dotfiles are not allowed', 403);
+        }
+        if ($this->isExtensionBlocked($basename)) {
+            throw new \RuntimeException('File type is restricted', 403);
+        }
+    }
+
+    /**
+     * Filter a list of directory entries, removing ignored and
+     * (when DOTFILES_BLOCK is enabled) dotfile entries.
+     * Each entry must have a 'name' key.
+     */
+    public function filterEntries(array $entries, string $parentAbsPath): array {
+        return array_values(array_filter($entries, function ($entry) use ($parentAbsPath) {
+            $name = $entry['name'];
+            if (FILECARTON_DOTFILES_BLOCK && $this->isDotFile($name)) {
+                return false;
+            }
+            $childAbs = $parentAbsPath . '/' . $name;
+            if ($this->isIgnored($childAbs)) {
+                return false;
+            }
+            return true;
+        }));
+    }
+
+    // ------------------------------------------------------------------
+    // Private helpers
+    // ------------------------------------------------------------------
 
     private function rejectNullBytes(string $path): void {
         if (str_contains($path, "\0")) {

@@ -39,6 +39,18 @@ for ($i = 0; $i < $count; $i++) {
     }
 
     try {
+        $sanitizedName = $pathSec->sanitizeFileName($name);
+
+        if ($pathSec->isDotFileBlocked($sanitizedName)) {
+            $failed[] = ['name' => $name, 'error' => 'Dotfiles are not allowed'];
+            continue;
+        }
+
+        if ($pathSec->isExtensionBlocked($sanitizedName)) {
+            $failed[] = ['name' => $name, 'error' => 'File type is restricted'];
+            continue;
+        }
+
         $relPath = is_array($relativePaths) ? ($relativePaths[$i] ?? '') : '';
 
         if ($relPath !== '') {
@@ -48,15 +60,21 @@ for ($i = 0; $i < $count; $i++) {
             if (!empty($relParts)) {
                 $subRelPath = ($targetDir === '' ? '' : $targetDir . '/') . implode('/', $relParts);
                 $subDir = $pathSec->resolveOrCreate($subRelPath);
-                $destination = $subDir . '/' . $pathSec->sanitizeFileName($name);
+                $destination = $subDir . '/' . $sanitizedName;
             } else {
-                $destination = $targetAbs . '/' . $pathSec->sanitizeFileName($name);
+                $destination = $targetAbs . '/' . $sanitizedName;
             }
         } else {
-            $destination = $targetAbs . '/' . $pathSec->sanitizeFileName($name);
+            $destination = $targetAbs . '/' . $sanitizedName;
         }
 
         $pathSec->assertWithinRoot($destination);
+
+        if ($pathSec->wouldBeIgnored($destination, false)) {
+            $failed[] = ['name' => $name, 'error' => 'Access denied'];
+            continue;
+        }
+
         if (!move_uploaded_file($tmpName, $destination)) {
             throw new \RuntimeException('move_uploaded_file failed');
         }

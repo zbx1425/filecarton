@@ -26,6 +26,8 @@ if (strlen($input['content']) > FILECARTON_MAX_EDIT_SIZE) {
 }
 
 $absPath = $pathSec->resolve($input['path']);
+$pathSec->assertCanModify($absPath);
+
 if (!is_file($absPath)) {
     Response::error('Not a file', 404);
 }

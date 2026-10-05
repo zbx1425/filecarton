@@ -10,6 +10,7 @@ namespace FileCarton;
 function api_download(PathSecurity $pathSec, FileOps $fileOps): void {
 $path = $_GET['path'] ?? '';
 $absPath = $pathSec->resolve($path);
+$pathSec->assertNotIgnored($absPath);
 
 if (!is_file($absPath)) {
     Response::error('Not a file', 404);

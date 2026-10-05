@@ -23,7 +23,7 @@ export function useKeyboard() {
     return (
       dialogState.confirm.open
       || dialogState.prompt.open
-      || dialogState.pasteConflict.open
+      || dialogState.operationReport.open
       || dialogState.editorConflict.open
     )
   }

@@ -35,6 +35,11 @@ foreach ($input['items'] as $name) {
         continue;
     }
 
+    if ($pathSec->isIgnored($itemPath)) {
+        $failed[] = ['name' => $name, 'error' => 'Access denied'];
+        continue;
+    }
+
     if (!file_exists($itemPath) && !is_link($itemPath)) {
         $deleted++;
         continue;

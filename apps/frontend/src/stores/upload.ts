@@ -9,6 +9,7 @@ import { showPasteConflict, confirm } from '@/composables/useDialogs'
 import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
 import { useTreeStore } from '@/stores/tree'
+import { usePreferencesStore } from '@/stores/preferences'
 import { joinPath, parentPath } from '@/utils/path'
 import { CHUNK_SIZE as DEFAULT_CHUNK_SIZE, MAX_CONCURRENT_UPLOADS } from '@/utils/constants'
 import { formatSize } from '@/utils/format'
@@ -167,8 +168,27 @@ export const useUploadStore = defineStore('upload', () => {
     processQueue()
   }
 
+  function filterRestricted(files: File[]): File[] {
+    const prefs = usePreferencesStore()
+    const blocked: string[] = []
+    const passed: File[] = []
+    for (const file of files) {
+      if (prefs.isDotFileBlocked(file.name) || prefs.isExtensionBlocked(file.name)) {
+        blocked.push(file.name)
+      } else {
+        passed.push(file)
+      }
+    }
+    if (blocked.length > 0) {
+      const listing = blocked.slice(0, 5).join(', ')
+      const suffix = blocked.length > 5 ? ` and ${blocked.length - 5} more` : ''
+      toast.warning(`${blocked.length} file(s) not uploaded due to restrictions: ${listing}${suffix}`)
+    }
+    return passed
+  }
+
   async function addFiles(fileList: FileList | File[], targetDir: string) {
-    const allFiles = Array.from(fileList)
+    let allFiles = filterRestricted(Array.from(fileList))
     if (allFiles.length === 0) return
     if (!await checkOversized(allFiles)) return
 
@@ -188,7 +208,9 @@ export const useUploadStore = defineStore('upload', () => {
   }
 
   async function addFolderFiles(fileList: FileList, targetDir: string) {
-    const allFiles = Array.from(fileList)
+    const rawFiles = Array.from(fileList)
+    const allowedSet = new Set(filterRestricted(rawFiles.map(f => f)))
+    const allFiles = rawFiles.filter(f => allowedSet.has(f))
     if (allFiles.length === 0) return
     if (!await checkOversized(allFiles)) return
 
@@ -216,9 +238,25 @@ export const useUploadStore = defineStore('upload', () => {
     targetDir: string,
   ) {
     if (files.length === 0) return
-    if (!await checkOversized(files.map(f => f.file))) return
+    const prefs = usePreferencesStore()
+    const blocked: string[] = []
+    const passed: typeof files = []
+    for (const entry of files) {
+      if (prefs.isDotFileBlocked(entry.file.name) || prefs.isExtensionBlocked(entry.file.name)) {
+        blocked.push(entry.file.name)
+      } else {
+        passed.push(entry)
+      }
+    }
+    if (blocked.length > 0) {
+      const listing = blocked.slice(0, 5).join(', ')
+      const suffix = blocked.length > 5 ? ` and ${blocked.length - 5} more` : ''
+      toast.warning(`${blocked.length} file(s) not uploaded due to restrictions: ${listing}${suffix}`)
+    }
+    if (passed.length === 0) return
+    if (!await checkOversized(passed.map(f => f.file))) return
 
-    const entries = files.map(({ file, relativePath }) => ({
+    const entries = passed.map(({ file, relativePath }) => ({
       fileName: file.name,
       relativePath,
       targetDir,
@@ -226,7 +264,7 @@ export const useUploadStore = defineStore('upload', () => {
     if (!await checkConflicts(entries)) return
 
     const batchId = crypto.randomUUID()
-    enqueueTasks(batchId, files.map(({ file, relativePath }) => ({
+    enqueueTasks(batchId, passed.map(({ file, relativePath }) => ({
       id: crypto.randomUUID(),
       batchId,
       file,

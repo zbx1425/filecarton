@@ -4,7 +4,7 @@ import type { PasteResponse } from '@/api/types'
 import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
 import { useTreeStore } from '@/stores/tree'
-import { showPasteConflict } from '@/composables/useDialogs'
+import { showPasteConflict, showOperationReport } from '@/composables/useDialogs'
 
 const MIME_TYPE = 'application/filecarton'
 
@@ -66,13 +66,21 @@ export async function handleDrop(e: DragEvent, targetPath: string) {
       })
 
       if (result.failed.length > 0) {
-        toast.error(`Move failed: ${result.failed.map(f => f.name).join(', ')}`)
+        await showOperationReport({
+          title: 'Move Failed',
+          description: `${result.failed.length} item(s) could not be moved.`,
+          items: result.failed.map(f => ({ name: f.name, reason: f.error })),
+        })
       } else {
         toast.success(`Moved ${result.completed} item(s)`)
       }
     } else {
       if (check.failed.length > 0) {
-        toast.error(`Move failed: ${check.failed.map(f => f.name).join(', ')}`)
+        await showOperationReport({
+          title: 'Move Failed',
+          description: `${check.failed.length} item(s) could not be moved.`,
+          items: check.failed.map(f => ({ name: f.name, reason: f.error })),
+        })
       } else if (check.conflicts.length > 0) {
         toast.warning(`Moved ${check.completed} item(s), but ${check.conflicts.length} skipped due to conflicts`)
       } else {

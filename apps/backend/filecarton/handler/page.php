@@ -46,6 +46,14 @@ if (!$readonly) {
         'chunkSize'   => FILECARTON_UPLOAD_CHUNK_SIZE,
     ];
 }
+$configData['dotfiles'] = [
+    'block'        => (bool)FILECARTON_DOTFILES_BLOCK,
+    'forceVisible' => (bool)FILECARTON_DOTFILES_FORCE_VISIBLE,
+];
+$configData['extensions'] = [
+    'allowlist' => FILECARTON_EXTENSIONS_ALLOWLIST,
+    'blocklist' => FILECARTON_EXTENSIONS_BLOCKLIST,
+];
 $configJson = json_encode($configData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
 
 $entry = null;

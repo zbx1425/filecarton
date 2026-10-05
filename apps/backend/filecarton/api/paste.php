@@ -43,6 +43,8 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
         Response::error('Target directory not found', 404);
     }
 
+    $pathSec->assertNotIgnored($targetAbs);
+
     $normalizedSource = str_replace('\\', '/', $sourceAbs);
     $normalizedTarget = str_replace('\\', '/', $targetAbs);
 
@@ -66,7 +68,23 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
                 continue;
             }
 
+            if ($pathSec->isIgnored($srcAbs)) {
+                $failed[] = ['name' => $name, 'error' => 'Access denied'];
+                continue;
+            }
+
             $itemBaseName = basename($srcAbs);
+
+            if ($pathSec->isDotFileBlocked($itemBaseName)) {
+                $failed[] = ['name' => $name, 'error' => 'Dotfiles are not allowed'];
+                continue;
+            }
+
+            if (is_file($srcAbs) && $pathSec->isExtensionBlocked($itemBaseName)) {
+                $failed[] = ['name' => $name, 'error' => 'File type is restricted'];
+                continue;
+            }
+
             $dstAbs = $normalizedTarget . '/' . $itemBaseName;
 
             $srcNormalized = str_replace('\\', '/', $srcAbs);
@@ -87,7 +105,7 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
             }
         }
 
-        if (!empty($conflicts)) {
+        if (!empty($conflicts) || !empty($failed)) {
             Response::ok([
                 'completed' => 0,
                 'conflicts' => $conflicts,
@@ -95,7 +113,7 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
                 'renamed'   => [],
             ]);
         }
-        // No conflicts found — fall through to Phase 2 (execute all)
+        // No conflicts or failures found — fall through to Phase 2 (execute all)
     }
 
     // Phase 2: Execute all items
@@ -119,7 +137,23 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
             continue;
         }
 
+        if ($pathSec->isIgnored($srcAbs)) {
+            $failed[] = ['name' => $name, 'error' => 'Access denied'];
+            continue;
+        }
+
         $itemBaseName = basename($srcAbs);
+
+        if ($pathSec->isDotFileBlocked($itemBaseName)) {
+            $failed[] = ['name' => $name, 'error' => 'Dotfiles are not allowed'];
+            continue;
+        }
+
+        if (is_file($srcAbs) && $pathSec->isExtensionBlocked($itemBaseName)) {
+            $failed[] = ['name' => $name, 'error' => 'File type is restricted'];
+            continue;
+        }
+
         $dstAbs = $normalizedTarget . '/' . $itemBaseName;
 
         try {

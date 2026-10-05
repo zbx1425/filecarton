@@ -8,6 +8,14 @@ interface FileCartonConfig {
     maxFileSize: number
     chunkSize: number
   }
+  dotfiles?: {
+    block: boolean
+    forceVisible: boolean
+  }
+  extensions?: {
+    allowlist: string[]
+    blocklist: string[]
+  }
 }
 
 declare global {

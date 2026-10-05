@@ -26,8 +26,20 @@ if (!$pathSec->isValidFileName($name)) {
     Response::error('Invalid filename', 400);
 }
 
+if ($pathSec->isDotFileBlocked($name)) {
+    Response::error('Dotfiles are not allowed', 403);
+}
+
+if ($type === 'file' && $pathSec->isExtensionBlocked($name)) {
+    Response::error('File type is restricted', 403);
+}
+
 $relativePath = ($parentPath === '' || $parentPath === '/') ? $name : rtrim($parentPath, '/') . '/' . $name;
 $targetAbs = $pathSec->resolveParent($relativePath);
+
+if ($pathSec->wouldBeIgnored($targetAbs, $type === 'dir')) {
+    Response::error('Access denied', 403);
+}
 
 if (file_exists($targetAbs)) {
     Response::error('Name already exists', 409);

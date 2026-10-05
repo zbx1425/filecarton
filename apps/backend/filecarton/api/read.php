@@ -12,6 +12,7 @@ namespace FileCarton;
 function api_read(PathSecurity $pathSec, FileOps $fileOps): void {
 $path = $_GET['path'] ?? '';
 $absPath = $pathSec->resolve($path);
+$pathSec->assertCanModify($absPath);
 
 if (!is_file($absPath)) {
     Response::error('Not a file', 404);

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { apiGet } from '@/api/client'
 import { useUiStore } from '@/stores/ui'
+import { usePreferencesStore } from '@/stores/preferences'
 import type { DirEntry, FileEntry, ListResponse } from '@/api/types'
 
 type SortColumn = 'name' | 'size' | 'mtime'
@@ -64,16 +65,30 @@ export const useFileListStore = defineStore('fileList', () => {
 
   const filteredDirs = computed(() => {
     const ui = useUiStore()
+    const prefs = usePreferencesStore()
+    let result = sortedDirs.value
+    if (!prefs.showDotFiles) {
+      result = result.filter(d => !d.name.startsWith('.'))
+    }
     const q = ui.searchQuery.trim().toLowerCase()
-    if (!q || ui.searchRecursive) return sortedDirs.value
-    return sortedDirs.value.filter(d => d.name.toLowerCase().includes(q))
+    if (q && !ui.searchRecursive) {
+      result = result.filter(d => d.name.toLowerCase().includes(q))
+    }
+    return result
   })
 
   const filteredFiles = computed(() => {
     const ui = useUiStore()
+    const prefs = usePreferencesStore()
+    let result = sortedFiles.value
+    if (!prefs.showDotFiles) {
+      result = result.filter(f => !f.name.startsWith('.'))
+    }
     const q = ui.searchQuery.trim().toLowerCase()
-    if (!q || ui.searchRecursive) return sortedFiles.value
-    return sortedFiles.value.filter(f => f.name.toLowerCase().includes(q))
+    if (q && !ui.searchRecursive) {
+      result = result.filter(f => f.name.toLowerCase().includes(q))
+    }
+    return result
   })
 
   const allEntries = computed(() => {

@@ -24,11 +24,24 @@ if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $uploadId)) {
     Response::error('Invalid uploadId format', 400);
 }
 
+$sanitizedName = $pathSec->sanitizeFileName($fileName);
+
+if ($pathSec->isDotFileBlocked($sanitizedName)) {
+    Response::error('Dotfiles are not allowed', 403);
+}
+
+if ($pathSec->isExtensionBlocked($sanitizedName)) {
+    Response::error('File type is restricted', 403);
+}
+
 $targetAbs = $pathSec->resolveOrCreate($input['targetPath']);
 
-$sanitizedName = $pathSec->sanitizeFileName($fileName);
 $finalPath = $targetAbs . '/' . $sanitizedName;
 $pathSec->assertWithinRoot($finalPath);
+
+if ($pathSec->wouldBeIgnored($finalPath, false)) {
+    Response::error('Access denied', 403);
+}
 
 $tempDir = sys_get_temp_dir() . '/filecarton_chunks/' . $uploadId;
 if (!is_dir($tempDir)) {

@@ -4,7 +4,7 @@ import type { ArchiveCreateResponse, ArchiveExtractResponse, ArchiveExtractDryRu
 import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
 import { useTreeStore } from '@/stores/tree'
-import { confirm, showPasteConflict } from '@/composables/useDialogs'
+import { confirm, showPasteConflict, showOperationReport } from '@/composables/useDialogs'
 
 export async function createArchive(
   format: 'zip' | 'tar',
@@ -49,10 +49,32 @@ export async function extractArchive(archivePath: string, targetDir: string) {
       dryRun: true,
     })
 
-    if (dryRun.conflicts.length > 0) {
+    const hasFailed = dryRun.failed && dryRun.failed.length > 0
+    const hasConflicts = dryRun.conflicts.length > 0
+
+    if (hasFailed && !hasConflicts && dryRun.wouldExtract === 0) {
+      await showOperationReport({
+        title: 'Extraction Failed',
+        description: 'All entries were rejected due to restrictions.',
+        items: dryRun.failed.map(f => ({ name: f.path, reason: f.reason })),
+      })
+      return
+    }
+
+    if (hasConflicts) {
       const overwrite = await showPasteConflict(dryRun.conflicts)
       if (!overwrite) return
-    } else {
+    }
+
+    if (hasFailed) {
+      const proceed = await showOperationReport({
+        title: 'Entries Restricted',
+        description: `${dryRun.failed.length} entry(ies) will be skipped during extraction.`,
+        items: dryRun.failed.map(f => ({ name: f.path, reason: f.reason })),
+        continueLabel: `Extract ${dryRun.wouldExtract} file(s)`,
+      })
+      if (!proceed) return
+    } else if (!hasConflicts) {
       const confirmed = await confirm(
         'Extract Archive',
         `Extract ${dryRun.wouldExtract} file(s) to /${targetDir || '(root)'}?`,
@@ -67,7 +89,15 @@ export async function extractArchive(archivePath: string, targetDir: string) {
       targetPath: targetDir,
       createSubdir: false,
     })
-    toast.success(`Extracted ${result.extracted} files`)
+    if (result.failed && result.failed.length > 0) {
+      await showOperationReport({
+        title: 'Extraction Incomplete',
+        description: `Extracted ${result.extracted} file(s), ${result.failed.length} skipped.`,
+        items: result.failed.map(f => ({ name: f.path, reason: f.reason })),
+      })
+    } else {
+      toast.success(`Extracted ${result.extracted} files`)
+    }
     fileList.fetchDir(navigation.currentPathStr)
     tree.invalidateSubtree(targetDir)
     tree.loadChildren(targetDir)

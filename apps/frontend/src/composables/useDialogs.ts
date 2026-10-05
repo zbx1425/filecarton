@@ -21,16 +21,38 @@ export interface PromptState {
   resolve: ((value: string | null) => void) | null
 }
 
-export interface PasteConflictState {
-  open: boolean
-  files: string[]
-  activeFilePath: string | null
-  resolve: ((value: boolean) => void) | null
-}
-
 export interface EditorConflictState {
   open: boolean
   resolve: ((value: 'overwrite' | 'reload' | 'cancel') => void) | null
+}
+
+export interface OperationReportItem {
+  name: string
+  reason: string
+}
+
+export interface OperationReportState {
+  open: boolean
+  title: string
+  description: string
+  items: OperationReportItem[]
+  warningBanner: string
+  highlightItem: string
+  continueLabel: string
+  dangerContinue: boolean
+  resolve: ((value: boolean) => void) | null
+}
+
+export const REASON_LABELS: Record<string, string> = {
+  blocked_extension: 'Restricted extension',
+  blocked_dotfile: 'Restricted hidden files',
+  blocked_ignored: 'Restricted path',
+  io_error: 'I/O error',
+  'File already exists': 'File already exists',
+}
+
+export function reasonLabel(reason: string): string {
+  return REASON_LABELS[reason] ?? reason
 }
 
 export const dialogState = reactive({
@@ -40,12 +62,13 @@ export const dialogState = reactive({
   prompt: {
     open: false, title: '', placeholder: '', initialValue: '', submitLabel: 'OK', selectBaseName: false, resolve: null,
   } as PromptState,
-  pasteConflict: {
-    open: false, files: [] as string[], activeFilePath: null, resolve: null,
-  } as PasteConflictState,
   editorConflict: {
     open: false, resolve: null,
   } as EditorConflictState,
+  operationReport: {
+    open: false, title: '', description: '', items: [], warningBanner: '', highlightItem: '',
+    continueLabel: '', dangerContinue: false, resolve: null,
+  } as OperationReportState,
 })
 
 export function confirm(
@@ -86,9 +109,30 @@ export function prompt(
   })
 }
 
-export function showPasteConflict(files: string[]): Promise<boolean> {
-  if (dialogState.pasteConflict.open) return Promise.resolve(false)
+export function showOperationReport(options: {
+  title: string
+  description?: string
+  items: OperationReportItem[]
+  continueLabel?: string
+  dangerContinue?: boolean
+  highlightItem?: string
+  warningBanner?: string
+}): Promise<boolean> {
+  if (dialogState.operationReport.open) return Promise.resolve(false)
+  return new Promise(resolve => {
+    dialogState.operationReport.title = options.title
+    dialogState.operationReport.description = options.description ?? ''
+    dialogState.operationReport.items = options.items
+    dialogState.operationReport.continueLabel = options.continueLabel ?? ''
+    dialogState.operationReport.dangerContinue = options.dangerContinue ?? false
+    dialogState.operationReport.highlightItem = options.highlightItem ?? ''
+    dialogState.operationReport.warningBanner = options.warningBanner ?? ''
+    dialogState.operationReport.resolve = resolve
+    dialogState.operationReport.open = true
+  })
+}
 
+export function showPasteConflict(files: string[]): Promise<boolean> {
   let activePath: string | null = null
   try {
     const nav = useNavigationStore()
@@ -97,11 +141,16 @@ export function showPasteConflict(files: string[]): Promise<boolean> {
     }
   } catch { /* guard against call before pinia init */ }
 
-  return new Promise(resolve => {
-    dialogState.pasteConflict.files = files
-    dialogState.pasteConflict.activeFilePath = activePath
-    dialogState.pasteConflict.resolve = resolve
-    dialogState.pasteConflict.open = true
+  return showOperationReport({
+    title: 'File Conflict',
+    description: `The following ${files.length} file(s) already exist in the target directory:`,
+    items: files.map(f => ({ name: f, reason: 'File already exists' })),
+    continueLabel: 'Overwrite All',
+    dangerContinue: true,
+    highlightItem: activePath ?? '',
+    warningBanner: activePath && files.includes(activePath)
+      ? 'One of these files is currently open in the editor. Overwriting will discard your changes.'
+      : '',
   })
 }
 

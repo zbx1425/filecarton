@@ -33,8 +33,23 @@ if (!file_exists($oldAbs)) {
     Response::error('Source not found', 404);
 }
 
+$pathSec->assertNotIgnored($oldAbs);
+
+if ($pathSec->isDotFileBlocked($newName)) {
+    Response::error('Dotfiles are not allowed', 403);
+}
+
+$isFile = is_file($oldAbs);
+if ($isFile && $pathSec->isExtensionBlocked($newName)) {
+    Response::error('File type is restricted', 403);
+}
+
 $newRelPath = ($dirPath === '' || $dirPath === '/') ? $newName : rtrim($dirPath, '/') . '/' . $newName;
 $newAbs = $pathSec->resolveParent($newRelPath);
+
+if ($pathSec->wouldBeIgnored($newAbs, !$isFile)) {
+    Response::error('Access denied', 403);
+}
 
 if (basename($oldAbs) === $newName) {
     Response::ok(['renamed' => $newRelPath]);
