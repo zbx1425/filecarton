@@ -4,6 +4,17 @@ namespace FileCarton;
 
 class StartupCheck {
     /**
+     * Extra bytes so a multipart POST of a given payload still fits post_max_size.
+     *
+     * RFC 2046 caps the boundary at 70 chars. FileCarton sends a few parts
+     * (path + content for writes; uploadId/chunkIndex/totalChunks + chunk
+     * for uploads). Wrapping is ~1–2 KB even with a long filename. The
+     * dominant extra is a long `path` value (Windows long paths ~32 KB).
+     * 64 KB covers wrapping + a long path. File bytes are not percent-encoded.
+     */
+    private const MULTIPART_HEADROOM = 65536;
+
+    /**
      * Collect all environment/configuration problems.
      * Returns an empty array when everything is OK.
      *
@@ -49,20 +60,34 @@ class StartupCheck {
 
             $phpMaxUpload = self::parsePhpSize(ini_get('upload_max_filesize') ?: '0');
             $phpMaxPost   = self::parsePhpSize(ini_get('post_max_size') ?: '0');
-            $effective    = ($phpMaxPost > 0) ? min($phpMaxUpload, $phpMaxPost) : $phpMaxUpload;
+            $uploadLabel  = self::formatIniLimit('upload_max_filesize', $phpMaxUpload);
+            $postLabel    = self::formatIniLimit('post_max_size', $phpMaxPost);
+            $nginxNote    = 'Note: If you are using nginx, you likely need to also increase client_max_body_size in your nginx configuration, which cannot be detected by this self-check.';
 
-            if ($effective > 0 && FILECARTON_UPLOAD_CHUNK_SIZE > $effective) {
-                $p[] = 'FILECARTON_UPLOAD_CHUNK_SIZE ('
-                    . self::mb(FILECARTON_UPLOAD_CHUNK_SIZE) . ' MB) exceeds the PHP upload limit ('
-                    . self::mb($effective) . ' MB). '
-                    . 'Adjust upload_max_filesize / post_max_size in php.ini, or lower FILECARTON_UPLOAD_CHUNK_SIZE. '
-                    . 'Note: If you are using nginx, you likely need to also increase client_max_body_size in your nginx configuration, '
-                    . 'which cannot be detected by this self-check.';
+            $chunkProblem = self::multipartSizeProblem(
+                'FILECARTON_UPLOAD_CHUNK_SIZE',
+                FILECARTON_UPLOAD_CHUNK_SIZE,
+                $phpMaxUpload,
+                $phpMaxPost,
+                $uploadLabel,
+                $postLabel,
+                $nginxNote
+            );
+            if ($chunkProblem !== null) {
+                $p[] = $chunkProblem;
             }
-            if ($phpMaxPost > 0 && FILECARTON_MAX_EDIT_SIZE > $phpMaxPost) {
-                $p[] = 'FILECARTON_MAX_EDIT_SIZE ('
-                    . self::mb(FILECARTON_MAX_EDIT_SIZE) . ' MB) exceeds post_max_size ('
-                    . self::mb($phpMaxPost) . ' MB).';
+
+            $editProblem = self::multipartSizeProblem(
+                'FILECARTON_MAX_EDIT_SIZE',
+                FILECARTON_MAX_EDIT_SIZE,
+                $phpMaxUpload,
+                $phpMaxPost,
+                $uploadLabel,
+                $postLabel,
+                $nginxNote
+            );
+            if ($editProblem !== null) {
+                $p[] = $editProblem;
             }
         }
         if (FILECARTON_MAX_EDIT_SIZE <= 0) {
@@ -137,7 +162,49 @@ class StartupCheck {
         }
     }
 
+    /**
+     * Payload must fit upload_max_filesize; payload plus multipart headroom
+     * must fit post_max_size. Returns a problem string, or null if OK.
+     */
+    private static function multipartSizeProblem(
+        string $constantName,
+        int $payloadBytes,
+        int $phpMaxUpload,
+        int $phpMaxPost,
+        string $uploadLabel,
+        string $postLabel,
+        string $nginxNote
+    ): ?string {
+        $needPost = $payloadBytes + self::MULTIPART_HEADROOM;
+        $exceedsUpload = $phpMaxUpload > 0 && $payloadBytes > $phpMaxUpload;
+        $exceedsPost = $phpMaxPost > 0 && $needPost > $phpMaxPost;
+        if (!$exceedsUpload && !$exceedsPost) {
+            return null;
+        }
+        return $constantName . ' ('
+            . self::mb($payloadBytes) . ' MB) exceeds the PHP upload limit '
+            . '(payload must fit upload_max_filesize; payload plus '
+            . self::kb(self::MULTIPART_HEADROOM) . ' KB multipart headroom must fit post_max_size). '
+            . 'upload_max_filesize is ' . $uploadLabel
+            . '; post_max_size is ' . $postLabel . '. '
+            . 'Adjust these in php.ini, or lower ' . $constantName . '. '
+            . $nginxNote;
+    }
+
     private static function mb(int $bytes): string {
         return number_format($bytes / 1048576, 1);
+    }
+
+    private static function kb(int $bytes): string {
+        return (string)(int)round($bytes / 1024);
+    }
+
+    /** Human-readable php.ini size, or "unlimited" when parsed as 0. */
+    private static function formatIniLimit(string $directive, int $parsed): string {
+        if ($parsed <= 0) {
+            return 'unlimited';
+        }
+        $raw = trim((string)(ini_get($directive) ?: ''));
+        return $raw !== '' ? $raw : (self::mb($parsed) . ' MB');
     }
 }

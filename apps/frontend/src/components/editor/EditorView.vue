@@ -3,9 +3,9 @@ import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue'
 import type * as Monaco from 'monaco-editor'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
-import { apiGet, apiPost } from '@/api/client'
+import { apiGet, apiWrite } from '@/api/client'
 import { ApiError } from '@/api/client'
-import type { ReadResponse, WriteResponse } from '@/api/types'
+import type { ReadResponse } from '@/api/types'
 import { useNavigationStore } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
 import { loadMonaco } from '@/composables/useMonaco'
@@ -48,11 +48,7 @@ async function save() {
 
   saving.value = true
   try {
-    const result = await apiPost<WriteResponse>('write', {
-      path: filePath.value,
-      content: editor.getValue(),
-      expectedMtime: currentMtime,
-    })
+    const result = await apiWrite(filePath.value, editor.getValue(), currentMtime)
     currentMtime = result.mtime
     navigation.editDirty = false
     toast.success('File saved')
@@ -61,10 +57,7 @@ async function save() {
       const choice = await showEditorConflict()
       if (choice === 'overwrite') {
         try {
-          const result = await apiPost<WriteResponse>('write', {
-            path: filePath.value,
-            content: editor!.getValue(),
-          })
+          const result = await apiWrite(filePath.value, editor!.getValue())
           currentMtime = result.mtime
           navigation.editDirty = false
           toast.success('File saved (overwritten)')

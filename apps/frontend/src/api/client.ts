@@ -120,6 +120,24 @@ export function apiUpload<T>(
   })
 }
 
+export function apiWrite(
+  path: string,
+  content: string,
+  expectedMtime?: number,
+): Promise<{ size: number; mtime: number }> {
+  const formData = new FormData()
+  formData.append('path', path)
+  formData.append(
+    'content',
+    new Blob([content], { type: 'application/octet-stream' }),
+    'content',
+  )
+  if (expectedMtime !== undefined) {
+    formData.append('expectedMtime', String(expectedMtime))
+  }
+  return apiUpload('write', formData)
+}
+
 export function buildRawUrl(filePath: string): string {
   return buildUrl('raw', { path: filePath })
 }
