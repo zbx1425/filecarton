@@ -17,6 +17,7 @@ if ($query === '') {
 }
 
 $absBase = $pathSec->resolve($basePath);
+$pathSec->assertNotIgnored($absBase);
 
 if (!file_exists($absBase)) {
     Response::error('Directory not found', 404);

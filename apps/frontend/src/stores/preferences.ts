@@ -134,17 +134,17 @@ export const usePreferencesStore = defineStore('preferences', () => {
     })
   }
 
-  function getExtensionKey(filename: string): string {
+  function getSecurityExtensionKey(filename: string): string {
     if (filename.endsWith('.')) return '.'
     const dot = filename.lastIndexOf('.')
-    if (dot <= 0) return ''
+    if (dot < 0) return ''
     return '.' + filename.slice(dot + 1).toLowerCase()
   }
 
   function isExtensionBlocked(filename: string): boolean {
     const { allowlist, blocklist } = extensionsConfig
     if (allowlist.length === 0 && blocklist.length === 0) return false
-    const key = getExtensionKey(filename)
+    const key = getSecurityExtensionKey(filename)
     if (allowlist.length > 0) {
       return !allowlist.map(s => s.toLowerCase()).includes(key.toLowerCase())
     }

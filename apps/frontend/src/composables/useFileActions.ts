@@ -369,7 +369,8 @@ export function cutSelected() {
 export async function deleteSelected() {
   const fileList = useFileListStore()
   const navigation = useNavigationStore()
-  const items = Array.from(fileList.selected)
+  const visible = new Set(fileList.filteredEntries.map(e => e.name))
+  const items = Array.from(fileList.selected).filter(n => visible.has(n))
   if (items.length === 0) return
   await deleteItems(navigation.currentPathStr, items)
 }

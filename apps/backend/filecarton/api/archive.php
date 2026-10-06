@@ -93,6 +93,13 @@ function archive_create(array $input, PathSecurity $pathSec, FileOps $fileOps) {
  * Returns a reason string (e.g. 'blocked_dotfile') or null if allowed.
  */
 function check_extract_entry(string $normalized, string $finalTarget, PathSecurity $pathSec, bool $isDir): ?string {
+    $segments = explode('/', $normalized);
+    foreach ($segments as $seg) {
+        if (preg_match('#[:*?"<>|]#', $seg)) {
+            return 'blocked_invalid';
+        }
+    }
+
     if (!$isDir) {
         $basename = basename($normalized);
         if ($pathSec->isExtensionBlocked($basename)) {
@@ -197,7 +204,10 @@ function archive_extract(array $input, PathSecurity $pathSec) {
             Response::error('Unsupported archive format', 400);
         }
 
-        merge_extracted_to_target($tempExtractDir, $targetAbs);
+        $mergeSkipped = merge_extracted_to_target($tempExtractDir, $targetAbs, $pathSec);
+        foreach ($mergeSkipped as $skippedEntry) {
+            $failed[] = ['path' => $skippedEntry, 'reason' => 'blocked_ignored'];
+        }
     } catch (\Throwable $e) {
         Platform::deleteRecursive($tempExtractDir);
         throw $e;
@@ -214,20 +224,38 @@ function archive_extract(array $input, PathSecurity $pathSec) {
     ]);
 }
 
-function merge_extracted_to_target(string $tempDir, string $targetDir): void {
+/**
+ * Merge extracted files from temp directory to target, with protection checks.
+ * Returns array of skipped entry names (due to ignored/protected targets).
+ */
+function merge_extracted_to_target(string $tempDir, string $targetDir, PathSecurity $pathSec, string $prefix = ''): array {
     $entries = @scandir($tempDir);
-    if ($entries === false) return;
+    if ($entries === false) return [];
 
+    $skipped = [];
     foreach ($entries as $entry) {
         if ($entry === '.' || $entry === '..') continue;
         $src = $tempDir . '/' . $entry;
         $dst = $targetDir . '/' . $entry;
+        $entryPath = $prefix === '' ? $entry : $prefix . '/' . $entry;
 
         if (is_dir($src) && is_dir($dst)) {
-            merge_extracted_to_target($src, $dst);
+            $childSkipped = merge_extracted_to_target($src, $dst, $pathSec, $entryPath);
+            foreach ($childSkipped as $s) {
+                $skipped[] = $s;
+            }
             @rmdir($src);
         } else {
             if (file_exists($dst) || is_link($dst)) {
+                $dstNormalized = str_replace('\\', '/', $dst);
+                if ($pathSec->isIgnored($dstNormalized)) {
+                    $skipped[] = $entryPath;
+                    continue;
+                }
+                if (is_dir($dst) && $pathSec->hasProtectedDescendants($dstNormalized)) {
+                    $skipped[] = $entryPath;
+                    continue;
+                }
                 Platform::deleteRecursive($dst);
             }
             if (!rename($src, $dst)) {
@@ -235,6 +263,7 @@ function merge_extracted_to_target(string $tempDir, string $targetDir): void {
             }
         }
     }
+    return $skipped;
 }
 
 function extract_zip_safe(string $archiveAbs, string $targetAbs, string $normalizedTarget, PathSecurity $pathSec, int &$bytesExtracted, int $maxBytes, string $finalTarget, array &$failed): int {

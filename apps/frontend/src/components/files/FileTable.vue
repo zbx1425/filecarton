@@ -230,8 +230,8 @@ function startResize(e: MouseEvent) {
       class="flex items-center h-9 px-3 text-xs shrink-0"
       style="background: var(--statusbar-bg); color: var(--statusbar-fg); border-top: 1px solid var(--statusbar-border)"
     >
-      {{ fileList.dirs.length }} folders, {{ fileList.files.length }} files
-      <span class="ml-1">({{ formatSize(fileList.totalSize) }})</span>
+      {{ fileList.filteredDirs.length }} folders, {{ fileList.filteredFiles.length }} files
+      <span class="ml-1">({{ formatSize(fileList.filteredTotalSize) }})</span>
       <span class="flex-1"></span>
       <span class="text-muted-foreground/60">FileCarton by Zbx1425</span>
     </div>

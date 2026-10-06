@@ -40,6 +40,9 @@ define_default('FILECARTON_EXTENSIONS_ALLOWLIST', []);
 
 // Extensions blocked from file creation/modification (ignored when ALLOWLIST is non-empty).
 // Same format as ALLOWLIST. Case-insensitive.
+// Note: These restrict file creation, upload, rename-to, and save operations.
+// Existing files with blocked extensions remain readable and downloadable.
+// Copying or moving a folder containing such files is generally not prevented.
 define_default('FILECARTON_EXTENSIONS_BLOCKLIST', ['.php']);
 
 
@@ -48,6 +51,9 @@ define_default('FILECARTON_EXTENSIONS_BLOCKLIST', ['.php']);
 // Gitignore-ish patterns matched against paths relative to FILECARTON_ROOT_PATH.
 // Supports * (single-level wildcard), ** (multi-level), leading / (anchor to root),
 // trailing / (directories only).
+// Note: Patterns containing ** or unanchored patterns (without a leading /) require
+// filesystem scanning during folder copy, move, delete, and rename operations.
+// For large directory trees, prefer anchored patterns without ** where possible.
 define_default('FILECARTON_IGNORE_PATTERN', []);
 
 // Absolute filesystem paths to ignore. Paths are resolved via realpath() at runtime.

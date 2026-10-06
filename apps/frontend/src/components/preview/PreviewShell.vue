@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { useNavigationStore } from '@/stores/navigation'
 import { useFileListStore } from '@/stores/fileList'
 import { useUiStore } from '@/stores/ui'
+import { usePreferencesStore } from '@/stores/preferences'
 import { isEditable, isImage, isAudio, isArchive } from '@/composables/useFileType'
 import { buildDownloadUrl } from '@/api/client'
 import { ArrowLeft, Pencil, Download } from '@lucide/vue'
@@ -16,6 +17,7 @@ import FallbackPreview from './FallbackPreview.vue'
 const navigation = useNavigationStore()
 const fileList = useFileListStore()
 const ui = useUiStore()
+const preferences = usePreferencesStore()
 
 const fileName = computed(() => navigation.activeFile ?? '')
 const filePath = computed(() => navigation.activeFilePath ?? '')
@@ -25,7 +27,7 @@ const fileSize = computed(() => {
   return entry?.size ?? 0
 })
 
-const canEdit = computed(() => isEditable(fileName.value) && !ui.readonly)
+const canEdit = computed(() => isEditable(fileName.value) && !ui.readonly && !preferences.isExtensionBlocked(fileName.value))
 
 const previewType = computed(() => {
   const name = fileName.value

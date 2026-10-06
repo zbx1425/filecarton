@@ -18,5 +18,25 @@ if (!is_dir($absPath)) {
 
 $children = $fileOps->treeChildren($absPath);
 $children = $pathSec->filterEntries($children, $absPath);
+
+foreach ($children as &$child) {
+    if ($child['type'] === 'dir' && $child['hasChildren']) {
+        $childAbs = $absPath . '/' . $child['name'];
+        $sub = @scandir($childAbs);
+        if ($sub !== false) {
+            $hasVisible = false;
+            foreach ($sub as $s) {
+                if ($s === '.' || $s === '..') continue;
+                if (!$pathSec->isIgnored($childAbs . '/' . $s)) {
+                    $hasVisible = true;
+                    break;
+                }
+            }
+            $child['hasChildren'] = $hasVisible;
+        }
+    }
+}
+unset($child);
+
 Response::ok(['children' => $children]);
 }

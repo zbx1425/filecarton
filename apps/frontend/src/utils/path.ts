@@ -36,5 +36,6 @@ export function validateFileName(name: string): string | null {
   if (!name || !name.trim()) return 'Name cannot be empty'
   if (name === '.' || name === '..') return `"${name}" is not a valid name`
   if (INVALID_CHARS.test(name)) return 'Name contains invalid characters: / \\ : * ? " < > |'
+  if (name.endsWith('.') || name.endsWith(' ')) return 'Name cannot end with a dot or space'
   return null
 }

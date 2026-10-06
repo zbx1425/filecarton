@@ -18,12 +18,22 @@ class PathSecurity {
     /** @var bool Whether any pattern requires filesystem scanning */
     private $hasDeepPatterns = false;
 
+    /** @var bool Whether the filesystem is case-insensitive (Windows) */
+    private $caseInsensitive = false;
+
+    /** @var bool Whether any extension allow/block list is configured */
+    private $hasExtensionRules = false;
+
     public function __construct(string $rootPath) {
         $real = realpath($rootPath);
         if ($real === false) {
             throw new \RuntimeException('Root path does not exist: ' . $rootPath);
         }
         $this->rootPath = rtrim(str_replace('\\', '/', $real), '/');
+        $this->caseInsensitive = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+
+        $this->hasExtensionRules = (defined('FILECARTON_EXTENSIONS_ALLOWLIST') && !empty(FILECARTON_EXTENSIONS_ALLOWLIST))
+            || (defined('FILECARTON_EXTENSIONS_BLOCKLIST') && !empty(FILECARTON_EXTENSIONS_BLOCKLIST));
 
         if (defined('FILECARTON_IGNORE_REALPATH') && is_array(FILECARTON_IGNORE_REALPATH)) {
             foreach (FILECARTON_IGNORE_REALPATH as $path) {
@@ -331,7 +341,7 @@ class PathSecurity {
         $normalized = str_replace('\\', '/', $absPath);
 
         foreach ($this->ignorePaths as $ignorePath) {
-            if ($normalized === $ignorePath || str_starts_with($normalized, $ignorePath . '/')) {
+            if ($this->pathEquals($normalized, $ignorePath) || $this->pathStartsWith($normalized, $ignorePath . '/')) {
                 return true;
             }
         }
@@ -360,7 +370,7 @@ class PathSecurity {
         $normalized = str_replace('\\', '/', $absPath);
 
         foreach ($this->ignorePaths as $ignorePath) {
-            if ($normalized === $ignorePath || str_starts_with($normalized, $ignorePath . '/')) {
+            if ($this->pathEquals($normalized, $ignorePath) || $this->pathStartsWith($normalized, $ignorePath . '/')) {
                 return true;
             }
         }
@@ -467,9 +477,10 @@ class PathSecurity {
         }
 
         $needsScan = !$anchored || $hasGlobstar;
+        $flags = $this->caseInsensitive ? 'i' : '';
 
         return [
-            'regex'     => '#' . $regex . '#',
+            'regex'     => '#' . $regex . '#' . $flags,
             'needsScan' => $needsScan,
             'segments'  => $needsScan ? null : $segments,
         ];
@@ -520,7 +531,16 @@ class PathSecurity {
     public function filterEntries(array $entries, string $parentAbsPath): array {
         return array_values(array_filter($entries, function ($entry) use ($parentAbsPath) {
             $childAbs = $parentAbsPath . '/' . $entry['name'];
-            return !$this->isIgnored($childAbs);
+            if ($this->isIgnored($childAbs)) {
+                return false;
+            }
+            if (is_link($childAbs)) {
+                $resolved = realpath($childAbs);
+                if ($resolved !== false && $this->isIgnored(str_replace('\\', '/', $resolved))) {
+                    return false;
+                }
+            }
+            return true;
         }));
     }
 
@@ -536,7 +556,7 @@ class PathSecurity {
         $normalized = str_replace('\\', '/', $dirPath);
 
         foreach ($this->ignorePaths as $ip) {
-            if (str_starts_with($ip, $normalized . '/')) {
+            if ($this->pathStartsWith($ip, $normalized . '/')) {
                 return true;
             }
         }
@@ -553,11 +573,12 @@ class PathSecurity {
             }
         }
 
-        if (!$this->hasDeepPatterns) {
+        $needsScan = $this->hasDeepPatterns || $this->hasExtensionRules;
+        if (!$needsScan) {
             return false;
         }
 
-        return $this->scanForProtectedDescendant($dirPath);
+        return $this->scanForProtectedDescendant($dirPath, $this->hasExtensionRules);
     }
 
     /**
@@ -579,6 +600,23 @@ class PathSecurity {
             }
         }
 
+        // For exact anchored patterns (no wildcards), verify the target file exists
+        if (count($patternSegments) > count($dirSegments)) {
+            $hasWildcard = false;
+            foreach ($patternSegments as $seg) {
+                if (strpos($seg, '*') !== false || strpos($seg, '?') !== false) {
+                    $hasWildcard = true;
+                    break;
+                }
+            }
+            if (!$hasWildcard) {
+                $fullPath = $this->rootPath . '/' . implode('/', $patternSegments);
+                if (!file_exists($fullPath)) {
+                    return false;
+                }
+            }
+        }
+
         return true;
     }
 
@@ -587,20 +625,21 @@ class PathSecurity {
      * (supports * and ? wildcards).
      */
     private function segmentMatches(string $actual, string $pattern): bool {
-        if ($pattern === $actual) return true;
+        if ($this->caseInsensitive ? strcasecmp($pattern, $actual) === 0 : $pattern === $actual) return true;
         $escaped = preg_quote($pattern, '#');
         $escaped = str_replace('\\*', '[^/]*', $escaped);
         $escaped = str_replace('\\?', '[^/]', $escaped);
-        return preg_match('#^' . $escaped . '$#', $actual) === 1;
+        $flags = $this->caseInsensitive ? 'i' : '';
+        return preg_match('#^' . $escaped . '$#' . $flags, $actual) === 1;
     }
 
     /**
-     * Scan a directory tree for any protected (ignored) descendant.
-     * Returns true at the first match (early exit).
+     * Scan a directory tree for any protected (ignored) or extension-blocked descendant.
+     * Returns true at the first match (early exit). Fails closed on scandir error.
      */
-    private function scanForProtectedDescendant(string $dirPath): bool {
+    private function scanForProtectedDescendant(string $dirPath, bool $checkExtensions = false): bool {
         $entries = @scandir($dirPath);
-        if ($entries === false) return false;
+        if ($entries === false) return true;
 
         foreach ($entries as $entry) {
             if ($entry === '.' || $entry === '..') continue;
@@ -610,8 +649,12 @@ class PathSecurity {
                 return true;
             }
 
+            if ($checkExtensions && is_file($full) && $this->isExtensionBlocked($entry)) {
+                return true;
+            }
+
             if (is_dir($full) && !is_link($full)) {
-                if ($this->scanForProtectedDescendant($full)) {
+                if ($this->scanForProtectedDescendant($full, $checkExtensions)) {
                     return true;
                 }
             }
@@ -628,5 +671,24 @@ class PathSecurity {
         if (str_contains($path, "\0")) {
             throw new \InvalidArgumentException('Invalid path: null byte detected');
         }
+    }
+
+    /**
+     * Case-aware path equality comparison.
+     * Uses case-insensitive comparison on Windows.
+     */
+    private function pathEquals(string $a, string $b): bool {
+        return $this->caseInsensitive ? strcasecmp($a, $b) === 0 : $a === $b;
+    }
+
+    /**
+     * Case-aware str_starts_with for paths.
+     * Uses case-insensitive comparison on Windows.
+     */
+    private function pathStartsWith(string $haystack, string $prefix): bool {
+        if ($this->caseInsensitive) {
+            return strncasecmp($haystack, $prefix, strlen($prefix)) === 0;
+        }
+        return str_starts_with($haystack, $prefix);
     }
 }

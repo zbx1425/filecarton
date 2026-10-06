@@ -108,6 +108,7 @@ export const useFileListStore = defineStore('fileList', () => {
   const selectedCount = computed(() => selected.value.size)
   const hasSelection = computed(() => selected.value.size > 0)
   const totalSize = computed(() => files.value.reduce((sum, f) => sum + f.size, 0))
+  const filteredTotalSize = computed(() => filteredFiles.value.reduce((sum, f) => sum + f.size, 0))
 
   const isAllSelected = computed(() => {
     const entries = filteredEntries.value
@@ -211,11 +212,22 @@ export const useFileListStore = defineStore('fileList', () => {
     if (idx >= 0) focusIndex.value = idx
   }
 
-  watch(() => filteredEntries.value.length, (len) => {
+  watch(filteredEntries, (entries) => {
+    const len = entries.length
     if (len === 0) {
       focusIndex.value = -1
     } else if (focusIndex.value >= len) {
       focusIndex.value = len - 1
+    }
+    if (selected.value.size > 0) {
+      const visibleNames = new Set(entries.map(e => e.name))
+      const trimmed = new Set<string>()
+      for (const name of selected.value) {
+        if (visibleNames.has(name)) trimmed.add(name)
+      }
+      if (trimmed.size !== selected.value.size) {
+        selected.value = trimmed
+      }
     }
   })
 
@@ -245,6 +257,7 @@ export const useFileListStore = defineStore('fileList', () => {
     selectedCount,
     hasSelection,
     totalSize,
+    filteredTotalSize,
     isAllSelected,
     fetchDir,
     toggleSort,

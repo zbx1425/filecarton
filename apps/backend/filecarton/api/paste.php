@@ -188,6 +188,10 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
             }
             $newName = generate_copy_name($itemBaseName, $targetAbs);
             $dstAbs = $normalizedTarget . '/' . $newName;
+            if ($pathSec->wouldBeIgnored($dstAbs, is_dir($srcAbs))) {
+                $failed[] = ['name' => $name, 'error' => 'Access denied'];
+                continue;
+            }
             $renamed[] = ['original' => $itemBaseName, 'newName' => $newName];
         } elseif (file_exists($dstAbs)) {
             if (!$overwrite) {
