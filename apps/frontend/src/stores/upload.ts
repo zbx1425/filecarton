@@ -354,9 +354,12 @@ export const useUploadStore = defineStore('upload', () => {
     formData.append('path', targetPath)
 
     formData.append('files[]', task.file)
-    await apiUpload<UploadResponse>('upload', formData, (loaded, total) => {
+    const result = await apiUpload<UploadResponse>('upload', formData, (loaded, total) => {
       task.progress = Math.round((loaded / total) * 100)
     })
+    if (result.failed && result.failed.length > 0) {
+      throw new Error(result.failed[0].error || 'Upload rejected')
+    }
     task.progress = 100
   }
 

@@ -32,6 +32,7 @@ if ($type === 'file' && $pathSec->isExtensionBlocked($name)) {
 
 $relativePath = ($parentPath === '' || $parentPath === '/') ? $name : rtrim($parentPath, '/') . '/' . $name;
 $targetAbs = $pathSec->resolveParent($relativePath);
+$pathSec->assertNotIgnored(dirname($targetAbs));
 
 if ($pathSec->wouldBeIgnored($targetAbs, $type === 'dir')) {
     Response::error('Access denied', 403);

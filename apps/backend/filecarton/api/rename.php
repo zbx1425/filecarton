@@ -23,6 +23,7 @@ if (!$pathSec->isValidFileName($newName)) {
 }
 
 $dirAbs = $pathSec->resolve($dirPath);
+$pathSec->assertNotIgnored($dirAbs);
 if (!is_dir($dirAbs)) {
     Response::error('Directory not found', 404);
 }

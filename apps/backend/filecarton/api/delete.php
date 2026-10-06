@@ -18,6 +18,7 @@ if (!$input || !isset($input['path'], $input['items']) || !is_array($input['item
 }
 
 $basePath = $pathSec->resolve($input['path']);
+$pathSec->assertNotIgnored($basePath);
 if (!file_exists($basePath)) {
     Response::error('Directory not found', 404);
 }

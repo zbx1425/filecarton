@@ -39,7 +39,7 @@ export async function createItem(type: 'file' | 'dir') {
 
   const prefs = usePreferencesStore()
   if (prefs.isDotFileBlocked(name)) {
-    toast.error('Dotfiles are not allowed')
+    toast.error('Dot files (hidden files) are not allowed')
     return
   }
   if (type === 'file' && prefs.isExtensionBlocked(name)) {
@@ -184,7 +184,7 @@ export async function renameItem(dirPath: string, oldName: string, isDir?: boole
 
   const prefs = usePreferencesStore()
   if (prefs.isDotFileBlocked(newName)) {
-    toast.error('Dotfiles are not allowed')
+    toast.error('Dot files (hidden files) are not allowed')
     return
   }
   if (!isDir && prefs.isExtensionBlocked(newName)) {
@@ -237,51 +237,18 @@ export async function pasteItems(targetPath: string) {
     })
 
     const hasConflicts = check.conflicts.length > 0
-    const hasFailed = check.failed.length > 0
     let totalCompleted = check.completed
 
-    if ((hasConflicts || hasFailed) && check.completed === 0) {
-      const totalItems = clipboard.items.length
-      const passCount = totalItems - check.failed.length
-
-      let useOverwrite = false
-
-      if (hasFailed && !hasConflicts) {
-        if (passCount <= 0) {
-          await showOperationReport({
-            title: 'Paste Failed',
-            description: 'All items were rejected due to restrictions.',
-            items: check.failed.map(f => ({ name: f.name, reason: f.error })),
-          })
-          return
-        }
-        const proceed = await showOperationReport({
-          title: 'Items Restricted',
-          description: `${check.failed.length} item(s) will be skipped. Continue with the remaining ${passCount} item(s)?`,
-          items: check.failed.map(f => ({ name: f.name, reason: f.error })),
-          continueLabel: `Continue (${passCount})`,
-        })
-        if (!proceed) return
-      } else if (hasConflicts) {
-        if (hasFailed) {
-          await showOperationReport({
-            title: 'Items Restricted',
-            description: `${check.failed.length} item(s) will be skipped due to restrictions.`,
-            items: check.failed.map(f => ({ name: f.name, reason: f.error })),
-            continueLabel: 'Continue',
-          }).then(ok => { if (!ok) throw new Error('__cancelled__') })
-        }
-        const overwrite = await showPasteConflict(check.conflicts)
-        if (!overwrite) return
-        useOverwrite = true
-      }
+    if (hasConflicts && check.completed === 0) {
+      const overwrite = await showPasteConflict(check.conflicts)
+      if (!overwrite) return
 
       const result = await apiPost<PasteResponse>('paste', {
         mode: clipboard.mode,
         sourcePath: clipboard.sourcePath,
         items: clipboard.items.map(i => i.name),
         targetPath,
-        overwrite: useOverwrite,
+        overwrite: true,
       })
       totalCompleted = result.completed
 
@@ -294,7 +261,7 @@ export async function pasteItems(targetPath: string) {
         })
       } else if (result.failed.length > 0) {
         await showOperationReport({
-          title: `${verb === 'Copied' ? 'Copy' : 'Move'} Partial`,
+          title: `Partial ${verb === 'Copied' ? 'Copy' : 'Move'}`,
           description: `${verb} ${result.completed} item(s), ${result.failed.length} failed.`,
           items: result.failed.map(f => ({ name: f.name, reason: f.error })),
         })
@@ -303,9 +270,15 @@ export async function pasteItems(targetPath: string) {
       }
     } else {
       const verb = clipboard.mode === 'copy' ? 'Copied' : 'Moved'
-      if (check.failed.length > 0) {
+      if (check.failed.length > 0 && check.completed === 0) {
         await showOperationReport({
-          title: `${verb === 'Copied' ? 'Copy' : 'Move'} Partial`,
+          title: `${verb === 'Copied' ? 'Copy' : 'Move'} Failed`,
+          description: 'All items were rejected due to restrictions.',
+          items: check.failed.map(f => ({ name: f.name, reason: f.error })),
+        })
+      } else if (check.failed.length > 0) {
+        await showOperationReport({
+          title: `Partial ${verb === 'Copied' ? 'Copy' : 'Move'}`,
           description: `${verb} ${check.completed} item(s), ${check.failed.length} skipped.`,
           items: check.failed.map(f => ({ name: f.name, reason: f.error })),
         })

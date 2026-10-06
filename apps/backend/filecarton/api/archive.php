@@ -39,6 +39,7 @@ function archive_create(array $input, PathSecurity $pathSec, FileOps $fileOps) {
     }
 
     $dirAbs = $pathSec->resolve($input['path']);
+    $pathSec->assertNotIgnored($dirAbs);
     if (!is_dir($dirAbs)) {
         Response::error('Directory not found', 404);
     }

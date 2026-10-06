@@ -575,7 +575,9 @@ class PathSecurity {
      * actually exist via file_exists or narrow scandir for wildcard segments.
      */
     private function patternCouldMatchInside(array $patternSegments, string $dirRelPath): bool {
-        if ($dirRelPath === '') return true;
+        if ($dirRelPath === '') {
+            return $this->matchRemainingSegments($this->rootPath, $patternSegments);
+        }
 
         $dirSegments = explode('/', trim($dirRelPath, '/'));
 

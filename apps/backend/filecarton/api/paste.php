@@ -43,6 +43,7 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
         Response::error('Target directory not found', 404);
     }
 
+    $pathSec->assertNotIgnored($sourceAbs);
     $pathSec->assertNotIgnored($targetAbs);
 
     $normalizedSource = str_replace('\\', '/', $sourceAbs);
@@ -109,7 +110,7 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
             }
         }
 
-        if (!empty($conflicts) || !empty($failed)) {
+        if (!empty($conflicts)) {
             Response::ok([
                 'completed' => 0,
                 'conflicts' => $conflicts,
@@ -117,7 +118,7 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
                 'renamed'   => [],
             ]);
         }
-        // No conflicts or failures found — fall through to Phase 2 (execute all)
+        // No conflicts — fall through to Phase 2 (restricted items will fail individually)
     }
 
     // Phase 2: Execute all items
