@@ -57,16 +57,20 @@ export const useTreeStore = defineStore('tree', () => {
   }
 
   async function expandToPath(targetPath: string[]) {
-    let currentPath = ''
+    try {
+      let currentPath = ''
 
-    for (const segment of targetPath) {
+      for (const segment of targetPath) {
+        setExpanded(currentPath, true)
+        await loadChildren(currentPath)
+        currentPath = currentPath ? `${currentPath}/${segment}` : segment
+      }
+
       setExpanded(currentPath, true)
       await loadChildren(currentPath)
-      currentPath = currentPath ? `${currentPath}/${segment}` : segment
+    } catch {
+      // Expand as deep as possible; ignore errors from inaccessible paths
     }
-
-    setExpanded(currentPath, true)
-    await loadChildren(currentPath)
   }
 
   function invalidate(path: string) {

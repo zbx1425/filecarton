@@ -244,6 +244,8 @@ export async function pasteItems(targetPath: string) {
       const totalItems = clipboard.items.length
       const passCount = totalItems - check.failed.length
 
+      let useOverwrite = false
+
       if (hasFailed && !hasConflicts) {
         if (passCount <= 0) {
           await showOperationReport({
@@ -271,6 +273,7 @@ export async function pasteItems(targetPath: string) {
         }
         const overwrite = await showPasteConflict(check.conflicts)
         if (!overwrite) return
+        useOverwrite = true
       }
 
       const result = await apiPost<PasteResponse>('paste', {
@@ -278,7 +281,7 @@ export async function pasteItems(targetPath: string) {
         sourcePath: clipboard.sourcePath,
         items: clipboard.items.map(i => i.name),
         targetPath,
-        overwrite: true,
+        overwrite: useOverwrite,
       })
       totalCompleted = result.completed
 

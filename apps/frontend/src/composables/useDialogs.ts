@@ -45,7 +45,6 @@ export interface OperationReportState {
 
 export const REASON_LABELS: Record<string, string> = {
   blocked_extension: 'Restricted extension',
-  blocked_dotfile: 'Restricted hidden files',
   blocked_ignored: 'Restricted path',
   io_error: 'I/O error',
   'File already exists': 'File already exists',

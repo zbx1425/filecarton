@@ -14,11 +14,8 @@ define('FILECARTON_DOTFILES_BLOCK', false);
 define('FILECARTON_DOTFILES_FORCE_VISIBLE', false);
 
 define('FILECARTON_EXTENSIONS_ALLOWLIST', []);
-// Restrict creation/upload/rename-to/save. Existing files remain readable/downloadable.
-// Folder copy/move containing such files is generally not prevented.
 define('FILECARTON_EXTENSIONS_BLOCKLIST', ['.php']);
 
-// Patterns with ** or unanchored patterns require filesystem scanning for folder operations.
 define('FILECARTON_IGNORE_PATTERN', []);
 define('FILECARTON_IGNORE_REALPATH', [
     __DIR__ . '/filecarton.php',

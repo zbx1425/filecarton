@@ -492,11 +492,11 @@ class PathSecurity {
 
     /**
      * Validate that an existing path can be accessed (not ignored).
-     * Throws 403 if the path is ignored.
+     * Returns 404 (same as non-existent) to prevent existence oracle.
      */
     public function assertNotIgnored(string $absPath): void {
         if ($this->isIgnored($absPath)) {
-            throw new \RuntimeException('Access denied', 403);
+            throw new \RuntimeException('Path not found', 404);
         }
     }
 
@@ -508,17 +508,6 @@ class PathSecurity {
         $this->assertNotIgnored($absPath);
         $basename = basename($absPath);
         if (is_file($absPath) && $this->isExtensionBlocked($basename)) {
-            throw new \RuntimeException('File type is restricted', 403);
-        }
-    }
-
-    /**
-     * Validate that a new file can be created with the given name.
-     * Checks extension rules only. Dotfile and ignore rules are enforced
-     * by wouldBeIgnored() on the full target path.
-     */
-    public function assertCanCreate(string $basename): void {
-        if ($this->isExtensionBlocked($basename)) {
             throw new \RuntimeException('File type is restricted', 403);
         }
     }
@@ -573,18 +562,17 @@ class PathSecurity {
             }
         }
 
-        $needsScan = $this->hasDeepPatterns || $this->hasExtensionRules;
-        if (!$needsScan) {
+        if (!$this->hasDeepPatterns) {
             return false;
         }
 
-        return $this->scanForProtectedDescendant($dirPath, $this->hasExtensionRules);
+        return $this->scanForProtectedDescendant($dirPath);
     }
 
     /**
      * Check whether a root-anchored pattern (without **) could match
-     * items inside the given directory. Uses segment-by-segment matching
-     * with wildcard support, no filesystem access needed.
+     * items inside the given directory. Verifies that matching files
+     * actually exist via file_exists or narrow scandir for wildcard segments.
      */
     private function patternCouldMatchInside(array $patternSegments, string $dirRelPath): bool {
         if ($dirRelPath === '') return true;
@@ -600,24 +588,48 @@ class PathSecurity {
             }
         }
 
-        // For exact anchored patterns (no wildcards), verify the target file exists
         if (count($patternSegments) > count($dirSegments)) {
-            $hasWildcard = false;
-            foreach ($patternSegments as $seg) {
-                if (strpos($seg, '*') !== false || strpos($seg, '?') !== false) {
-                    $hasWildcard = true;
-                    break;
-                }
-            }
-            if (!$hasWildcard) {
-                $fullPath = $this->rootPath . '/' . implode('/', $patternSegments);
-                if (!file_exists($fullPath)) {
-                    return false;
-                }
-            }
+            $remaining = array_slice($patternSegments, count($dirSegments));
+            $basePath = $this->rootPath . '/' . implode('/', $dirSegments);
+            return $this->matchRemainingSegments($basePath, $remaining);
         }
 
         return true;
+    }
+
+    /**
+     * Recursively verify that at least one filesystem entry matches the
+     * remaining pattern segments beneath basePath. For literal segments
+     * uses file_exists; for wildcard segments does a narrow scandir.
+     * Fails closed (returns true) on scandir errors.
+     */
+    private function matchRemainingSegments(string $basePath, array $segments): bool {
+        if (empty($segments)) return true;
+
+        $segment = $segments[0];
+        $rest = array_slice($segments, 1);
+        $hasWild = strpos($segment, '*') !== false || strpos($segment, '?') !== false;
+
+        if (!$hasWild) {
+            $child = $basePath . '/' . $segment;
+            if (!file_exists($child)) return false;
+            return empty($rest) || $this->matchRemainingSegments($child, $rest);
+        }
+
+        $entries = @scandir($basePath);
+        if ($entries === false) return true;
+
+        foreach ($entries as $entry) {
+            if ($entry === '.' || $entry === '..') continue;
+            if (!$this->segmentMatches($entry, $segment)) continue;
+            if (empty($rest)) return true;
+            $child = $basePath . '/' . $entry;
+            if (is_dir($child) && $this->matchRemainingSegments($child, $rest)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -634,10 +646,10 @@ class PathSecurity {
     }
 
     /**
-     * Scan a directory tree for any protected (ignored) or extension-blocked descendant.
+     * Scan a directory tree for any ignored descendant.
      * Returns true at the first match (early exit). Fails closed on scandir error.
      */
-    private function scanForProtectedDescendant(string $dirPath, bool $checkExtensions = false): bool {
+    private function scanForProtectedDescendant(string $dirPath): bool {
         $entries = @scandir($dirPath);
         if ($entries === false) return true;
 
@@ -649,12 +661,8 @@ class PathSecurity {
                 return true;
             }
 
-            if ($checkExtensions && is_file($full) && $this->isExtensionBlocked($entry)) {
-                return true;
-            }
-
             if (is_dir($full) && !is_link($full)) {
-                if ($this->scanForProtectedDescendant($full, $checkExtensions)) {
+                if ($this->scanForProtectedDescendant($full)) {
                     return true;
                 }
             }

@@ -126,7 +126,14 @@ export const useNavigationStore = defineStore('navigation', () => {
       suppressHashSync = true
       currentPath.value = segments
       activeFile.value = fileName ?? null
-      viewMode.value = view
+      if (view === 'editor') {
+        const ui = useUiStore()
+        const prefs = usePreferencesStore()
+        viewMode.value = (fileName && !ui.readonly && !prefs.isExtensionBlocked(fileName))
+          ? 'editor' : 'preview'
+      } else {
+        viewMode.value = view
+      }
       editDirty.value = false
       suppressHashSync = false
     } else {

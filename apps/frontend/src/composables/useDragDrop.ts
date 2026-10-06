@@ -60,6 +60,8 @@ export async function handleDrop(e: DragEvent, targetPath: string) {
       const totalItems = payload.items.length
       const passCount = totalItems - check.failed.length
 
+      let useOverwrite = false
+
       if (hasFailed && !hasConflicts) {
         if (passCount <= 0) {
           await showOperationReport({
@@ -88,6 +90,7 @@ export async function handleDrop(e: DragEvent, targetPath: string) {
         }
         const overwrite = await showPasteConflict(check.conflicts)
         if (!overwrite) return
+        useOverwrite = true
       }
 
       const result = await apiPost<PasteResponse>('paste', {
@@ -95,7 +98,7 @@ export async function handleDrop(e: DragEvent, targetPath: string) {
         sourcePath: payload.sourcePath,
         items: payload.items,
         targetPath,
-        overwrite: true,
+        overwrite: useOverwrite,
       })
 
       if (result.failed.length > 0 && result.completed === 0) {

@@ -29,6 +29,7 @@ import { apiPost } from '@/api/client'
 import type { CreateResponse } from '@/api/types'
 import { toast } from 'vue-sonner'
 import { prompt } from '@/composables/useDialogs'
+import { usePreferencesStore } from '@/stores/preferences'
 
 const props = defineProps<{
   name: string
@@ -177,6 +178,11 @@ async function handleNewFolder() {
   const validationError = validateFileName(name)
   if (validationError) {
     toast.error(validationError)
+    return
+  }
+  const prefs = usePreferencesStore()
+  if (prefs.isDotFileBlocked(name)) {
+    toast.error('Dot files (hidden files) are not allowed')
     return
   }
   try {

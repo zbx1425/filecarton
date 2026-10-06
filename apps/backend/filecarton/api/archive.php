@@ -142,6 +142,7 @@ function archive_extract(array $input, PathSecurity $pathSec) {
     }
 
     $targetAbs = $pathSec->resolve($input['targetPath']);
+    $pathSec->assertNotIgnored($targetAbs);
     if (!is_dir($targetAbs)) {
         Response::error('Target directory not found', 404);
     }
@@ -183,7 +184,7 @@ function archive_extract(array $input, PathSecurity $pathSec) {
         ]);
     }
 
-    $tempExtractDir = $targetAbs . '/.fc_extract_' . bin2hex(random_bytes(4));
+    $tempExtractDir = $targetAbs . '/__fc_extract_' . bin2hex(random_bytes(4));
     if (!mkdir($tempExtractDir, 0755, true)) {
         Response::error('Cannot create temporary extraction directory', 500);
     }
@@ -200,20 +201,16 @@ function archive_extract(array $input, PathSecurity $pathSec) {
         } elseif ($ext === 'tar' || $ext === 'gz' || $ext === 'tgz') {
             $extracted = extract_tar_safe($archiveAbs, $tempExtractDir, $normalizedTemp, $pathSec, $bytesExtracted, $maxBytes, $normalizedTarget, $failed);
         } else {
-            Platform::deleteRecursive($tempExtractDir);
-            Response::error('Unsupported archive format', 400);
+            throw new \RuntimeException('Unsupported archive format');
         }
 
         $mergeSkipped = merge_extracted_to_target($tempExtractDir, $targetAbs, $pathSec);
         foreach ($mergeSkipped as $skippedEntry) {
             $failed[] = ['path' => $skippedEntry, 'reason' => 'blocked_ignored'];
         }
-    } catch (\Throwable $e) {
+    } finally {
         Platform::deleteRecursive($tempExtractDir);
-        throw $e;
     }
-
-    Platform::deleteRecursive($tempExtractDir);
 
     $relTarget = substr(str_replace('\\', '/', $targetAbs), strlen($pathSec->getRootPath()) + 1);
 
@@ -269,7 +266,7 @@ function merge_extracted_to_target(string $tempDir, string $targetDir, PathSecur
 function extract_zip_safe(string $archiveAbs, string $targetAbs, string $normalizedTarget, PathSecurity $pathSec, int &$bytesExtracted, int $maxBytes, string $finalTarget, array &$failed): int {
     $zip = new \ZipArchive();
     if ($zip->open($archiveAbs) !== true) {
-        Response::error('Cannot open ZIP archive', 400);
+        throw new \RuntimeException('Cannot open ZIP archive');
     }
 
     $extracted = 0;
@@ -340,7 +337,7 @@ function extract_tar_safe(string $archiveAbs, string $targetAbs, string $normali
     try {
         $phar = new \PharData($archiveAbs);
     } catch (\Throwable $e) {
-        Response::error('Cannot open TAR archive: ' . $e->getMessage(), 400);
+        throw new \RuntimeException('Cannot open TAR archive: ' . $e->getMessage());
     }
 
     $extracted = 0;

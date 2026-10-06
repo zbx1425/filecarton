@@ -42,7 +42,7 @@ define_default('FILECARTON_EXTENSIONS_ALLOWLIST', []);
 // Same format as ALLOWLIST. Case-insensitive.
 // Note: These restrict file creation, upload, rename-to, and save operations.
 // Existing files with blocked extensions remain readable and downloadable.
-// Copying or moving a folder containing such files is generally not prevented.
+// Folder-level operations (copy, move, delete, rename) do not enforce extension rules.
 define_default('FILECARTON_EXTENSIONS_BLOCKLIST', ['.php']);
 
 
