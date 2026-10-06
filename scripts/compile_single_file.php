@@ -222,8 +222,13 @@ function compressPhpSrc(string $src): string {
             [$tn, $ts] = $token;
 
             if ($tn === T_INLINE_HTML) {
+                // Pretty-printed HTML keeps one newline between tags; that is
+                // a single \n, so \n{2,} would not touch it. Collapse first.
+                // Leave trailing spaces on a line: they can be significant
+                // before a short-echo (e.g. "window.__FILECARTON__ = " + echo).
+                $ts = preg_replace('/>\s+</', '><', $ts);
                 $ts = preg_replace('/^[ \t]+/m', '', $ts);
-                $ts = preg_replace('/\n{2,}/', "\n", $ts);
+                $ts = preg_replace('/\n+/', "\n", $ts);
                 $ts = trim($ts, "\n");
                 $new .= $ts;
                 $iw = false;
@@ -237,6 +242,10 @@ function compressPhpSrc(string $src): string {
                 $ot = T_OPEN_TAG_WITH_ECHO;
                 $iw = true;
             } elseif ($tn === T_CLOSE_TAG) {
+                // PHP attaches the following newline to the close tag token.
+                // Drop it so mixed PHP/HTML does not re-insert a line break
+                // between a close tag and the next HTML fragment.
+                $ts = rtrim($ts);
                 if ($ot === T_OPEN_TAG_WITH_ECHO) {
                     $new = rtrim($new, '; ');
                 } else {

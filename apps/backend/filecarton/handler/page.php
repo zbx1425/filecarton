@@ -22,24 +22,17 @@ if (!empty($startupProblems)) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?= $repoName !== '' ? 'FileCarton - ' . htmlspecialchars($repoName, ENT_QUOTES, 'UTF-8') : 'FileCarton' ?></title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; max-width: 40em; margin: 3em auto; padding: 0 1.5em; color: #333; }
-        h1 { font-size: 1.4em; }
-        ul { line-height: 1.7; }
-        li + li { margin-top: .3em; }
-        .hint { color: #666; font-size: .9em; margin-top: 2em; border-top: 1px solid #e0e0e0; padding-top: 1em; }
-    </style>
+    <title>FileCarton</title>
 </head>
 <body>
-    <h1>FileCarton</h1>
-    <p>The application could not start due to a configuration or environment problem:</p>
-    <ul>
-<?php foreach ($startupProblems as $problem): ?>
-        <li><?= htmlspecialchars($problem, ENT_QUOTES, 'UTF-8') ?></li>
-<?php endforeach; ?>
-    </ul>
-    <p class="hint">Check <code>filecarton.config.php</code> and <code>php.ini</code> for details.</p>
+    <div style="margin-left: 4em; margin-top: 4em; font-family: Arial, Helvetica, sans-serif; max-width: 60em; margin: auto;">
+        <h1>FileCarton Self-Check Failed</h1>
+        <ul>
+    <?php foreach ($startupProblems as $problem): ?>
+            <li><?= htmlspecialchars($problem, ENT_QUOTES, 'UTF-8') ?></li>
+    <?php endforeach; ?>
+        </ul>
+    </div>
 </body>
 </html>
 <?php
