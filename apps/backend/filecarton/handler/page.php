@@ -10,6 +10,42 @@ namespace FileCarton;
  */
 
 function handle_page(): void {
+
+require_once FILECARTON_SCRIPT_DIR . '/lib/StartupCheck.php';
+$startupProblems = StartupCheck::problems();
+
+if (!empty($startupProblems)) {
+    http_response_code(500);
+    $repoName = defined('FILECARTON_REPO_NAME') ? FILECARTON_REPO_NAME : '';
+?><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><?= $repoName !== '' ? 'FileCarton - ' . htmlspecialchars($repoName, ENT_QUOTES, 'UTF-8') : 'FileCarton' ?></title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; max-width: 40em; margin: 3em auto; padding: 0 1.5em; color: #333; }
+        h1 { font-size: 1.4em; }
+        ul { line-height: 1.7; }
+        li + li { margin-top: .3em; }
+        .hint { color: #666; font-size: .9em; margin-top: 2em; border-top: 1px solid #e0e0e0; padding-top: 1em; }
+    </style>
+</head>
+<body>
+    <h1>FileCarton</h1>
+    <p>The application could not start due to a configuration or environment problem:</p>
+    <ul>
+<?php foreach ($startupProblems as $problem): ?>
+        <li><?= htmlspecialchars($problem, ENT_QUOTES, 'UTF-8') ?></li>
+<?php endforeach; ?>
+    </ul>
+    <p class="hint">Check <code>filecarton.config.php</code> and <code>php.ini</code> for details.</p>
+</body>
+</html>
+<?php
+    return;
+}
+
 require_once FILECARTON_SCRIPT_DIR . '/lib/Csrf.php';
 
 $csrfToken = Csrf::getToken();
@@ -58,34 +94,18 @@ $configJson = json_encode($configData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCA
 
 $entry = null;
 $cdn = null;
-$manifestError = true;
 
 if (!$isDevMode) {
     if (defined('FILECARTON_SINGLE_FILE') && \FILECARTON_SINGLE_FILE) {
-        $manifest = defined('FILECARTON_MANIFEST') ? \FILECARTON_MANIFEST : null;
+        $manifest = \FILECARTON_MANIFEST;
         $cdn = defined('FILECARTON_CDN') ? \FILECARTON_CDN : null;
-        $manifestError = ($manifest === null || !isset($manifest['src/main.ts']));
     } else {
         $manifestPath = FILECARTON_SCRIPT_DIR . '/public/.vite/manifest.json';
-        $manifest = null;
-        $manifestError = false;
-
-        if (is_file($manifestPath)) {
-            $manifest = json_decode(file_get_contents($manifestPath), true);
-            if (!isset($manifest['src/main.ts'])) {
-                $manifestError = true;
-            }
-        } else {
-            $manifestError = true;
-        }
-
+        $manifest = json_decode(file_get_contents($manifestPath), true);
         $cdnPath = FILECARTON_SCRIPT_DIR . '/public/cdn.json';
         $cdn = is_file($cdnPath) ? json_decode(file_get_contents($cdnPath), true) : null;
     }
-
-    if (!$manifestError) {
-        $entry = $manifest['src/main.ts'];
-    }
+    $entry = $manifest['src/main.ts'];
 }
 
 ?><!DOCTYPE html>
@@ -95,7 +115,7 @@ if (!$isDevMode) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= $repoName !== '' ? 'FileCarton - ' . htmlspecialchars($repoName, ENT_QUOTES, 'UTF-8') : 'FileCarton' ?></title>
 <?php if ($isDevMode): ?>
-<?php elseif (!$manifestError):
+<?php else:
     if (!empty($cdn['stylesheets'])):
         foreach ($cdn['stylesheets'] as $href): ?>
     <link rel="stylesheet" href="<?= htmlspecialchars($href) ?>">
@@ -128,8 +148,6 @@ endif; ?>
 <?php if ($isDevMode): ?>
     <script type="module" src="<?= htmlspecialchars($devServerUrl, ENT_QUOTES, 'UTF-8') ?>/@vite/client"></script>
     <script type="module" src="<?= htmlspecialchars($devServerUrl, ENT_QUOTES, 'UTF-8') ?>/src/main.ts"></script>
-<?php elseif ($manifestError): ?>
-    <p>Vite manifest was not found! Is it because the frontend was not built, because you did not copy the .vite directory, or because you did not set FILECARTON_DEV_SERVER?</p>
 <?php else:
     if (!empty($cdn['importmap'])): ?>
     <script type="importmap"><?= json_encode($cdn['importmap'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>

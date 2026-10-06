@@ -492,7 +492,6 @@ class PathSecurity {
 
     /**
      * Validate that an existing path can be accessed (not ignored).
-     * Returns 404 (same as non-existent) to prevent existence oracle.
      */
     public function assertNotIgnored(string $absPath): void {
         if ($this->isIgnored($absPath)) {
@@ -670,6 +669,24 @@ class PathSecurity {
             }
         }
 
+        return false;
+    }
+
+    // ------------------------------------------------------------------
+    // Apple junk detection (archive extraction)
+    // ------------------------------------------------------------------
+
+    /**
+     * Check if an archive entry path contains macOS junk segments:
+     * .DS_Store, AppleDouble (._*), or __MACOSX sidecar directories.
+     */
+    public static function isAppleJunkPath(string $relativePath): bool {
+        foreach (explode('/', str_replace('\\', '/', $relativePath)) as $seg) {
+            if ($seg === '') continue;
+            if (substr($seg, 0, 2) === '._') return true;
+            $lower = strtolower($seg);
+            if ($lower === '.ds_store' || $lower === '__macosx') return true;
+        }
         return false;
     }
 

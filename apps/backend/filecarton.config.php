@@ -98,9 +98,6 @@ define_default('FILECARTON_UPLOAD_MAX_FILE_SIZE', 1 * 1024 * 1024 * 1024); // 1 
 // as the values in PHP and Nginx's default configurations are quite small!
 define_default('FILECARTON_UPLOAD_CHUNK_SIZE', 4 * 1024 * 1024); // 4 MB
 
-// Maximum number of chunks per chunked upload session.
-define_default('FILECARTON_UPLOAD_MAX_CHUNKS', 10000);
-
 // Maximum directory nesting depth for folder upload relative paths.
 define_default('FILECARTON_UPLOAD_MAX_DEPTH', 50);
 

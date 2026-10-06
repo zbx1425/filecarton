@@ -286,6 +286,8 @@ function extract_zip_safe(string $archiveAbs, string $targetAbs, string $normali
             continue;
         }
 
+        if (PathSecurity::isAppleJunkPath($normalized)) continue;
+
         $isDir = str_ends_with($entryPath, '/');
         $blockReason = check_extract_entry($normalized, $finalTarget, $pathSec, $isDir);
         if ($blockReason !== null) {
@@ -360,6 +362,8 @@ function extract_tar_safe(string $archiveAbs, string $targetAbs, string $normali
             continue;
         }
 
+        if (PathSecurity::isAppleJunkPath($normalized)) continue;
+
         $isDir = $item->isDir();
         $blockReason = check_extract_entry($normalized, $finalTarget, $pathSec, $isDir);
         if ($blockReason !== null) {
@@ -426,6 +430,8 @@ function dry_run_zip(string $archiveAbs, string $normalizedTarget, PathSecurity 
         $normalized = sanitize_entry_path($normalized);
         if ($normalized === '') continue;
 
+        if (PathSecurity::isAppleJunkPath($normalized)) continue;
+
         $isDir = str_ends_with($entryPath, '/');
 
         $destPath = $normalizedTarget . '/' . $normalized;
@@ -470,6 +476,8 @@ function dry_run_tar(string $archiveAbs, string $normalizedTarget, PathSecurity 
         if ($normalized === '') continue;
         $normalized = sanitize_entry_path($normalized);
         if ($normalized === '') continue;
+
+        if (PathSecurity::isAppleJunkPath($normalized)) continue;
 
         $isDir = $item->isDir();
 

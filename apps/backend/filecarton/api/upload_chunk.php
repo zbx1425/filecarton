@@ -23,8 +23,9 @@ function api_upload_chunk(PathSecurity $pathSec, FileOps $fileOps): void {
         Response::error('Invalid chunkIndex or totalChunks', 400);
     }
 
-    if ($totalChunks > FILECARTON_UPLOAD_MAX_CHUNKS) {
-        Response::error('Too many chunks (max: ' . FILECARTON_UPLOAD_MAX_CHUNKS . ')', 400);
+    $maxChunks = (int)ceil(FILECARTON_UPLOAD_MAX_FILE_SIZE / max(1, FILECARTON_UPLOAD_CHUNK_SIZE));
+    if ($totalChunks > $maxChunks) {
+        Response::error('Too many chunks (max: ' . $maxChunks . ')', 400);
     }
 
     $phpMaxUpload = parse_php_size(ini_get('upload_max_filesize') ?: '0');

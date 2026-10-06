@@ -4,6 +4,7 @@ import { useUploadStore } from '@/stores/upload'
 import { useNavigationStore } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
 import { Upload } from '@lucide/vue'
+import { isAppleJunkName } from '@/utils/path'
 
 const upload = useUploadStore()
 const navigation = useNavigationStore()
@@ -80,6 +81,7 @@ async function readEntryRecursive(
   entry: FileSystemEntry,
   basePath: string,
 ): Promise<{ file: File; relativePath: string }[]> {
+  if (isAppleJunkName(entry.name)) return []
   if (entry.isFile) {
     return new Promise((resolve, reject) => {
       ;(entry as FileSystemFileEntry).file(

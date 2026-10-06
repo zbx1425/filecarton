@@ -31,6 +31,16 @@ export function pathWithoutExtension(name: string): string {
   return name.slice(0, dot)
 }
 
+export function isAppleJunkName(name: string): boolean {
+  if (name.startsWith('._')) return true
+  const lower = name.toLowerCase()
+  return lower === '.ds_store' || lower === '__macosx'
+}
+
+export function isAppleJunkPath(relativePath: string): boolean {
+  return relativePath.split('/').some(isAppleJunkName)
+}
+
 const INVALID_CHARS = /[/\\:*?"<>|]/
 export function validateFileName(name: string): string | null {
   if (!name || !name.trim()) return 'Name cannot be empty'

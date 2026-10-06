@@ -10,7 +10,7 @@ import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
 import { useTreeStore } from '@/stores/tree'
 import { usePreferencesStore } from '@/stores/preferences'
-import { joinPath, parentPath } from '@/utils/path'
+import { joinPath, parentPath, isAppleJunkName, isAppleJunkPath } from '@/utils/path'
 import { CHUNK_SIZE as DEFAULT_CHUNK_SIZE, MAX_CONCURRENT_UPLOADS } from '@/utils/constants'
 import { formatSize } from '@/utils/format'
 
@@ -200,7 +200,7 @@ export const useUploadStore = defineStore('upload', () => {
   }
 
   async function addFiles(fileList: FileList | File[], targetDir: string) {
-    let allFiles = filterRestricted(Array.from(fileList))
+    let allFiles = filterRestricted(Array.from(fileList).filter(f => !isAppleJunkName(f.name)))
     if (allFiles.length === 0) return
     if (!await checkOversized(allFiles)) return
 
@@ -220,8 +220,11 @@ export const useUploadStore = defineStore('upload', () => {
   }
 
   async function addFolderFiles(fileList: FileList, targetDir: string) {
-    const rawFiles = Array.from(fileList)
-    const allowedSet = new Set(filterRestricted(rawFiles.map(f => f)))
+    const rawFiles = Array.from(fileList).filter(f => {
+      const rel = (f as any).webkitRelativePath || ''
+      return !isAppleJunkName(f.name) && (!rel || !isAppleJunkPath(rel))
+    })
+    const allowedSet = new Set(filterRestricted(rawFiles))
     const allFiles = rawFiles.filter(f => allowedSet.has(f))
     if (allFiles.length === 0) return
     if (!await checkOversized(allFiles)) return
@@ -250,10 +253,14 @@ export const useUploadStore = defineStore('upload', () => {
     targetDir: string,
   ) {
     if (files.length === 0) return
+    const nonJunk = files.filter(e =>
+      !isAppleJunkName(e.file.name) && (!e.relativePath || !isAppleJunkPath(e.relativePath)),
+    )
+    if (nonJunk.length === 0) return
     const prefs = usePreferencesStore()
     const blocked: string[] = []
     const passed: typeof files = []
-    for (const entry of files) {
+    for (const entry of nonJunk) {
       if (
         prefs.isDotFileBlocked(entry.file.name) ||
         prefs.isExtensionBlocked(entry.file.name) ||
