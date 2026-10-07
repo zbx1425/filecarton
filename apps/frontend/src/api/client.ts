@@ -11,6 +11,19 @@ export class ApiError extends Error {
   }
 }
 
+let unauthorizedHandler: (() => void) | null = null
+
+export function onUnauthorized(handler: () => void) {
+  unauthorizedHandler = handler
+}
+
+function maybeUnauthorized(action: string, status: number) {
+  if (status !== 401) return
+  if (!window.__FILECARTON__.auth?.enabled) return
+  if (action === 'auth_login' || action === 'auth_logout') return
+  unauthorizedHandler?.()
+}
+
 function getConfig() {
   return window.__FILECARTON__
 }
@@ -59,7 +72,12 @@ async function handleResponse<T>(response: Response): Promise<T> {
 export async function apiGet<T>(action: string, params?: Record<string, string>, signal?: AbortSignal): Promise<T> {
   const url = buildUrl(action, params)
   const response = await fetch(url, signal ? { signal } : undefined)
-  return handleResponse<T>(response)
+  try {
+    return await handleResponse<T>(response)
+  } catch (e) {
+    if (e instanceof ApiError) maybeUnauthorized(action, e.status)
+    throw e
+  }
 }
 
 export async function apiPost<T>(action: string, body: unknown): Promise<T> {
@@ -73,7 +91,12 @@ export async function apiPost<T>(action: string, body: unknown): Promise<T> {
     },
     body: JSON.stringify(body),
   })
-  return handleResponse<T>(response)
+  try {
+    return await handleResponse<T>(response)
+  } catch (e) {
+    if (e instanceof ApiError) maybeUnauthorized(action, e.status)
+    throw e
+  }
 }
 
 export function apiUpload<T>(
@@ -99,7 +122,9 @@ export function apiUpload<T>(
       try {
         const body = JSON.parse(xhr.responseText)
         if (xhr.status < 200 || xhr.status >= 300) {
-          reject(new ApiError(body?.error ?? `HTTP ${xhr.status}`, xhr.status))
+          const err = new ApiError(body?.error ?? `HTTP ${xhr.status}`, xhr.status)
+          maybeUnauthorized(action, xhr.status)
+          reject(err)
           return
         }
         if (!body.ok) {
@@ -144,4 +169,18 @@ export function buildRawUrl(filePath: string): string {
 
 export function buildDownloadUrl(filePath: string): string {
   return buildUrl('download', { path: filePath })
+}
+
+export function buildAuthStartUrl(pluginId: string): string {
+  const { apiBase } = getConfig()
+  const url = new URL(apiBase, window.location.href)
+  url.hash = ''
+  for (const [k, v] of getPassthroughParams()) url.searchParams.append(k, v)
+  url.searchParams.set('fcauth', 'start')
+  url.searchParams.set('plugin', pluginId)
+  const hash = window.location.hash
+  if (hash && hash !== '#' && hash !== '#/') {
+    url.searchParams.set('fc_return_hash', hash.slice(1))
+  }
+  return url.pathname + url.search
 }

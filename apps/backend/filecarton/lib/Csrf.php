@@ -47,12 +47,27 @@ class Csrf {
 
     /**
      * Embedders may already have started a session. Leave that session alone.
+     * When we start the session ourselves, set SameSite=Lax for OAuth GET callbacks.
      */
-    private static function ensureSession(): void {
+    public static function ensureSession(): void {
         if (session_status() === PHP_SESSION_DISABLED) {
             throw new \RuntimeException('Sessions are disabled', 500);
         }
         if (session_status() === PHP_SESSION_NONE) {
+            $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+                || (int)($_SERVER['SERVER_PORT'] ?? 0) === 443
+                || strtolower($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+            if (PHP_VERSION_ID >= 70300) {
+                session_set_cookie_params([
+                    'lifetime' => 0,
+                    'path'     => '/',
+                    'secure'   => $secure,
+                    'httponly'  => true,
+                    'samesite'  => 'Lax',
+                ]);
+            } else {
+                session_set_cookie_params(0, '/; SameSite=Lax', '', $secure, true);
+            }
             session_start();
         }
     }

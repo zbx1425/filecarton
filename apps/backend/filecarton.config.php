@@ -3,6 +3,41 @@
  * FileCarton Configuration
  */
 
+// --- Auth ---
+
+// Set to true when embedding FileCarton into your own application.
+// This disables the built-in auth stack entirely.
+define_default('FILECARTON_EMBED', false);
+
+// Static user list. Each row: ['id' => '...', 'passwordHash' => '...', 'displayName' => '...', ...]
+// 'id' is required. Other fields are optional.
+// To lock down: remove NoLoginAuth from AUTH_PROVIDERS, add passwordHash to user rows.
+// Generate a hash: php -r "echo password_hash('your-password', PASSWORD_DEFAULT), PHP_EOL;"
+define_default('FILECARTON_STATIC_USER_LIST', [
+    ['id' => 'local'],
+]);
+
+// Auth providers. Each entry: ['class' => ClassName::class, ...options]
+// Default NoLoginAuth = no login page, open access (today's behavior).
+// To lock down: replace NoLoginAuth with StaticPasswordAuth (reads passwordHash
+// from STATIC_USER_LIST) and/or GitHubOAuth.
+define_default('FILECARTON_AUTH_PROVIDERS', [
+    ['class' => \FileCarton\NoLoginAuth::class],
+    // ['class' => \FileCarton\StaticPasswordAuth::class],
+    // ['class' => \FileCarton\GitHubOAuth::class, 'clientId' => '', 'clientSecret' => ''],
+]);
+
+// Grant resolvers. First non-null grant wins.
+// StaticGrantResolver maps identity.id to STATIC_USER_LIST rows.
+define_default('FILECARTON_GRANT_RESOLVERS', [
+    ['class' => \FileCarton\StaticGrantResolver::class],
+]);
+
+// Origin for OAuth redirect_uri, without trailing slash or path.
+// Empty = auto-detect from HTTPS / Host / X-Forwarded-Proto.
+define_default('FILECARTON_PUBLIC_ORIGIN', '');
+
+
 // --- Core ---
 
 // Filesystem path to the managed directory, preferably absolute.

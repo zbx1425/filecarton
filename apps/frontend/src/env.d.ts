@@ -1,3 +1,24 @@
+interface FileCartonAuthPlugin {
+  id: string
+  label: string
+  kind: 'password' | 'redirect'
+  icon?: string
+}
+
+interface FileCartonAuthUser {
+  id: string
+  displayName: string
+  pluginId: string
+}
+
+interface FileCartonAuthConfig {
+  enabled: boolean
+  implicit?: boolean
+  authenticated?: boolean
+  user?: FileCartonAuthUser | null
+  plugins?: FileCartonAuthPlugin[]
+}
+
 interface FileCartonConfig {
   apiBase: string
   csrfToken: string
@@ -16,6 +37,7 @@ interface FileCartonConfig {
     allowlist: string[]
     blocklist: string[]
   }
+  auth?: FileCartonAuthConfig
 }
 
 declare global {

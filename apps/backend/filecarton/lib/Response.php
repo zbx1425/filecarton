@@ -46,7 +46,11 @@ class Response {
         header('Content-Type: ' . $mime);
         header('Content-Length: ' . $size);
         header('ETag: ' . $etag);
-        header('Cache-Control: public, max-age=3600');
+        if (class_exists(__NAMESPACE__ . '\\Settings', false) && !Settings::embed()) {
+            header('Cache-Control: private, no-store');
+        } else {
+            header('Cache-Control: public, max-age=3600');
+        }
         header('X-Content-Type-Options: nosniff');
 
         if (self::trySendfile($absPath)) {

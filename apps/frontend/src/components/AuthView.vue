@@ -1,0 +1,140 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import { useUiStore } from '@/stores/ui'
+import { apiPost, buildAuthStartUrl } from '@/api/client'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { LogIn } from '@lucide/vue'
+
+const auth = useAuthStore()
+const ui = useUiStore()
+
+const username = ref('')
+const password = ref('')
+const submitting = ref(false)
+
+async function handlePasswordLogin() {
+  if (submitting.value) return
+  auth.error = ''
+  submitting.value = true
+  try {
+    const result = await apiPost<{ user: FileCartonAuthUser; csrfToken: string }>(
+      'auth_login',
+      { username: username.value, password: password.value },
+    )
+    auth.setAuthenticated(result.user, result.csrfToken)
+  } catch (e: any) {
+    auth.error = e?.message ?? 'Login failed.'
+  } finally {
+    submitting.value = false
+  }
+}
+
+function handleRedirect(pluginId: string) {
+  window.location.assign(buildAuthStartUrl(pluginId))
+}
+</script>
+
+<template>
+  <div class="flex min-h-screen">
+    <!-- Left: gradient background (lg+ only) -->
+    <div class="hidden lg:flex w-[55%] relative overflow-hidden bg-gradient-to-br from-[#023456] via-[#094168] to-[#2B5B86]">
+      <div class="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/5" />
+      <div class="absolute top-1/3 -right-20 w-80 h-80 rounded-full bg-white/5" />
+      <div class="absolute -bottom-16 left-1/4 w-64 h-64 rounded-full bg-white/5" />
+    </div>
+
+    <!-- Right: login form -->
+    <div class="flex-1 flex flex-col justify-center items-center px-6 py-12 bg-background">
+      <div class="w-full max-w-[380px]">
+        <!-- Header -->
+        <div class="mb-10">
+          <h2 class="text-2xl font-semibold tracking-tight text-foreground">Welcome</h2>
+          <div
+            v-if="ui.branding"
+            class="mt-1 text-lg font-semibold text-primary"
+          >
+            {{ ui.branding }}
+          </div>
+          <p class="mt-2 text-muted-foreground">Sign in to continue.</p>
+        </div>
+
+        <!-- Error -->
+        <div
+          v-if="auth.error"
+          class="mb-4 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+        >
+          {{ auth.error }}
+        </div>
+
+        <!-- Password form -->
+        <form
+          v-if="auth.passwordPlugins.length > 0"
+          class="space-y-4"
+          @submit.prevent="handlePasswordLogin"
+        >
+          <div class="space-y-2">
+            <Label for="fc-username">Username</Label>
+            <Input
+              id="fc-username"
+              v-model="username"
+              type="text"
+              autocomplete="username"
+              placeholder="Username"
+              :disabled="submitting"
+            />
+          </div>
+          <div class="space-y-2">
+            <Label for="fc-password">Password</Label>
+            <Input
+              id="fc-password"
+              v-model="password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="Password"
+              :disabled="submitting"
+            />
+          </div>
+          <Button type="submit" class="w-full" :disabled="submitting">
+            <LogIn class="size-4" />
+            {{ submitting ? 'Signing in...' : 'Sign in' }}
+          </Button>
+        </form>
+
+        <!-- Separator between password and redirect -->
+        <div
+          v-if="auth.passwordPlugins.length > 0 && auth.redirectPlugins.length > 0"
+          class="my-6 flex items-center gap-3"
+        >
+          <Separator class="flex-1" />
+          <span class="text-xs text-muted-foreground">or</span>
+          <Separator class="flex-1" />
+        </div>
+
+        <!-- Redirect buttons -->
+        <div
+          v-if="auth.redirectPlugins.length > 0"
+          class="space-y-3"
+        >
+          <button
+            v-for="plugin in auth.redirectPlugins"
+            :key="plugin.id"
+            class="flex items-center gap-3 w-full h-12 px-4 bg-background border border-input rounded-md text-[15px] text-foreground transition-colors hover:bg-accent hover:border-muted-foreground/40 cursor-pointer"
+            @click="handleRedirect(plugin.id)"
+          >
+            <img
+              v-if="plugin.icon"
+              :src="plugin.icon"
+              :alt="plugin.label"
+              class="w-5 h-5 shrink-0"
+            />
+            <span>Continue with {{ plugin.label }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>

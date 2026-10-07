@@ -16,7 +16,7 @@ $startupProblems = StartupCheck::problems();
 
 if (!empty($startupProblems)) {
     http_response_code(500);
-    $repoName = defined('FILECARTON_REPO_NAME') ? FILECARTON_REPO_NAME : '';
+    $repoName = Settings::repoName();
 ?><!DOCTYPE html>
 <html lang="en">
 <head>
@@ -42,9 +42,9 @@ if (!empty($startupProblems)) {
 require_once FILECARTON_SCRIPT_DIR . '/lib/Csrf.php';
 
 $csrfToken = Csrf::getToken();
-$repoName = FILECARTON_REPO_NAME;
-$readonly = FILECARTON_READONLY ? true : false;
-$branding = FILECARTON_BRANDING;
+$repoName = Settings::repoName();
+$readonly = Settings::readonly();
+$branding = Settings::branding();
 
 $apiBase = entry_url();
 
@@ -83,6 +83,11 @@ $configData['extensions'] = [
     'allowlist' => FILECARTON_EXTENSIONS_ALLOWLIST,
     'blocklist' => FILECARTON_EXTENSIONS_BLOCKLIST,
 ];
+$configData['auth'] = ['enabled' => false];
+if (!Settings::embed()) {
+    $configData['auth'] = Auth::frontendConfig();
+    header('Cache-Control: no-store');
+}
 $configJson = json_encode($configData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
 
 $entry = null;

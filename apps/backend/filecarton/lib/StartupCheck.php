@@ -43,6 +43,9 @@ class StartupCheck {
         if (!extension_loaded('zlib') || !function_exists('gzdecode')) {
             $p[] = 'Required PHP extension missing: zlib (gzdecode)';
         }
+        if (!extension_loaded('curl')) {
+            $p[] = 'Required PHP extension missing: curl';
+        }
 
         // Dotfiles mutex
         if (FILECARTON_DOTFILES_BLOCK && FILECARTON_DOTFILES_FORCE_VISIBLE) {
@@ -143,6 +146,13 @@ class StartupCheck {
             $savePath = session_save_path() ?: sys_get_temp_dir();
             if (!is_writable($savePath)) {
                 $p[] = 'Session save path is not writable: ' . $savePath;
+            }
+        }
+
+        // Auth configuration (standalone only)
+        if (class_exists(__NAMESPACE__ . '\\Auth', false) && !Settings::embed()) {
+            foreach (Auth::configProblems() as $authProblem) {
+                $p[] = $authProblem;
             }
         }
 

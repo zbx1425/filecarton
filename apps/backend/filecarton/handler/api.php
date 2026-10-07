@@ -18,8 +18,8 @@ require_once FILECARTON_SCRIPT_DIR . '/lib/Csrf.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/Response.php';
 
 $action = $_GET['fcapi'] ?? '';
-$pathSec = new PathSecurity(FILECARTON_ROOT_PATH);
-$fileOps = new FileOps();
+$authPublic = ['auth_login', 'auth_logout'];
+$isAuthAction = in_array($action, $authPublic, true);
 
 $binaryActions = ['raw', 'download'];
 if (!in_array($action, $binaryActions, true)) {
@@ -33,16 +33,31 @@ $validActions = [
     'search', 'create', 'delete', 'rename', 'paste', 'upload',
     'upload_chunk', 'upload_complete', 'archive', 'archive_list',
     'check_upload_conflicts',
+    'auth_login', 'auth_logout',
 ];
 
 $postActions = [
     'write', 'create', 'delete', 'rename', 'paste', 'upload',
     'upload_chunk', 'upload_complete', 'archive', 'check_upload_conflicts',
+    'auth_login', 'auth_logout',
 ];
 
 try {
     if (!in_array($action, $validActions, true)) {
         Response::error('Unknown action: ' . $action, 400);
+    }
+
+    if ($isAuthAction) {
+        if (Settings::embed()) {
+            Response::error('Builtin auth is disabled', 404);
+        }
+    } elseif (!Settings::filesOpen()) {
+        if (!Settings::embed() && Auth::identity() === null) {
+            Response::error('Authentication required', 401);
+        }
+        http_response_code(403);
+        echo 'FileCarton: FILECARTON_ROOT_PATH is not configured.';
+        exit;
     }
 
     if (in_array($action, $postActions, true) && $_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -51,9 +66,16 @@ try {
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         Csrf::validate();
-        if (FILECARTON_READONLY) {
+        if (!$isAuthAction && Settings::readonly()) {
             Response::error('Read-only mode', 403);
         }
+    }
+
+    $pathSec = null;
+    $fileOps = null;
+    if (!$isAuthAction) {
+        $pathSec = new PathSecurity(Settings::rootPath());
+        $fileOps = new FileOps();
     }
 
     require_once FILECARTON_SCRIPT_DIR . '/api/' . $action . '.php';

@@ -44,6 +44,13 @@ $libFiles = [
     $fcDir . '/lib/Csrf.php',
     $fcDir . '/lib/Response.php',
     $fcDir . '/lib/StartupCheck.php',
+    $fcDir . '/lib/Settings.php',
+    $fcDir . '/lib/Auth.php',
+    $fcDir . '/lib/AuthPassword.php',
+    $fcDir . '/lib/AuthImplicit.php',
+    $fcDir . '/lib/AuthRedirect.php',
+    $fcDir . '/lib/HttpClient.php',
+    $fcDir . '/lib/Grant.php',
 ];
 
 $apiFiles = glob($fcDir . '/api/*.php');
@@ -52,6 +59,7 @@ sort($apiFiles);
 $handlerFiles = [
     $fcDir . '/handler/asset.php',
     $fcDir . '/handler/api.php',
+    $fcDir . '/handler/auth.php',
     $fcDir . '/handler/page.php',
 ];
 

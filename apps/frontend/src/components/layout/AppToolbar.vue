@@ -3,6 +3,8 @@ import { computed, ref } from 'vue'
 import { useNavigationStore } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
 import { useUploadStore } from '@/stores/upload'
+import { useAuthStore } from '@/stores/auth'
+import { apiPost } from '@/api/client'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -30,6 +32,7 @@ import {
   Folder,
   ChevronDown,
   Settings2,
+  LogOut,
 } from '@lucide/vue'
 import { createItem } from '@/composables/useFileActions'
 import { isInternalDrag, handleDrop } from '@/composables/useDragDrop'
@@ -38,6 +41,16 @@ import ClipboardBadge from '@/components/ClipboardBadge.vue'
 const navigation = useNavigationStore()
 const ui = useUiStore()
 const upload = useUploadStore()
+const auth = useAuthStore()
+
+async function handleLogout() {
+  try {
+    const result = await apiPost<{ csrfToken: string }>('auth_logout', {})
+    auth.clearAuthenticated(result.csrfToken)
+  } catch {
+    auth.setUnauthenticated()
+  }
+}
 
 const pathSegments = computed(() => navigation.currentPath)
 const isAtRoot = computed(() => pathSegments.value.length === 0 && !navigation.activeFile)
@@ -200,6 +213,15 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
       <Button variant="ghost" size="icon-sm" @click="ui.settingsOpen = true">
         <Settings2 class="size-4" />
       </Button>
+
+      <template v-if="auth.showLogout">
+        <span class="text-xs text-muted-foreground truncate max-w-[120px]">
+          {{ auth.user?.displayName }}
+        </span>
+        <Button variant="ghost" size="icon-sm" @click="handleLogout">
+          <LogOut class="size-4" />
+        </Button>
+      </template>
     </div>
   </div>
 </template>

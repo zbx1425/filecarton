@@ -1,0 +1,771 @@
+<?php
+
+namespace FileCarton;
+
+interface AuthProvider {
+    /** Stable id used in URLs and session. ^[a-z][a-z0-9_]{0,31}$ */
+    public function id(): string;
+
+    /** Button caption / form heading fragment. Not HTML. */
+    public function label(): string;
+
+    /** 'password' | 'redirect' | 'implicit' */
+    public function kind(): string;
+}
+
+class AuthIdentity {
+    /** @var string */
+    public $id;
+    /** @var string */
+    public $displayName;
+    /** @var string */
+    public $pluginId;
+    /** @var array */
+    public $extra;
+
+    public function __construct($id, $displayName, $pluginId, array $extra = []) {
+        $this->id = (string)$id;
+        $this->displayName = (string)$displayName;
+        $this->pluginId = (string)$pluginId;
+        $this->extra = $extra;
+    }
+
+    public function toPublicArray(): array {
+        return [
+            'id'          => $this->id,
+            'displayName' => $this->displayName,
+            'pluginId'    => $this->pluginId,
+        ];
+    }
+}
+
+class AuthException extends \RuntimeException {
+    /** @var string SPA token: denied|expired|allowlist|exchange|config|unknown */
+    public $token;
+
+    public function __construct($token, $httpCode, $logMessage = '') {
+        $this->token = (string)$token;
+        parent::__construct($logMessage !== '' ? $logMessage : (string)$token, (int)$httpCode);
+    }
+}
+
+/**
+ * Provider-facing request/session view for redirect auth flows.
+ */
+class AuthContext {
+    /** @var RedirectAuth */
+    private $plugin;
+    /** @var string|null */
+    private $nonce;
+    /** @var array|null */
+    private $consumed;
+
+    private function __construct() {}
+
+    public static function forStart(RedirectAuth $plugin, $nonce): AuthContext {
+        $ctx = new AuthContext();
+        $ctx->plugin = $plugin;
+        $ctx->nonce = (string)$nonce;
+        $ctx->consumed = null;
+        return $ctx;
+    }
+
+    public static function forComplete(RedirectAuth $plugin, array $consumed): AuthContext {
+        $ctx = new AuthContext();
+        $ctx->plugin = $plugin;
+        $ctx->nonce = isset($consumed['nonce']) ? (string)$consumed['nonce'] : '';
+        $ctx->consumed = $consumed;
+        if (!isset($ctx->consumed['extra']) || !is_array($ctx->consumed['extra'])) {
+            $ctx->consumed['extra'] = [];
+        }
+        return $ctx;
+    }
+
+    public function pluginId(): string {
+        return $this->plugin->id();
+    }
+
+    public function nonce(): string {
+        return (string)$this->nonce;
+    }
+
+    /**
+     * Absolute callback URL. Pass true to append fc_nonce= (non-OAuth IdPs).
+     */
+    public function callbackUrl($includeNonce = false): string {
+        $url = Auth::absoluteScriptUrl() . '?fcauth=callback&plugin='
+            . rawurlencode($this->plugin->id());
+        if ($includeNonce) {
+            $url .= '&fc_nonce=' . rawurlencode($this->nonce());
+        }
+        return $url;
+    }
+
+    /** `{pluginId}.{nonce}.{hmac}` */
+    public function signedState(): string {
+        return Auth::signPending($this->plugin->id(), $this->nonce());
+    }
+
+    public function param($key) {
+        if (isset($_GET[$key]) && is_string($_GET[$key]) && $_GET[$key] !== '') {
+            return $_GET[$key];
+        }
+        return null;
+    }
+
+    public function setExtra($key, $value) {
+        if ($this->consumed !== null) {
+            $this->consumed['extra'][$key] = $value;
+            return;
+        }
+        $n = $this->nonce;
+        if ($n === null || $n === '' || empty($_SESSION[Auth::SESSION_PENDING][$n])
+            || !is_array($_SESSION[Auth::SESSION_PENDING][$n])) {
+            throw new \RuntimeException('Auth pending row missing', 500);
+        }
+        $_SESSION[Auth::SESSION_PENDING][$n]['extra'][$key] = $value;
+    }
+
+    public function getExtra($key, $default = null) {
+        if ($this->consumed !== null) {
+            return array_key_exists($key, $this->consumed['extra'])
+                ? $this->consumed['extra'][$key]
+                : $default;
+        }
+        $n = $this->nonce;
+        if ($n === null || empty($_SESSION[Auth::SESSION_PENDING][$n]['extra'])
+            || !is_array($_SESSION[Auth::SESSION_PENDING][$n]['extra'])) {
+            return $default;
+        }
+        $extra = $_SESSION[Auth::SESSION_PENDING][$n]['extra'];
+        return array_key_exists($key, $extra) ? $extra[$key] : $default;
+    }
+}
+
+class Auth {
+    const SESSION_USER    = 'filecarton_auth';
+    const SESSION_PENDING = 'filecarton_auth_pending';
+    const SESSION_FAIL    = 'filecarton_auth_fail';
+    const SESSION_HMAC    = 'filecarton_auth_hmac_key';
+    const PENDING_TTL     = 600;
+    const PENDING_MAX     = 10;
+    const FAIL_MAX        = 8;
+    const FAIL_LOCK       = 15;
+    const ID_PATTERN      = '/^[a-z][a-z0-9_]{0,31}$/';
+
+    /** @var AuthProvider[] */
+    private static $providers = [];
+    /** @var bool */
+    private static $booted = false;
+    /** @var string[] */
+    private static $bootErrors = [];
+    /** @var string[] provider id => absolute path */
+    private static $pluginFiles = [];
+
+    public static function instantiateFromSpec(array $spec, $mustBe) {
+        if (isset($spec['file']) && is_string($spec['file']) && $spec['file'] !== '') {
+            $file = $spec['file'];
+            if (!is_file($file)) {
+                throw new \InvalidArgumentException('Plugin file not found: ' . $file);
+            }
+            require_once $file;
+        }
+        if (empty($spec['class']) || !is_string($spec['class'])) {
+            throw new \InvalidArgumentException('Spec missing class');
+        }
+        $class = $spec['class'];
+        if (!class_exists($class)) {
+            throw new \InvalidArgumentException('Class not found: ' . $class);
+        }
+        $opts = $spec;
+        unset($opts['class'], $opts['file']);
+        $obj = new $class($opts);
+        if ($mustBe === GrantResolver::class) {
+            return $obj;
+        }
+        if (!$obj instanceof AuthProvider) {
+            throw new \InvalidArgumentException($class . ' is not an AuthProvider');
+        }
+        return $obj;
+    }
+
+    private static function validateProvider(AuthProvider $plugin) {
+        $id = $plugin->id();
+        if (!preg_match(self::ID_PATTERN, $id)) {
+            throw new \InvalidArgumentException('Invalid auth provider id: ' . $id);
+        }
+        $kind = $plugin->kind();
+        if ($kind === 'password' && !$plugin instanceof PasswordAuth) {
+            throw new \InvalidArgumentException($id . ' kind=password must extend PasswordAuth');
+        }
+        if ($kind === 'redirect' && !$plugin instanceof RedirectAuth) {
+            throw new \InvalidArgumentException($id . ' kind=redirect must extend RedirectAuth');
+        }
+        if ($kind === 'implicit' && !$plugin instanceof NoLoginAuth) {
+            throw new \InvalidArgumentException($id . ' kind=implicit must be NoLoginAuth');
+        }
+        if ($kind !== 'password' && $kind !== 'redirect' && $kind !== 'implicit') {
+            throw new \InvalidArgumentException($id . ' unknown kind ' . $kind);
+        }
+    }
+
+    private static function appendProvider(AuthProvider $plugin) {
+        self::validateProvider($plugin);
+        foreach (self::$providers as $existing) {
+            if ($existing->id() === $plugin->id()) {
+                throw new \InvalidArgumentException('Duplicate auth provider id: ' . $plugin->id());
+            }
+        }
+        self::$providers[] = $plugin;
+    }
+
+    /** @return AuthProvider[] */
+    public static function providers(): array {
+        return self::$providers;
+    }
+
+    public static function pluginById($id) {
+        foreach (self::$providers as $p) {
+            if ($p->id() === $id) return $p;
+        }
+        return null;
+    }
+
+    /** @return string[] */
+    public static function pluginFiles(): array {
+        return self::$pluginFiles;
+    }
+
+    public static function boot() {
+        if (self::$booted) return;
+        self::$booted = true;
+        if (Settings::embed()) {
+            return;
+        }
+        self::ensureSession();
+        $specs = defined('FILECARTON_AUTH_PROVIDERS') ? FILECARTON_AUTH_PROVIDERS : [];
+        if (!is_array($specs)) {
+            self::$bootErrors[] = 'FILECARTON_AUTH_PROVIDERS must be an array.';
+            $specs = [];
+        }
+        foreach ($specs as $i => $spec) {
+            if (!is_array($spec)) {
+                self::$bootErrors[] = 'FILECARTON_AUTH_PROVIDERS[' . $i . '] must be an array.';
+                continue;
+            }
+            try {
+                $p = self::instantiateFromSpec($spec, AuthProvider::class);
+                self::appendProvider($p);
+                if (isset($spec['file']) && is_string($spec['file']) && $spec['file'] !== '') {
+                    self::$pluginFiles[$p->id()] = $spec['file'];
+                }
+            } catch (\Throwable $e) {
+                self::$bootErrors[] = $e->getMessage();
+            }
+        }
+        Grants::boot();
+        self::gcPending();
+    }
+
+    public static function staticUserList(): array {
+        $list = defined('FILECARTON_STATIC_USER_LIST') ? FILECARTON_STATIC_USER_LIST : [];
+        return is_array($list) ? $list : [];
+    }
+
+    /**
+     * @return string[]
+     */
+    public static function configProblems(): array {
+        $p = self::$bootErrors;
+        if (Settings::embed()) return $p;
+
+        $list = self::staticUserList();
+        $ids = [];
+        foreach ($list as $i => $row) {
+            if (!is_array($row) || !isset($row['id']) || !is_string($row['id']) || $row['id'] === '') {
+                $p[] = 'FILECARTON_STATIC_USER_LIST[' . $i . '] missing id.';
+                continue;
+            }
+            $key = strtolower($row['id']);
+            if (isset($ids[$key])) {
+                $p[] = 'FILECARTON_STATIC_USER_LIST duplicate id: ' . $row['id'];
+            }
+            $ids[$key] = true;
+            if (isset($row['passwordHash']) && is_string($row['passwordHash']) && $row['passwordHash'] !== '') {
+                if (!preg_match('/^(\$2[ayb]\$|\$argon2)/', $row['passwordHash'])) {
+                    $p[] = 'FILECARTON_STATIC_USER_LIST passwordHash must be password_hash() ($2y$ / $2a$ / $2b$ / $argon2).';
+                }
+            }
+        }
+
+        $nImplicit = 0;
+        $nInteractive = 0;
+        foreach (self::$providers as $prov) {
+            if ($prov instanceof NoLoginAuth) $nImplicit++;
+            if ($prov instanceof PasswordAuth || $prov instanceof RedirectAuth) $nInteractive++;
+        }
+        if ($nImplicit > 1) {
+            $p[] = 'At most one implicit (NoLoginAuth) provider is allowed.';
+        }
+        if ($nImplicit > 0 && $nInteractive > 0) {
+            $p[] = 'NoLoginAuth cannot be combined with password or redirect providers.';
+        }
+        if ($nImplicit > 0 && ($list === [] || !isset($list[0]['id']) || !is_string($list[0]['id']) || $list[0]['id'] === '')) {
+            $p[] = 'NoLoginAuth requires FILECARTON_STATIC_USER_LIST[0].id.';
+        }
+        if ($nImplicit === 0 && $nInteractive === 0) {
+            $p[] = 'No auth providers registered (add NoLoginAuth, passwordHash rows, or AUTH_PROVIDERS).';
+        }
+
+        $hasCustomGrant = false;
+        foreach (defined('FILECARTON_GRANT_RESOLVERS') ? FILECARTON_GRANT_RESOLVERS : [] as $spec) {
+            if (is_array($spec) && !empty($spec['class'])) {
+                $hasCustomGrant = true;
+                break;
+            }
+        }
+        if ($nImplicit === 0 && !$hasCustomGrant && $list === [] && $nInteractive > 0) {
+            $p[] = 'FILECARTON_STATIC_USER_LIST is empty; redirect/password users will not receive a grant.';
+        }
+
+        foreach (Grants::bootErrors() as $e) {
+            $p[] = $e;
+        }
+
+        $gh = self::pluginById('github');
+        if ($gh instanceof GitHubOAuth) {
+            if ($gh->clientIdPublic() === '' || $gh->clientSecretPublic() === '') {
+                $p[] = 'GitHubOAuth clientId / clientSecret is empty.';
+            }
+            if (!extension_loaded('curl')) {
+                $p[] = 'GitHub OAuth requires the curl PHP extension.';
+            }
+        }
+
+        $root = defined('FILECARTON_ROOT_PATH') ? FILECARTON_ROOT_PATH : '';
+        $ignore = defined('FILECARTON_IGNORE_REALPATH') && is_array(FILECARTON_IGNORE_REALPATH)
+            ? FILECARTON_IGNORE_REALPATH : [];
+        $rootReal = ($root !== '' && is_string($root)) ? realpath($root) : false;
+        $files = self::$pluginFiles + Grants::pluginFiles();
+        foreach ($files as $id => $file) {
+            $real = realpath($file);
+            if ($real === false || $rootReal === false) continue;
+            $realN = str_replace('\\', '/', $real);
+            $rootN = rtrim(str_replace('\\', '/', $rootReal), '/');
+            if ($realN !== $rootN && strpos($realN, $rootN . '/') !== 0) continue;
+            $ignored = false;
+            foreach ($ignore as $ig) {
+                $igReal = realpath($ig);
+                if ($igReal !== false && str_replace('\\', '/', $igReal) === $realN) {
+                    $ignored = true;
+                    break;
+                }
+            }
+            if (!$ignored) {
+                $p[] = 'Auth/grant plugin file for "' . $id . '" is under FILECARTON_ROOT_PATH and not in FILECARTON_IGNORE_REALPATH: ' . $file;
+            }
+        }
+        return $p;
+    }
+
+    public static function ensureSession() {
+        Csrf::ensureSession();
+        self::ensureHmacKey();
+    }
+
+    private static function ensureHmacKey() {
+        if (empty($_SESSION[self::SESSION_HMAC]) || !is_string($_SESSION[self::SESSION_HMAC])) {
+            $_SESSION[self::SESSION_HMAC] = bin2hex(random_bytes(32));
+        }
+    }
+
+    private static function hmacSecret(): string {
+        self::ensureSession();
+        return $_SESSION[self::SESSION_HMAC];
+    }
+
+    /**
+     * NoLoginAuth: synthesize every request, do not read/write session identity.
+     * Password/redirect: session principal. Embed: null.
+     * @return AuthIdentity|null
+     */
+    public static function identity() {
+        if (Settings::embed()) return null;
+        foreach (self::$providers as $p) {
+            if ($p instanceof NoLoginAuth) {
+                return $p->identity();
+            }
+        }
+        self::ensureSession();
+        if (!isset($_SESSION[self::SESSION_USER]['id'])) return null;
+        $u = $_SESSION[self::SESSION_USER];
+        return new AuthIdentity($u['id'], $u['displayName'], $u['pluginId'], $u['extra'] ?? []);
+    }
+
+    public static function hasImplicit(): bool {
+        foreach (self::$providers as $p) {
+            if ($p instanceof NoLoginAuth) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Redirect icon: https: or data:image/ only.
+     */
+    public static function sanitizeIcon($url): string {
+        if (!is_string($url) || $url === '') return '';
+        if (strpbrk($url, "\r\n\0") !== false) return '';
+        if (stripos($url, 'https:') === 0) return $url;
+        if (stripos($url, 'data:image/') === 0) return $url;
+        return '';
+    }
+
+    /**
+     * Try each PasswordAuth in boot order.
+     * @return AuthIdentity|null
+     */
+    public static function loginPassword($username, $password) {
+        self::ensureSession();
+        self::assertNotLocked();
+        $username = is_string($username) ? $username : '';
+        $password = is_string($password) ? $password : '';
+        if ($username === '' || $password === '' || strlen($username) > 200 || strlen($password) > 1024) {
+            self::noteFailure();
+            return null;
+        }
+        foreach (self::$providers as $p) {
+            if (!$p instanceof PasswordAuth) continue;
+            try {
+                $identity = $p->verify($username, $password);
+            } catch (\Throwable $e) {
+                error_log('FileCarton auth: provider ' . $p->id() . ' threw: ' . $e->getMessage());
+                continue;
+            }
+            if ($identity instanceof AuthIdentity) {
+                try {
+                    self::establish($identity);
+                } catch (AuthException $e) {
+                    if ($e->token === 'allowlist') {
+                        self::noteFailure();
+                        self::logPasswordFailure($username);
+                        return null;
+                    }
+                    throw $e;
+                }
+                self::clearFailures();
+                return $identity;
+            }
+        }
+        self::noteFailure();
+        self::logPasswordFailure($username);
+        return null;
+    }
+
+    /**
+     * Password / redirect only. No session_regenerate_id. Rotates CSRF.
+     */
+    public static function establish(AuthIdentity $identity) {
+        self::ensureSession();
+        if (Grants::resolveFor($identity) === null) {
+            throw new AuthException('allowlist', 403, 'No grant for identity');
+        }
+        Csrf::generate();
+        $_SESSION[self::SESSION_USER] = [
+            'id'          => $identity->id,
+            'displayName' => $identity->displayName,
+            'pluginId'    => $identity->pluginId,
+            'extra'       => $identity->extra,
+            'loggedInAt'  => time(),
+        ];
+    }
+
+    public static function logout() {
+        self::ensureSession();
+        foreach (array_keys($_SESSION) as $k) {
+            if (is_string($k) && strpos($k, 'filecarton_auth') === 0) {
+                unset($_SESSION[$k]);
+            }
+        }
+        Csrf::generate();
+    }
+
+    public static function catalog(): array {
+        $out = [];
+        foreach (self::$providers as $p) {
+            if ($p instanceof NoLoginAuth) continue;
+            $row = [
+                'id'    => $p->id(),
+                'label' => $p->label(),
+                'kind'  => $p->kind(),
+            ];
+            if ($p instanceof RedirectAuth) {
+                $icon = self::sanitizeIcon($p->icon());
+                if ($icon !== '') $row['icon'] = $icon;
+            }
+            $out[] = $row;
+        }
+        return $out;
+    }
+
+    public static function frontendConfig(): array {
+        $user = self::identity();
+        return [
+            'enabled'       => true,
+            'implicit'      => self::hasImplicit(),
+            'authenticated' => $user !== null,
+            'user'          => $user ? $user->toPublicArray() : null,
+            'plugins'       => self::catalog(),
+        ];
+    }
+
+    // ── Redirect pending bag ──
+
+    public static function captureReturnContext(): array {
+        $hash = isset($_GET['fc_return_hash']) && is_string($_GET['fc_return_hash'])
+            ? self::sanitizeHash($_GET['fc_return_hash']) : '';
+        return [
+            'path_info'   => self::sanitizePathInfo($_SERVER['PATH_INFO'] ?? ''),
+            'state_query' => self::capturePassthroughQuery(),
+            'hash'        => $hash,
+        ];
+    }
+
+    public static function captureReturnFallback(): array {
+        return self::captureReturnContext();
+    }
+
+    public static function emptyReturnContext(): array {
+        return [
+            'path_info'   => '',
+            'state_query' => [],
+            'hash'        => '',
+        ];
+    }
+
+    public static function createPending($pluginId): string {
+        self::ensureSession();
+        self::gcPending();
+        $nonce = bin2hex(random_bytes(16));
+        $ctx = self::captureReturnContext();
+        $row = [
+            'nonce'       => $nonce,
+            'plugin'      => $pluginId,
+            'created'     => time(),
+            'path_info'   => $ctx['path_info'],
+            'state_query' => $ctx['state_query'],
+            'hash'        => $ctx['hash'],
+            'extra'       => [],
+        ];
+        if (!isset($_SESSION[self::SESSION_PENDING]) || !is_array($_SESSION[self::SESSION_PENDING])) {
+            $_SESSION[self::SESSION_PENDING] = [];
+        }
+        $_SESSION[self::SESSION_PENDING][$nonce] = $row;
+        return $nonce;
+    }
+
+    public static function consumePending($pluginId, $signedOrNonce) {
+        self::ensureSession();
+        self::gcPending();
+        $nonce = null;
+        if (is_string($signedOrNonce) && strpos($signedOrNonce, '.') !== false) {
+            $nonce = self::verifySignedPending($pluginId, $signedOrNonce);
+        } elseif (is_string($signedOrNonce) && preg_match('/^[a-f0-9]{32}$/', $signedOrNonce)) {
+            $nonce = $signedOrNonce;
+        }
+        if ($nonce === null) return null;
+        if (empty($_SESSION[self::SESSION_PENDING][$nonce])
+            || !is_array($_SESSION[self::SESSION_PENDING][$nonce])) {
+            return null;
+        }
+        $row = $_SESSION[self::SESSION_PENDING][$nonce];
+        if (($row['plugin'] ?? '') !== $pluginId) {
+            return null;
+        }
+        unset($_SESSION[self::SESSION_PENDING][$nonce]);
+        if (!isset($row['extra']) || !is_array($row['extra'])) {
+            $row['extra'] = [];
+        }
+        return $row;
+    }
+
+    public static function signPending($pluginId, $nonce): string {
+        $hmac = hash_hmac('sha256', $pluginId . "\0" . $nonce, self::hmacSecret());
+        return $pluginId . '.' . $nonce . '.' . $hmac;
+    }
+
+    public static function verifySignedPending($pluginId, $signed) {
+        $parts = explode('.', $signed, 3);
+        if (count($parts) !== 3) return null;
+        list($id, $nonce, $hmac) = $parts;
+        if ($id !== $pluginId) return null;
+        if (!preg_match('/^[a-f0-9]{32}$/', $nonce)) return null;
+        $expect = hash_hmac('sha256', $id . "\0" . $nonce, self::hmacSecret());
+        if (!hash_equals($expect, $hmac)) return null;
+        return $nonce;
+    }
+
+    public static function errorToken(\Throwable $e): string {
+        if ($e instanceof AuthException && $e->token !== '') {
+            return $e->token;
+        }
+        $map = [
+            'OAuth denied' => 'denied',
+            'No grant for identity' => 'allowlist',
+            'OAuth token exchange failed' => 'exchange',
+            'OAuth code missing' => 'exchange',
+            'GitHub user lookup failed' => 'exchange',
+        ];
+        $msg = $e->getMessage();
+        if (isset($map[$msg])) return $map[$msg];
+        $code = (int)$e->getCode();
+        if ($code === 403) return 'allowlist';
+        if ($code === 401) return 'denied';
+        return 'unknown';
+    }
+
+    public static function returnLocation(array $pending, $error = null): string {
+        $pathInfo = self::sanitizePathInfo($pending['path_info'] ?? '');
+        $url = script_url() . $pathInfo;
+        $pairs = [];
+        if (!empty($pending['state_query']) && is_array($pending['state_query'])) {
+            foreach ($pending['state_query'] as $pair) {
+                if (!is_array($pair) || count($pair) < 2) continue;
+                $k = (string)$pair[0];
+                $v = (string)$pair[1];
+                if (!self::isPassthroughKey($k)) continue;
+                $pairs[] = rawurlencode($k) . '=' . rawurlencode($v);
+            }
+        }
+        $hash = self::sanitizeHash($pending['hash'] ?? '');
+        if ($hash !== '') {
+            $pairs[] = 'fc_return_hash=' . rawurlencode($hash);
+        }
+        if (is_string($error) && $error !== '') {
+            $pairs[] = 'fc_auth_error=' . rawurlencode($error);
+        }
+        if ($pairs) {
+            $url .= '?' . implode('&', $pairs);
+        }
+        return $url;
+    }
+
+    public static function absoluteScriptUrl(): string {
+        $origin = defined('FILECARTON_PUBLIC_ORIGIN') ? FILECARTON_PUBLIC_ORIGIN : '';
+        if (!is_string($origin) || $origin === '') {
+            $origin = (self::requestIsHttps() ? 'https://' : 'http://')
+                . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost');
+        }
+        return rtrim($origin, '/') . script_url();
+    }
+
+    public static function isPassthroughKey($k): bool {
+        return $k === 'state' || str_starts_with($k, 'state_') || str_starts_with($k, 'state[');
+    }
+
+    // ── Internals ──
+
+    private static function sanitizePathInfo($pathInfo): string {
+        if (!is_string($pathInfo) || $pathInfo === '') return '';
+        if ($pathInfo[0] !== '/') return '';
+        if (strpos($pathInfo, '//') !== false) return '';
+        if (strpos($pathInfo, "\n") !== false || strpos($pathInfo, "\r") !== false || strpos($pathInfo, "\0") !== false) return '';
+        if (preg_match('#^[a-z][a-z0-9+.-]*:#i', $pathInfo)) return '';
+        return $pathInfo;
+    }
+
+    private static function sanitizeHash($hash): string {
+        if (!is_string($hash) || $hash === '') return '';
+        if ($hash[0] === '#') $hash = substr($hash, 1);
+        if (strpos($hash, "\n") !== false || strpos($hash, "\r") !== false || strpos($hash, "\0") !== false) return '';
+        if (strpos($hash, '://') !== false) return '';
+        return $hash;
+    }
+
+    private static function requestIsHttps(): bool {
+        if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') return true;
+        if ((int)($_SERVER['SERVER_PORT'] ?? 0) === 443) return true;
+        if (strtolower($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') return true;
+        return false;
+    }
+
+    private static function capturePassthroughQuery(): array {
+        $qs = isset($_SERVER['QUERY_STRING']) ? (string)$_SERVER['QUERY_STRING'] : '';
+        if ($qs === '') return [];
+        $pairs = [];
+        foreach (explode('&', $qs) as $part) {
+            if ($part === '') continue;
+            $eq = strpos($part, '=');
+            if ($eq === false) {
+                $k = urldecode($part);
+                $v = '';
+            } else {
+                $k = urldecode(substr($part, 0, $eq));
+                $v = urldecode(substr($part, $eq + 1));
+            }
+            if (self::isPassthroughKey($k)) {
+                $pairs[] = [$k, $v];
+            }
+        }
+        return $pairs;
+    }
+
+    private static function gcPending() {
+        if (empty($_SESSION[self::SESSION_PENDING]) || !is_array($_SESSION[self::SESSION_PENDING])) return;
+        $now = time();
+        foreach ($_SESSION[self::SESSION_PENDING] as $k => $row) {
+            if (!is_array($row) || ($now - (int)($row['created'] ?? 0)) > self::PENDING_TTL) {
+                unset($_SESSION[self::SESSION_PENDING][$k]);
+            }
+        }
+        if (count($_SESSION[self::SESSION_PENDING]) > self::PENDING_MAX) {
+            uasort($_SESSION[self::SESSION_PENDING], function ($a, $b) {
+                return ((int)($a['created'] ?? 0)) <=> ((int)($b['created'] ?? 0));
+            });
+            while (count($_SESSION[self::SESSION_PENDING]) > self::PENDING_MAX) {
+                $drop = array_keys($_SESSION[self::SESSION_PENDING])[0];
+                unset($_SESSION[self::SESSION_PENDING][$drop]);
+            }
+        }
+    }
+
+    private static function assertNotLocked() {
+        $f = $_SESSION[self::SESSION_FAIL] ?? null;
+        if (!is_array($f)) return;
+        if (!empty($f['until']) && time() < (int)$f['until']) {
+            throw new \RuntimeException('Too many attempts, try again shortly', 429);
+        }
+    }
+
+    private static function noteFailure() {
+        $n = (int)(($_SESSION[self::SESSION_FAIL]['n'] ?? 0)) + 1;
+        $row = ['n' => $n];
+        if ($n >= self::FAIL_MAX) {
+            $row['until'] = time() + self::FAIL_LOCK;
+            $row['n'] = 0;
+        }
+        $_SESSION[self::SESSION_FAIL] = $row;
+    }
+
+    private static function clearFailures() {
+        unset($_SESSION[self::SESSION_FAIL]);
+    }
+
+    public static function noteAuthFailure() {
+        self::noteFailure();
+    }
+
+    public static function assertAuthNotLocked() {
+        self::assertNotLocked();
+    }
+
+    private static function logPasswordFailure($username) {
+        $f = $_SESSION[self::SESSION_FAIL] ?? [];
+        $n = (int)($f['n'] ?? 0);
+        if ($n !== 1 && $n !== 0) return;
+        $safe = preg_replace('/[\r\n\t]+/', ' ', substr((string)$username, 0, 200));
+        error_log('FileCarton auth: password login failed');
+        if ($safe !== '') {
+            error_log('FileCarton auth: failed username (sanitized) ' . $safe);
+        }
+    }
+}

@@ -5,6 +5,12 @@
  */
 
 if (false) {
+define('FILECARTON_EMBED', false);
+define('FILECARTON_STATIC_USER_LIST', [['id' => 'local']]);
+define('FILECARTON_AUTH_PROVIDERS', [['class' => \FileCarton\NoLoginAuth::class]]);
+define('FILECARTON_GRANT_RESOLVERS', [['class' => \FileCarton\StaticGrantResolver::class]]);
+define('FILECARTON_PUBLIC_ORIGIN', '');
+
 define('FILECARTON_ROOT_PATH', '');
 define('FILECARTON_READONLY', false);
 define('FILECARTON_REPO_NAME', 'Files');
