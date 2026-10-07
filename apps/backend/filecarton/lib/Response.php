@@ -75,7 +75,7 @@ class Response {
         header('Content-Type: application/octet-stream');
         header("Content-Disposition: attachment; filename=\"" . addcslashes($ascii, '"\\') . "\"; filename*=UTF-8''" . $encoded);
         header('Content-Length: ' . $size);
-        header('Cache-Control: no-cache');
+        header('Cache-Control: private, no-store');
         header('X-Content-Type-Options: nosniff');
 
         if (self::trySendfile($absPath)) {

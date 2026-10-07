@@ -145,12 +145,9 @@ class AuthContext {
 class Auth {
     const SESSION_USER    = 'filecarton_auth';
     const SESSION_PENDING = 'filecarton_auth_pending';
-    const SESSION_FAIL    = 'filecarton_auth_fail';
     const SESSION_HMAC    = 'filecarton_auth_hmac_key';
     const PENDING_TTL     = 600;
     const PENDING_MAX     = 10;
-    const FAIL_MAX        = 8;
-    const FAIL_LOCK       = 15;
     const ID_PATTERN      = '/^[a-z][a-z0-9_]{0,31}$/';
 
     /** @var AuthProvider[] */
@@ -317,12 +314,21 @@ class Auth {
             $p[] = 'No auth providers registered (add NoLoginAuth, passwordHash rows, or AUTH_PROVIDERS).';
         }
 
+        $grantSpecs = defined('FILECARTON_GRANT_RESOLVERS') ? FILECARTON_GRANT_RESOLVERS : [];
+        $grantSpecs = is_array($grantSpecs) ? $grantSpecs : [];
+        $hasAnyResolver = false;
         $hasCustomGrant = false;
-        foreach (defined('FILECARTON_GRANT_RESOLVERS') ? FILECARTON_GRANT_RESOLVERS : [] as $spec) {
+        foreach ($grantSpecs as $spec) {
             if (is_array($spec) && !empty($spec['class'])) {
-                $hasCustomGrant = true;
+                $hasAnyResolver = true;
+                if ($spec['class'] !== StaticGrantResolver::class) {
+                    $hasCustomGrant = true;
+                }
                 break;
             }
+        }
+        if ($nInteractive > 0 && !$hasAnyResolver) {
+            $p[] = 'No grant resolvers configured; interactive logins will always be rejected.';
         }
         if ($nImplicit === 0 && !$hasCustomGrant && $list === [] && $nInteractive > 0) {
             $p[] = 'FILECARTON_STATIC_USER_LIST is empty; redirect/password users will not receive a grant.';
@@ -426,11 +432,9 @@ class Auth {
      */
     public static function loginPassword($username, $password) {
         self::ensureSession();
-        self::assertNotLocked();
         $username = is_string($username) ? $username : '';
         $password = is_string($password) ? $password : '';
         if ($username === '' || $password === '' || strlen($username) > 200 || strlen($password) > 1024) {
-            self::noteFailure();
             return null;
         }
         foreach (self::$providers as $p) {
@@ -438,7 +442,6 @@ class Auth {
             try {
                 $identity = $p->verify($username, $password);
             } catch (\Throwable $e) {
-                error_log('FileCarton auth: provider ' . $p->id() . ' threw: ' . $e->getMessage());
                 continue;
             }
             if ($identity instanceof AuthIdentity) {
@@ -446,30 +449,26 @@ class Auth {
                     self::establish($identity);
                 } catch (AuthException $e) {
                     if ($e->token === 'allowlist') {
-                        self::noteFailure();
-                        self::logPasswordFailure($username);
                         return null;
                     }
                     throw $e;
                 }
-                self::clearFailures();
                 return $identity;
             }
         }
-        self::noteFailure();
-        self::logPasswordFailure($username);
         return null;
     }
 
     /**
-     * Password / redirect only. No session_regenerate_id. Rotates CSRF.
+     * Password / redirect only. Rotates CSRF and session ID.
+     * Session ID is only regenerated when FileCarton started the session
+     * itself; embedders who share a session are left alone.
      */
     public static function establish(AuthIdentity $identity) {
         self::ensureSession();
         if (Grants::resolveFor($identity) === null) {
             throw new AuthException('allowlist', 403, 'No grant for identity');
         }
-        Csrf::generate();
         $_SESSION[self::SESSION_USER] = [
             'id'          => $identity->id,
             'displayName' => $identity->displayName,
@@ -477,6 +476,10 @@ class Auth {
             'extra'       => $identity->extra,
             'loggedInAt'  => time(),
         ];
+        if (Csrf::isOwnSession()) {
+            session_regenerate_id(true);
+        }
+        Csrf::generate();
     }
 
     public static function logout() {
@@ -485,6 +488,9 @@ class Auth {
             if (is_string($k) && strpos($k, 'filecarton_auth') === 0) {
                 unset($_SESSION[$k]);
             }
+        }
+        if (Csrf::isOwnSession()) {
+            session_regenerate_id(true);
         }
         Csrf::generate();
     }
@@ -649,6 +655,15 @@ class Auth {
         return $url;
     }
 
+    /**
+     * Absolute URL of the entry script, for OAuth callback URLs.
+     *
+     * When FILECARTON_PUBLIC_ORIGIN is empty, falls back to HTTP_HOST and
+     * X-Forwarded-Proto. A spoofed Host could produce a wrong origin, but
+     * PHP 7.0+ header() rejects CRLF so header injection is not possible,
+     * and OAuth providers validate redirect_uri against their allowlist.
+     * Set FILECARTON_PUBLIC_ORIGIN for production lockdown.
+     */
     public static function absoluteScriptUrl(): string {
         $origin = defined('FILECARTON_PUBLIC_ORIGIN') ? FILECARTON_PUBLIC_ORIGIN : '';
         if (!is_string($origin) || $origin === '') {
@@ -728,44 +743,4 @@ class Auth {
         }
     }
 
-    private static function assertNotLocked() {
-        $f = $_SESSION[self::SESSION_FAIL] ?? null;
-        if (!is_array($f)) return;
-        if (!empty($f['until']) && time() < (int)$f['until']) {
-            throw new \RuntimeException('Too many attempts, try again shortly', 429);
-        }
-    }
-
-    private static function noteFailure() {
-        $n = (int)(($_SESSION[self::SESSION_FAIL]['n'] ?? 0)) + 1;
-        $row = ['n' => $n];
-        if ($n >= self::FAIL_MAX) {
-            $row['until'] = time() + self::FAIL_LOCK;
-            $row['n'] = 0;
-        }
-        $_SESSION[self::SESSION_FAIL] = $row;
-    }
-
-    private static function clearFailures() {
-        unset($_SESSION[self::SESSION_FAIL]);
-    }
-
-    public static function noteAuthFailure() {
-        self::noteFailure();
-    }
-
-    public static function assertAuthNotLocked() {
-        self::assertNotLocked();
-    }
-
-    private static function logPasswordFailure($username) {
-        $f = $_SESSION[self::SESSION_FAIL] ?? [];
-        $n = (int)($f['n'] ?? 0);
-        if ($n !== 1 && $n !== 0) return;
-        $safe = preg_replace('/[\r\n\t]+/', ' ', substr((string)$username, 0, 200));
-        error_log('FileCarton auth: password login failed');
-        if ($safe !== '') {
-            error_log('FileCarton auth: failed username (sanitized) ' . $safe);
-        }
-    }
 }

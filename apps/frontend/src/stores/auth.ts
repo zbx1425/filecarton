@@ -41,7 +41,9 @@ export const useAuthStore = defineStore('auth', () => {
       const messages: Record<string, string> = {
         denied: 'Login was cancelled.',
         allowlist: 'This account is not allowed to log in.',
-        expired: 'Login expired, please try again.',
+        expired: 'Session expired, please sign in again.',
+        exchange: 'Login authentication failed.',
+        config: 'Login configuration error.',
       }
       error.value = messages[stored] ?? 'Login failed.'
     }

@@ -55,9 +55,12 @@ try {
         if (!Settings::embed() && Auth::identity() === null) {
             Response::error('Authentication required', 401);
         }
-        http_response_code(403);
-        echo 'FileCarton: FILECARTON_ROOT_PATH is not configured.';
-        exit;
+        if (!Settings::embed()) {
+            Auth::logout();
+            Settings::resetForRequest();
+            Response::error('Authentication required', 401);
+        }
+        Response::error('FILECARTON_ROOT_PATH is not configured', 403);
     }
 
     if (in_array($action, $postActions, true) && $_SERVER['REQUEST_METHOD'] !== 'POST') {

@@ -34,7 +34,10 @@ const ui = useUiStore()
 const preferences = usePreferencesStore()
 const auth = useAuthStore()
 
-onUnauthorized(() => auth.setUnauthenticated())
+onUnauthorized(() => {
+  sessionStorage.setItem('filecarton_auth_error', 'expired')
+  location.reload()
+})
 auth.initError()
 
 navigation.init()

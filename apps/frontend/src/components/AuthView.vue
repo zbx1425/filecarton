@@ -21,14 +21,10 @@ async function handlePasswordLogin() {
   auth.error = ''
   submitting.value = true
   try {
-    const result = await apiPost<{ user: FileCartonAuthUser; csrfToken: string }>(
-      'auth_login',
-      { username: username.value, password: password.value },
-    )
-    auth.setAuthenticated(result.user, result.csrfToken)
+    await apiPost('auth_login', { username: username.value, password: password.value })
+    location.reload()
   } catch (e: any) {
     auth.error = e?.message ?? 'Login failed.'
-  } finally {
     submitting.value = false
   }
 }
@@ -84,6 +80,8 @@ function handleRedirect(pluginId: string) {
               type="text"
               autocomplete="username"
               placeholder="Username"
+              required
+              autofocus
               :disabled="submitting"
             />
           </div>
@@ -95,6 +93,7 @@ function handleRedirect(pluginId: string) {
               type="password"
               autocomplete="current-password"
               placeholder="Password"
+              required
               :disabled="submitting"
             />
           </div>
@@ -122,7 +121,8 @@ function handleRedirect(pluginId: string) {
           <button
             v-for="plugin in auth.redirectPlugins"
             :key="plugin.id"
-            class="flex items-center gap-3 w-full h-12 px-4 bg-background border border-input rounded-md text-[15px] text-foreground transition-colors hover:bg-accent hover:border-muted-foreground/40 cursor-pointer"
+            class="flex items-center gap-3 w-full h-12 px-4 bg-background border border-input rounded-md text-[15px] text-foreground transition-colors hover:bg-accent hover:border-muted-foreground/40 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+            :disabled="submitting"
             @click="handleRedirect(plugin.id)"
           >
             <img

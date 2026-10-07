@@ -66,6 +66,14 @@ function dispatch(): void {
         return;
     }
 
+    // Identity exists but no usable grant → clear session, redirect to login.
+    if (!Settings::embed() && !Settings::filesOpen()) {
+        Auth::logout();
+        Settings::resetForRequest();
+        header('Location: ' . script_url() . '?fc_auth_error=allowlist', true, 302);
+        exit;
+    }
+
     if (!Settings::filesOpen()) {
         http_response_code(403);
         echo 'FileCarton: FILECARTON_ROOT_PATH is not configured.';

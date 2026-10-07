@@ -55,7 +55,6 @@ function auth_start($pluginId): void {
 }
 
 function auth_callback($pluginId): void {
-    Auth::assertAuthNotLocked();
     $plugin = Auth::pluginById($pluginId);
     if (!$plugin instanceof RedirectAuth) {
         throw new AuthException('config', 400, 'Unknown redirect plugin');
@@ -68,7 +67,6 @@ function auth_callback($pluginId): void {
     }
     $pending = Auth::consumePending($plugin->id(), $token);
     if ($pending === null) {
-        Auth::noteAuthFailure();
         throw new AuthException('expired', 401, 'Pending login missing');
     }
     try {
@@ -76,7 +74,6 @@ function auth_callback($pluginId): void {
         $identity = $plugin->complete($ctx);
         Auth::establish($identity);
     } catch (\Throwable $e) {
-        Auth::noteAuthFailure();
         $loc = Auth::returnLocation($pending, Auth::errorToken($e));
         header('Location: ' . $loc, true, 302);
         exit;

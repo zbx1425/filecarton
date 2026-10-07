@@ -45,11 +45,9 @@ const auth = useAuthStore()
 
 async function handleLogout() {
   try {
-    const result = await apiPost<{ csrfToken: string }>('auth_logout', {})
-    auth.clearAuthenticated(result.csrfToken)
-  } catch {
-    auth.setUnauthenticated()
-  }
+    await apiPost('auth_logout', {})
+  } catch { /* session already invalid */ }
+  location.reload()
 }
 
 const pathSegments = computed(() => navigation.currentPath)
@@ -215,10 +213,13 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
       </Button>
 
       <template v-if="auth.showLogout">
-        <span class="text-xs text-muted-foreground truncate max-w-[120px]">
+        <span
+          class="text-xs text-muted-foreground truncate max-w-[120px]"
+          :title="auth.user ? `${auth.user.displayName} (${auth.user.id})` : ''"
+        >
           {{ auth.user?.displayName }}
         </span>
-        <Button variant="ghost" size="icon-sm" @click="handleLogout">
+        <Button variant="ghost" size="icon-sm" aria-label="Log out" @click="handleLogout">
           <LogOut class="size-4" />
         </Button>
       </template>

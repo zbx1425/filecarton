@@ -5,6 +5,13 @@ namespace FileCarton;
 class Csrf {
 
     private const SESSION_KEY = 'filecarton_csrf';
+    /** @var bool Whether FileCarton called session_start() itself. */
+    private static $ownSession = false;
+
+    /** True when FileCarton started the session (safe to regenerate ID). */
+    public static function isOwnSession(): bool {
+        return self::$ownSession;
+    }
 
     /**
      * Generate a new CSRF token and store it in the session.
@@ -69,6 +76,7 @@ class Csrf {
                 session_set_cookie_params(0, '/; SameSite=Lax', '', $secure, true);
             }
             session_start();
+            self::$ownSession = true;
         }
     }
 }

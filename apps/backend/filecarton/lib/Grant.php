@@ -137,7 +137,7 @@ class Grants {
     }
 
     /**
-     * First non-null wins. StaticGrantResolver is always last.
+     * First non-null wins; resolver order follows FILECARTON_GRANT_RESOLVERS.
      * @return AuthGrant|null
      */
     public static function resolveFor(AuthIdentity $identity) {

@@ -44,7 +44,7 @@ class StaticPasswordAuth extends PasswordAuth {
 
     public function verify(string $username, string $password) {
         if (!isset($this->users[$username]) || !is_string($this->users[$username])) {
-            // Well this might not do much but hey this says we're security pros who care about timing attacks
+            // Prevent timing-based attack
             password_verify($password, self::DUMMY);
             return null;
         }

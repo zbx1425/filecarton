@@ -119,9 +119,12 @@ class StartupCheck {
             }
         }
 
-        // ROOT_PATH (empty string is handled by dispatch() before we get here)
+        // ROOT_PATH — skip on the login page (grant overlays resolve after login).
+        $isLoginPage = class_exists(__NAMESPACE__ . '\\Auth', false)
+            && !Settings::embed()
+            && Auth::identity() === null;
         $rootPath = FILECARTON_ROOT_PATH;
-        if ($rootPath !== '') {
+        if ($rootPath !== '' && !$isLoginPage) {
             if (!is_dir($rootPath)) {
                 $p[] = 'FILECARTON_ROOT_PATH is not a directory: ' . $rootPath;
             } elseif (!is_readable($rootPath)) {
