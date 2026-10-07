@@ -5,20 +5,21 @@ FileCarton can be embedded into your PHP application, with its configuration dyn
 ## Basic setup
 
 1. In `filecarton.config.php`, set `define_default('FILECARTON_ROOT_PATH', '');`. This disables direct access to `filecarton.php`.
-2. In your bootstrap script, define `FILECARTON_*` constants **before** including `filecarton.php`. 
-   These take precedence over the `define_default` values in `filecarton.config.php`.
+2. In your bootstrap script, define `FILECARTON_EMBED` and other `FILECARTON_*` constants **before** including `filecarton.php`.  
+   These take precedence over the `define_default` values in `filecarton.config.php`.  
+   You should set `FILECARTON_EMBED` to `true` to disable the built-in auth system, which you most likely don't want to run alongside your own authentication logic.
 3. Include `filecarton.php` at the end of your bootstrap script. FileCarton handles routing from there.
-4. Add an early exit for `?fcres` as described below.
+4. Add an early exit for `?fcres` and `?fcauth` as described below.
 5. If needed, embed the bootstrap script into your main page using an `<iframe>`.
 
 ## Early exit for serving static assets
 
 FileCarton's frontend loads CSS and JS via URLs like `yourscript.php?fcres=assets/main-xxxxxxxx.css`. These are static, cacheable files that do not need authentication or session handling.
 
-Check for `?fcres` at the top of your bootstrap script and skip to FileCarton immediately:
+Check for `?fcres` and `?fcauth` at the top of your bootstrap script and skip to FileCarton immediately:
 
 ```php
-if (isset($_GET['fcres'])) {
+if (isset($_GET['fcres']) || isset($_GET['fcauth'])) {
     require __DIR__ . '/filecarton.php';
     exit;
 }
@@ -29,8 +30,10 @@ if (isset($_GET['fcres'])) {
 
 ```php
 <?php
-// Early exit for serving static assets
-if (isset($_GET['fcres'])) {
+define('FILECARTON_EMBED', true);
+
+// Early exit for static assets and auth URLs
+if (isset($_GET['fcres']) || isset($_GET['fcauth'])) {
     require __DIR__ . '/filecarton.php';
     exit;
 }
@@ -109,7 +112,7 @@ The user can then access FileCarton via:
 https://example.com/your_entry_point.php/photos
 ```
 
-This gives cleaner URLs but requires web server configuration. Nginx needs `fastcgi_split_path_info`; Apache usually works without changes (add `AcceptPathInfo On` if it does not work out of the box).
+This might require web server configuration. Nginx needs `fastcgi_split_path_info`; Apache usually works without changes (add `AcceptPathInfo On` if it does not work out of the box).
 
 An example nginx `location` block for supporting PATH_INFO is provided below for your convenience:
 

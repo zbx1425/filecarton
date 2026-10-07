@@ -20,4 +20,12 @@
 *   🛠️ **Effortless Deployment**: Simple to set up and highly configurable.
 *   💅 **Sleek & Modern UI**: A clean interface with careful thought to make common operations intuitive.
 *   📝 **Monaco Editor Integration**: Features the Monaco Editor (the one behind VS Code) for a better code and text editing experience in your browser.
+*   🔒 **Built-in Auth**: Authentication support out of the box with customizable implementations.
 *   ⚖️ **MIT Licensed**: You can freely embed it into your projects.
+
+
+## 🔒 Authentication
+
+FileCarton supports a variety of authentication methods, including password, GitHub OAuth, and custom auth provider implementations. See [docs/config_auth.md](docs/config_auth.md) for the full guide.
+
+When embedding FileCarton in your own application, you can otherwise disable the built-in auth entirely and instead supply configs from the caller. See [docs/embedding.md](docs/embedding.md).
