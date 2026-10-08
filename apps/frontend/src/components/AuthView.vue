@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { LogIn } from '@lucide/vue'
+import type { FileCartonAuthPluginIcon } from '@/api/types'
 
 const auth = useAuthStore()
 const ui = useUiStore()

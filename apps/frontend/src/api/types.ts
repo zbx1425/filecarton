@@ -124,3 +124,52 @@ export interface ArchiveExtractDryRunResponse {
 export interface CheckUploadConflictsResponse {
   existing: string[]
 }
+
+export interface FileCartonAuthPluginIcon {
+  mono_url: string
+  light_tint?: string
+  dark_tint?: string
+}
+
+export interface FileCartonAuthPlugin {
+  id: string
+  label: string
+  kind: 'password' | 'redirect'
+  icon?: string | FileCartonAuthPluginIcon
+}
+
+export interface FileCartonAuthUser {
+  id: string
+  displayName: string
+  pluginId: string
+}
+
+export interface FileCartonAuthConfig {
+  enabled: boolean
+  implicit?: boolean
+  authenticated?: boolean
+  user?: FileCartonAuthUser | null
+  plugins?: FileCartonAuthPlugin[]
+  error?: string
+}
+
+export interface FileCartonConfig {
+  apiBase: string
+  csrfToken: string
+  readonly: boolean
+  repoName?: string
+  branding?: string
+  upload?: {
+    maxFileSize: number
+    chunkSize: number
+  }
+  dotfiles?: {
+    block: boolean
+    forceVisible: boolean
+  }
+  extensions?: {
+    allowlist: string[]
+    blocklist: string[]
+  }
+  auth?: FileCartonAuthConfig
+}

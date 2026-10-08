@@ -35,7 +35,7 @@ const ui = useUiStore()
 const preferences = usePreferencesStore()
 const auth = useAuthStore()
 
-onUnauthorized((action, authError) => {
+onUnauthorized((_action, authError) => {
   const token = authError || 'expired'
   if (navigation.editDirty) {
     sessionStorage.setItem('filecarton_auth_error', token)

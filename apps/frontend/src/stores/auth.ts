@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import type { FileCartonAuthPlugin, FileCartonAuthUser } from '@/api/types'
 
 export const useAuthStore = defineStore('auth', () => {
   const config = window.__FILECARTON__.auth
