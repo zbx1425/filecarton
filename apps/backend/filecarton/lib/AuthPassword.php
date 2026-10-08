@@ -29,8 +29,6 @@ class StaticPasswordAuth extends PasswordAuth {
     public function __construct(array $opts = []) {
         if (isset($opts['users']) && is_array($opts['users'])) {
             $this->users = $opts['users'];
-        } elseif ($opts !== []) {
-            $this->users = $opts;
         } else {
             $this->users = [];
             foreach (Auth::staticUserList() as $row) {

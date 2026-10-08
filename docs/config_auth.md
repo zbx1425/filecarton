@@ -27,24 +27,24 @@ Read on for more details on the authentication configuration.
 
 ```mermaid
 flowchart LR
-    subgraph config ["filecarton.config.php"]
-        userList["STATIC_USER_LIST\n(users, passwords, per-user overrides)"]
-        providers["AUTH_PROVIDERS\n(how users prove identity)"]
-        resolvers["GRANT_RESOLVERS\n(what access they get)"]
-    end
+    mode{"FILECARTON_EMBED?"}
 
-    browser[Browser] -->|"login"| provider
-    subgraph runtime ["Request"]
-        provider["Auth Provider\n→ AuthIdentity"]
-        grant["Grant Resolver\n→ AuthGrant"]
-        settings["Settings\n(merged view)"]
-        provider --> grant --> settings
+    mode -->|"yes"| entry["User's entry point script\ndefine(...)"]
+    entry --> settings["Settings\n(root dir, readonly, branding, ...)"]
+
+    mode -->|"no"| browser["Login Page"]
+    browser -->|"login"| provider["AuthProvider\n→ AuthIdentity"]
+    provider --> grant["GrantResolver\n→ AuthGrant"]
+    grant --> settings
+
+    subgraph config ["filecarton.config.php"]
+        userList["STATIC_USER_LIST"]
+        providers["AUTH_PROVIDERS"]
+        resolvers["GRANT_RESOLVERS"]
     end
 
     providers -.-> provider
     resolvers -.-> grant
-    userList -.-> provider
-    userList -.-> grant
 ```
 
 These parts being:

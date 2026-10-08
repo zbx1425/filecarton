@@ -52,7 +52,28 @@ class StaticGrantResolver implements GrantResolver {
     }
 
     public function validateConfig(): array {
-        return [];
+        $p = [];
+        $list = Auth::staticUserList();
+        if ($list === []) {
+            $hasInteractive = false;
+            foreach (Auth::providers() as $prov) {
+                if ($prov instanceof PasswordAuth || $prov instanceof RedirectAuth) {
+                    $hasInteractive = true;
+                    break;
+                }
+            }
+            $allStatic = true;
+            foreach (Grants::resolvers() as $r) {
+                if (!$r instanceof StaticGrantResolver) {
+                    $allStatic = false;
+                    break;
+                }
+            }
+            if ($hasInteractive && $allStatic) {
+                $p[] = 'FILECARTON_STATIC_USER_LIST is empty, users will not receive a grant.';
+            }
+        }
+        return $p;
     }
 
     public function resolve(AuthIdentity $identity) {

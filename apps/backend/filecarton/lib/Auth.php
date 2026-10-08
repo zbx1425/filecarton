@@ -168,9 +168,9 @@ class Auth {
         if (isset($spec['file']) && is_string($spec['file']) && $spec['file'] !== '') {
             $file = $spec['file'];
             if (!is_file($file)) {
-                throw new \InvalidArgumentException('Plugin file not found: ' . $file);
+                throw new \InvalidArgumentException('Plugin file not found: ' . basename($file));
             }
-            require_once $file;
+            $loaded = require_once $file; // Unused, this is to make our compiler not remove it
         }
         if (empty($spec['class']) || !is_string($spec['class'])) {
             throw new \InvalidArgumentException('Spec missing class');
@@ -307,7 +307,7 @@ class Auth {
             }
             $key = strtolower($row['id']);
             if (isset($ids[$key])) {
-                $p[] = 'FILECARTON_STATIC_USER_LIST duplicate id: ' . $row['id'];
+                $p[] = 'FILECARTON_STATIC_USER_LIST contains a duplicate user ID.';
             }
             $ids[$key] = true;
             if (isset($row['passwordHash']) && is_string($row['passwordHash']) && $row['passwordHash'] !== ''
@@ -337,21 +337,13 @@ class Auth {
         $grantSpecs = defined('FILECARTON_GRANT_RESOLVERS') ? FILECARTON_GRANT_RESOLVERS : [];
         $grantSpecs = is_array($grantSpecs) ? $grantSpecs : [];
         $hasAnyResolver = false;
-        $hasCustomGrant = false;
         foreach ($grantSpecs as $spec) {
             if (is_array($spec) && !empty($spec['class'])) {
                 $hasAnyResolver = true;
-                if ($spec['class'] !== StaticGrantResolver::class) {
-                    $hasCustomGrant = true;
-                }
-                break;
             }
         }
         if ($nInteractive > 0 && !$hasAnyResolver) {
             $p[] = 'No grant resolvers configured; interactive logins will always be rejected.';
-        }
-        if ($nImplicit === 0 && !$hasCustomGrant && $list === [] && $nInteractive > 0) {
-            $p[] = 'FILECARTON_STATIC_USER_LIST is empty; redirect/password users will not receive a grant.';
         }
 
         foreach (Grants::bootErrors() as $e) {
@@ -465,17 +457,11 @@ class Auth {
             try {
                 $identity = $p->verify($username, $password);
             } catch (\Throwable $e) {
+                error_log('FileCarton auth: provider ' . $p->id() . ' verify failed: ' . $e->getMessage());
                 continue;
             }
             if ($identity instanceof AuthIdentity) {
-                try {
-                    self::establish($identity);
-                } catch (AuthException $e) {
-                    if ($e->token === 'allowlist') {
-                        return null;
-                    }
-                    throw $e;
-                }
+                self::establish($identity);
                 return $identity;
             }
         }
@@ -565,10 +551,6 @@ class Auth {
             'state_query' => self::capturePassthroughQuery(),
             'hash'        => $hash,
         ];
-    }
-
-    public static function captureReturnFallback(): array {
-        return self::captureReturnContext();
     }
 
     public static function emptyReturnContext(): array {

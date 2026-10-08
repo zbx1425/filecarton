@@ -51,6 +51,8 @@ try {
         if (Settings::embed()) {
             Response::error('Builtin auth is disabled', 404);
         }
+    } elseif (!Settings::embed() && Auth::configProblems() !== []) {
+        Response::error('Server configuration error', 500);
     } elseif (!Settings::filesOpen()) {
         if (!Settings::embed() && Auth::identity() === null) {
             Response::error('Authentication required', 401, 'expired');

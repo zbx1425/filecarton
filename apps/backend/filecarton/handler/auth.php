@@ -13,7 +13,7 @@ function handle_auth(): void {
         $pendingForCatch = $peeked !== null
             ? $peeked : Auth::emptyReturnContext();
     } else {
-        $pendingForCatch = Auth::captureReturnFallback();
+        $pendingForCatch = Auth::captureReturnContext();
     }
     try {
         $problems = Auth::configProblems();

@@ -14,9 +14,9 @@ export class ApiError extends Error {
   }
 }
 
-let unauthorizedHandler: ((action: string) => void) | null = null
+let unauthorizedHandler: ((action: string, authError: string) => void) | null = null
 
-export function onUnauthorized(handler: (action: string) => void) {
+export function onUnauthorized(handler: (action: string, authError: string) => void) {
   unauthorizedHandler = handler
 }
 
@@ -24,7 +24,7 @@ function maybeUnauthorized(action: string, error: ApiError) {
   if (!error.authError) return
   if (!window.__FILECARTON__.auth?.enabled) return
   if (action === 'auth_login' || action === 'auth_logout') return
-  unauthorizedHandler?.(action)
+  unauthorizedHandler?.(action, error.authError)
 }
 
 function getConfig() {

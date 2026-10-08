@@ -17,23 +17,6 @@ export const useAuthStore = defineStore('auth', () => {
   const passwordPlugins = computed(() => plugins.value.filter(p => p.kind === 'password'))
   const redirectPlugins = computed(() => plugins.value.filter(p => p.kind === 'redirect'))
 
-  function setAuthenticated(u: FileCartonAuthUser, csrfToken: string) {
-    authenticated.value = true
-    user.value = u
-    window.__FILECARTON__.csrfToken = csrfToken
-  }
-
-  function clearAuthenticated(csrfToken: string) {
-    authenticated.value = false
-    user.value = null
-    window.__FILECARTON__.csrfToken = csrfToken
-  }
-
-  function setUnauthenticated() {
-    authenticated.value = false
-    user.value = null
-  }
-
   const errorMessages: Record<string, string> = {
     denied: 'Login was cancelled.',
     allowlist: 'This account is not allowed to log in.',
@@ -44,14 +27,15 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function initError() {
-    // Injected error from in-place render (F3: no redirect needed)
-    if (config?.error && typeof config.error === 'string') {
-      error.value = errorMessages[config.error] ?? 'Login failed.'
-    }
     const stored = sessionStorage.getItem('filecarton_auth_error')
     if (stored) {
       sessionStorage.removeItem('filecarton_auth_error')
-      error.value = errorMessages[stored] ?? 'Login failed.'
+    }
+    const token = (config?.error && typeof config.error === 'string')
+      ? config.error
+      : stored
+    if (token) {
+      error.value = errorMessages[token] ?? 'Login failed.'
     }
   }
 
@@ -66,9 +50,6 @@ export const useAuthStore = defineStore('auth', () => {
     showLogout,
     passwordPlugins,
     redirectPlugins,
-    setAuthenticated,
-    clearAuthenticated,
-    setUnauthenticated,
     initError,
   }
 })

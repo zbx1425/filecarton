@@ -35,8 +35,10 @@ const ui = useUiStore()
 const preferences = usePreferencesStore()
 const auth = useAuthStore()
 
-onUnauthorized((action) => {
+onUnauthorized((action, authError) => {
+  const token = authError || 'expired'
   if (navigation.editDirty) {
+    sessionStorage.setItem('filecarton_auth_error', token)
     confirm(
       'Session unavailable',
       'Your session is no longer valid. Please copy any unsaved content, then refresh this page.',
@@ -44,7 +46,7 @@ onUnauthorized((action) => {
     )
     return
   }
-  sessionStorage.setItem('filecarton_auth_error', 'expired')
+  sessionStorage.setItem('filecarton_auth_error', token)
   location.reload()
 })
 auth.initError()

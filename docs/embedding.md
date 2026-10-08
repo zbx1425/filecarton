@@ -9,7 +9,7 @@ FileCarton can be embedded into your PHP application, with its configuration dyn
    These take precedence over the `define_default` values in `filecarton.config.php`.  
    You should set `FILECARTON_EMBED` to `true` to disable the built-in auth system, which you most likely don't want to run alongside your own authentication logic.
 3. Include `filecarton.php` at the end of your bootstrap script. FileCarton handles routing from there.
-4. Add an early exit for `?fcres` and `?fcauth` as described below.
+4. Add an early exit for `?fcres` as described below.
 5. If needed, embed the bootstrap script into your main page using an `<iframe>`.
 
 ## Early exit for serving static assets

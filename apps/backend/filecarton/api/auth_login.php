@@ -7,7 +7,14 @@ function api_auth_login($pathSec = null, $fileOps = null) {
     $body = json_decode($raw, true);
     $username = is_array($body) && isset($body['username']) ? $body['username'] : '';
     $password = is_array($body) && isset($body['password']) ? $body['password'] : '';
-    $user = Auth::loginPassword($username, $password);
+    try {
+        $user = Auth::loginPassword($username, $password);
+    } catch (AuthException $e) {
+        if ($e->token === 'allowlist') {
+            Response::error('This account is not allowed to log in', 403, 'allowlist');
+        }
+        throw $e;
+    }
     if ($user === null) {
         Response::error('Invalid username or password', 401);
     }
