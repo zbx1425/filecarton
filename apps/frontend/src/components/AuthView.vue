@@ -5,7 +5,6 @@ import { useUiStore } from '@/stores/ui'
 import { usePreferencesStore } from '@/stores/preferences'
 import { apiPost, buildAuthStartUrl } from '@/api/client'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { LogIn } from '@lucide/vue'
@@ -63,9 +62,10 @@ function handleRedirect(pluginId: string) {
   <div class="flex min-h-screen">
     <!-- Left: gradient background (lg+ only) -->
     <div class="hidden lg:flex w-[55%] relative overflow-hidden bg-gradient-to-br from-[#023456] via-[#094168] to-[#2B5B86]">
-      <div class="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/5" />
-      <div class="absolute top-1/3 -right-20 w-80 h-80 rounded-full bg-white/5" />
-      <div class="absolute -bottom-16 left-1/4 w-64 h-64 rounded-full bg-white/5" />
+      <div class="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/5"></div>
+      <div class="absolute top-1/3 -right-20 w-80 h-80 rounded-full bg-white/5"></div>
+      <div class="absolute -bottom-16 left-1/4 w-64 h-64 rounded-full bg-white/5"></div>
+      <p class="absolute bottom-12 left-16 text-white">FileCarton by Zbx1425</p>
     </div>
 
     <!-- Right: login form -->
@@ -73,14 +73,13 @@ function handleRedirect(pluginId: string) {
       <div class="w-full max-w-[380px]">
         <!-- Header -->
         <div class="mb-10">
-          <h2 class="text-2xl font-semibold tracking-tight text-foreground">Welcome</h2>
           <div
             v-if="ui.branding"
             class="mt-1 text-lg font-semibold text-primary"
           >
             {{ ui.branding }}
           </div>
-          <p class="mt-2 text-muted-foreground">Sign in to continue.</p>
+          <h2 class="text-2xl font-semibold tracking-tight text-foreground">Sign in</h2>
         </div>
 
         <!-- Error -->
@@ -98,7 +97,6 @@ function handleRedirect(pluginId: string) {
           @submit.prevent="handlePasswordLogin"
         >
           <div class="space-y-2">
-            <Label for="fc-username">Username</Label>
             <Input
               id="fc-username"
               v-model="username"
@@ -111,7 +109,6 @@ function handleRedirect(pluginId: string) {
             />
           </div>
           <div class="space-y-2">
-            <Label for="fc-password">Password</Label>
             <Input
               id="fc-password"
               v-model="password"

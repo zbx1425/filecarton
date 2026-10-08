@@ -19,9 +19,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu'
+import { Separator } from '@/components/ui/separator'
 import {
   Home,
   PanelLeft,
@@ -212,21 +215,41 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
         </template>
       </template>
 
-      <Button variant="ghost" size="icon-sm" @click="ui.settingsOpen = true">
+      <template v-if="auth.showLogout">
+        <Separator
+          orientation="vertical"
+          class="data-[orientation=vertical]:h-6"
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button
+              variant="ghost"
+              size="sm"
+              class="max-w-[120px] overflow-hidden px-2 -ms-2 font-normal text-xs text-muted-foreground"
+            >
+              <span class="min-w-0 truncate">{{ auth.user?.displayName }}</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" class="w-52">
+            <DropdownMenuLabel class="font-normal">
+              <div class="flex flex-col gap-0.5">
+                <span class="truncate text-xs leading-snug">{{ auth.user?.displayName }}</span>
+                <span class="truncate text-xs leading-snug text-muted-foreground" 
+                  v-if="auth.user?.id != auth.user?.displayName">{{ auth.user?.id }}</span>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem @select="handleLogout">
+              <LogOut class="size-4" />
+              Log out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </template>
+
+      <Button variant="ghost" size="icon-sm" class="-ms-2" @click="ui.settingsOpen = true">
         <Settings2 class="size-4" />
       </Button>
-
-      <template v-if="auth.showLogout">
-        <span
-          class="text-xs text-muted-foreground truncate max-w-[120px]"
-          :title="auth.user ? `${auth.user.displayName} (${auth.user.id})` : ''"
-        >
-          {{ auth.user?.displayName }}
-        </span>
-        <Button variant="ghost" size="icon-sm" aria-label="Log out" @click="handleLogout">
-          <LogOut class="size-4" />
-        </Button>
-      </template>
     </div>
   </div>
 </template>
