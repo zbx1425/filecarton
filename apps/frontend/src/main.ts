@@ -35,11 +35,11 @@ const ui = useUiStore()
 const preferences = usePreferencesStore()
 const auth = useAuthStore()
 
-onUnauthorized(() => {
+onUnauthorized((action) => {
   if (navigation.editDirty) {
     confirm(
-      'Can\'t save',
-      'Saving failed because your login has expired. Please back up the current content and then refresh this page.',
+      'Session unavailable',
+      'Your session is no longer valid. Please copy any unsaved content, then refresh this page.',
       { actionLabel: 'Cancel', hideCancel: true },
     )
     return

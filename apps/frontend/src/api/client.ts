@@ -1,13 +1,16 @@
 export class ApiError extends Error {
   status: number
+  authError?: string
 
   constructor(
     message: string,
     status: number,
+    authError?: string,
   ) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.authError = authError
   }
 }
 
@@ -17,8 +20,8 @@ export function onUnauthorized(handler: (action: string) => void) {
   unauthorizedHandler = handler
 }
 
-function maybeUnauthorized(action: string, status: number) {
-  if (status !== 401) return
+function maybeUnauthorized(action: string, error: ApiError) {
+  if (!error.authError) return
   if (!window.__FILECARTON__.auth?.enabled) return
   if (action === 'auth_login' || action === 'auth_logout') return
   unauthorizedHandler?.(action)
@@ -56,11 +59,13 @@ function buildUrl(action: string, params?: Record<string, string>): string {
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     let message = `HTTP ${response.status}`
+    let authError: string | undefined
     try {
       const body = await response.json()
       if (body?.error) message = body.error
+      if (body?.authError) authError = body.authError
     } catch { /* non-JSON error body */ }
-    throw new ApiError(message, response.status)
+    throw new ApiError(message, response.status, authError)
   }
   const body = await response.json()
   if (!body.ok) {
@@ -75,7 +80,7 @@ export async function apiGet<T>(action: string, params?: Record<string, string>,
   try {
     return await handleResponse<T>(response)
   } catch (e) {
-    if (e instanceof ApiError) maybeUnauthorized(action, e.status)
+    if (e instanceof ApiError) maybeUnauthorized(action, e)
     throw e
   }
 }
@@ -94,7 +99,7 @@ export async function apiPost<T>(action: string, body: unknown): Promise<T> {
   try {
     return await handleResponse<T>(response)
   } catch (e) {
-    if (e instanceof ApiError) maybeUnauthorized(action, e.status)
+    if (e instanceof ApiError) maybeUnauthorized(action, e)
     throw e
   }
 }
@@ -122,8 +127,8 @@ export function apiUpload<T>(
       try {
         const body = JSON.parse(xhr.responseText)
         if (xhr.status < 200 || xhr.status >= 300) {
-          const err = new ApiError(body?.error ?? `HTTP ${xhr.status}`, xhr.status)
-          maybeUnauthorized(action, xhr.status)
+          const err = new ApiError(body?.error ?? `HTTP ${xhr.status}`, xhr.status, body?.authError)
+          maybeUnauthorized(action, err)
           reject(err)
           return
         }

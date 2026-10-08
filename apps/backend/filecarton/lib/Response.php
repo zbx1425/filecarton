@@ -20,10 +20,14 @@ class Response {
         exit;
     }
 
-    public static function error(string $msg, int $code = 400) {
+    public static function error(string $msg, int $code = 400, ?string $authError = null) {
         self::discardOutputBuffer();
         http_response_code($code);
-        echo json_encode(['ok' => false, 'error' => $msg], JSON_UNESCAPED_UNICODE);
+        $body = ['ok' => false, 'error' => $msg];
+        if ($authError !== null) {
+            $body['authError'] = $authError;
+        }
+        echo json_encode($body, JSON_UNESCAPED_UNICODE);
         exit;
     }
 
@@ -46,11 +50,7 @@ class Response {
         header('Content-Type: ' . $mime);
         header('Content-Length: ' . $size);
         header('ETag: ' . $etag);
-        if (class_exists(__NAMESPACE__ . '\\Settings', false) && !Settings::embed()) {
-            header('Cache-Control: private, no-store');
-        } else {
-            header('Cache-Control: public, max-age=3600');
-        }
+        header('Cache-Control: private, no-store');
         header('X-Content-Type-Options: nosniff');
 
         if (self::trySendfile($absPath)) {

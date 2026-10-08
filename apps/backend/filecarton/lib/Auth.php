@@ -310,6 +310,10 @@ class Auth {
                 $p[] = 'FILECARTON_STATIC_USER_LIST duplicate id: ' . $row['id'];
             }
             $ids[$key] = true;
+            if (isset($row['passwordHash']) && is_string($row['passwordHash']) && $row['passwordHash'] !== ''
+                && strpos($row['id'], ':') !== false) {
+                $p[] = 'FILECARTON_STATIC_USER_LIST[' . $i . '] id must not contain ":" when passwordHash is set (reserved for OAuth provider prefixes).';
+            }
         }
 
         // Provider combination rules
@@ -411,14 +415,38 @@ class Auth {
     }
 
     /**
-     * Redirect icon: https: or data:image/ only.
+     * Sanitize icon value from a provider.
+     *
+     * Accepts a URL string (https: or data:image/) or an array with mono_url
+     * and optional light_tint/dark_tint (#RGB or #RRGGBB).
+     * Returns '' for invalid input, a string for color URLs, or an array
+     * for monochrome mask icons.
+     *
+     * @param mixed $icon
+     * @return string|array
      */
-    public static function sanitizeIcon($url): string {
-        if (!is_string($url) || $url === '') return '';
+    public static function sanitizeIcon($icon) {
+        if (is_string($icon)) {
+            if ($icon === '') return '';
+            if (strpbrk($icon, "\r\n\0") !== false) return '';
+            if (stripos($icon, 'https:') === 0) return $icon;
+            if (stripos($icon, 'data:image/') === 0) return $icon;
+            return '';
+        }
+        if (!is_array($icon) || !isset($icon['mono_url']) || !is_string($icon['mono_url'])) {
+            return '';
+        }
+        $url = $icon['mono_url'];
         if (strpbrk($url, "\r\n\0") !== false) return '';
-        if (stripos($url, 'https:') === 0) return $url;
-        if (stripos($url, 'data:image/') === 0) return $url;
-        return '';
+        if (stripos($url, 'https:') !== 0 && stripos($url, 'data:image/') !== 0) return '';
+        $out = ['mono_url' => $url];
+        foreach (['light_tint', 'dark_tint'] as $key) {
+            if (isset($icon[$key]) && is_string($icon[$key])
+                && preg_match('/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/', $icon[$key])) {
+                $out[$key] = $icon[$key];
+            }
+        }
+        return $out;
     }
 
     /**
@@ -426,9 +454,6 @@ class Auth {
      * @return AuthIdentity|null
      */
     public static function loginPassword($username, $password) {
-        if (!Csrf::isHttps()) {
-            throw new AuthException('config', 400, 'password login without https');
-        }
         self::ensureSession();
         $username = is_string($username) ? $username : '';
         $password = is_string($password) ? $password : '';
@@ -504,7 +529,7 @@ class Auth {
             ];
             if ($p instanceof RedirectAuth) {
                 $icon = self::sanitizeIcon($p->icon());
-                if ($icon !== '') $row['icon'] = $icon;
+                if ($icon !== '' && $icon !== []) $row['icon'] = $icon;
             }
             $out[] = $row;
         }

@@ -59,7 +59,8 @@ class Csrf {
     public static function isHttps(): bool {
         if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') return true;
         if ((int)($_SERVER['SERVER_PORT'] ?? 0) === 443) return true;
-        if (strtolower($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') return true;
+        $proto = trim(explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')[0]);
+        if (strtolower($proto) === 'https') return true;
         return false;
     }
 
@@ -72,6 +73,10 @@ class Csrf {
             throw new \RuntimeException('Sessions are disabled', 500);
         }
         if (session_status() === PHP_SESSION_NONE) {
+            $name = defined('FILECARTON_SESSION_NAME') ? FILECARTON_SESSION_NAME : 'FILECARTON';
+            if (is_string($name) && preg_match('/^[a-zA-Z][a-zA-Z0-9]*$/', $name)) {
+                session_name($name);
+            }
             $secure = self::isHttps();
             if (PHP_VERSION_ID >= 70300) {
                 session_set_cookie_params([

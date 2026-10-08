@@ -43,6 +43,7 @@ class StartupCheck {
         if (!extension_loaded('zlib') || !function_exists('gzdecode')) {
             $p[] = 'Required PHP extension missing: zlib (gzdecode)';
         }
+        // Require CURL anyways as this is very commonly needed.
         if (!extension_loaded('curl')) {
             $p[] = 'Required PHP extension missing: curl';
         }
@@ -119,7 +120,8 @@ class StartupCheck {
             }
         }
 
-        // ROOT_PATH — skip on the login page (grant overlays resolve after login).
+        // ROOT_PATH — use the merged per-user view from Settings when logged in.
+        // Skip on the login page (grant overlays resolve after login).
         $isLoginPage = false;
         if (class_exists(__NAMESPACE__ . '\\Auth', false) && !Settings::embed()) {
             try {
@@ -129,14 +131,21 @@ class StartupCheck {
                 $isLoginPage = true;
             }
         }
-        $rootPath = FILECARTON_ROOT_PATH;
-        if ($rootPath !== '' && !$isLoginPage) {
-            if (!is_dir($rootPath)) {
-                $p[] = 'FILECARTON_ROOT_PATH is not a directory: ' . $rootPath;
-            } elseif (!is_readable($rootPath)) {
-                $p[] = 'FILECARTON_ROOT_PATH is not readable: ' . $rootPath;
-            } elseif (!FILECARTON_READONLY && !is_writable($rootPath)) {
-                $p[] = 'FILECARTON_ROOT_PATH is not writable (required unless FILECARTON_READONLY is true): ' . $rootPath;
+        if (!$isLoginPage) {
+            $rootPath = Settings::rootPath();
+            $readonly = Settings::readonly();
+            if ($rootPath === '' && class_exists(__NAMESPACE__ . '\\Auth', false)
+                && !Settings::embed() && Auth::hasImplicit()) {
+                $p[] = 'Root directory is not available for the current identity. '
+                    . 'Check FILECARTON_ROOT_PATH or the per-user root in your grant configuration.';
+            } elseif ($rootPath !== '') {
+                if (!is_dir($rootPath)) {
+                    $p[] = 'Root directory is not a directory: ' . $rootPath;
+                } elseif (!is_readable($rootPath)) {
+                    $p[] = 'Root directory is not readable: ' . $rootPath;
+                } elseif (!$readonly && !is_writable($rootPath)) {
+                    $p[] = 'Root directory is not writable (required unless read-only mode is active): ' . $rootPath;
+                }
             }
         }
 
@@ -158,20 +167,14 @@ class StartupCheck {
             }
         }
 
+        // Session name
+        $sessionName = defined('FILECARTON_SESSION_NAME') ? FILECARTON_SESSION_NAME : 'FILECARTON';
+        if (!is_string($sessionName) || !preg_match('/^[a-zA-Z][a-zA-Z0-9]*$/', $sessionName)) {
+            $p[] = 'FILECARTON_SESSION_NAME must start with a letter and contain only letters and digits.';
+        }
+
         // Auth configuration (standalone only)
         if (class_exists(__NAMESPACE__ . '\\Auth', false) && !Settings::embed()) {
-            $hasPasswordProvider = false;
-            foreach (Auth::providers() as $prov) {
-                if ($prov instanceof PasswordAuth) {
-                    $hasPasswordProvider = true;
-                    break;
-                }
-            }
-            if ($hasPasswordProvider && !Csrf::isHttps()) {
-                $p[] = 'Password login is configured but the request is not HTTPS. '
-                    . 'Please serve FileCarton with and only with HTTPS. '
-                    . 'If TLS is terminated at a reverse proxy, please set that proxy to send X-Forwarded-Proto: https.';
-            }
             foreach (Auth::configProblems() as $authProblem) {
                 $p[] = $authProblem;
             }

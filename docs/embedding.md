@@ -16,10 +16,10 @@ FileCarton can be embedded into your PHP application, with its configuration dyn
 
 FileCarton's frontend loads CSS and JS via URLs like `yourscript.php?fcres=assets/main-xxxxxxxx.css`. These are static, cacheable files that do not need authentication or session handling.
 
-Check for `?fcres` and `?fcauth` at the top of your bootstrap script and skip to FileCarton immediately:
+Check for `?fcres` at the top of your bootstrap script and skip to FileCarton immediately:
 
 ```php
-if (isset($_GET['fcres']) || isset($_GET['fcauth'])) {
+if (isset($_GET['fcres'])) {
     require __DIR__ . '/filecarton.php';
     exit;
 }
@@ -32,8 +32,8 @@ if (isset($_GET['fcres']) || isset($_GET['fcauth'])) {
 <?php
 define('FILECARTON_EMBED', true);
 
-// Early exit for static assets and auth URLs
-if (isset($_GET['fcres']) || isset($_GET['fcauth'])) {
+// Early exit for static assets (no auth needed)
+if (isset($_GET['fcres'])) {
     require __DIR__ . '/filecarton.php';
     exit;
 }
@@ -50,6 +50,7 @@ if (!isset($_SESSION['user'])) {
 $allRepos = getUserRepositories($_SESSION['user']);
 $repoId   = $_GET['state_selected_repo'] ?? array_key_first($allRepos) ?? 'default';
 
+// Always validate state parameters against an allowlist of known values or regex.
 if (!isset($allRepos[$repoId])) {
     http_response_code(404);
     exit('Repository not found');

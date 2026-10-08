@@ -10,6 +10,7 @@ define('FILECARTON_STATIC_USER_LIST', [['id' => 'local']]);
 define('FILECARTON_AUTH_PROVIDERS', [['class' => \FileCarton\NoLoginAuth::class]]);
 define('FILECARTON_GRANT_RESOLVERS', [['class' => \FileCarton\StaticGrantResolver::class]]);
 define('FILECARTON_PUBLIC_ORIGIN', '');
+define('FILECARTON_SESSION_NAME', 'FILECARTON');
 
 define('FILECARTON_ROOT_PATH', '');
 define('FILECARTON_READONLY', false);

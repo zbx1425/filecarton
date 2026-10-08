@@ -37,6 +37,10 @@ define_default('FILECARTON_GRANT_RESOLVERS', [
 // Empty = auto-detect from HTTPS / Host / X-Forwarded-Proto.
 define_default('FILECARTON_PUBLIC_ORIGIN', '');
 
+// Session cookie name for standalone deployments.
+// Ignored when embedding (the host's session is used).
+define_default('FILECARTON_SESSION_NAME', 'FILECARTON');
+
 
 // --- Core ---
 

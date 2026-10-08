@@ -111,13 +111,12 @@ class GitLabOAuth extends OAuth2Auth {
             'Authorization' => 'Bearer ' . $token['access_token'],
         ]);
         $user = json_decode($resp['body'], true);
-        if (!is_array($user) || empty($user['username'])) {
+        if (!is_array($user) || empty($user['id'])) {
             throw new AuthException('exchange', 401, 'GitLab user lookup failed');
         }
-        return new AuthIdentity(
-            (string)$user['username'],
-            (string)($user['name'] ?: $user['username']),
-            $this->id()
+        return $this->makeIdentity(
+            (string)$user['id'],
+            (string)($user['name'] ?: $user['username'] ?: '')
         );
     }
 }
@@ -142,7 +141,8 @@ The built-in `GitHubOAuth` in `AuthRedirect.php` is another complete reference.
 Rules for OAuth providers:
 
 - `fetchIdentity()` receives the decoded token-endpoint JSON. Use `HttpClient::get()` to call the provider's user-info API if needed.
-- The identity `id` must match a row in `STATIC_USER_LIST` (or be resolvable by a custom grant resolver).
+- Use `$this->makeIdentity($remoteId, $displayName)` to build the identity. This produces a stable id like `gitlab:12345` that won't change if the user renames their account. The `$remoteId` must match `^[A-Za-z0-9._-]{1,128}$`.
+- The resulting identity id (e.g. `gitlab:12345`) must match a row in `STATIC_USER_LIST` (or be resolvable by a custom grant resolver).
 - Never log tokens or secrets. `HttpClient` already strips bodies from its error messages.
 - Do not call `session_start()` or send headers yourself.
 
@@ -205,6 +205,34 @@ Rules:
 - Never log tokens, passwords, or ticket values.
 - Do not call `session_start()` or send headers yourself.
 - Callbacks must be **GET** requests. POST callbacks (like SAML ACS) are not supported.
+
+## Provider icons
+
+The `icon()` method on redirect providers controls the button icon on the login page. It can return:
+
+- `''` — no icon (text-only button).
+- A URL string (`'https://...'` or `'data:image/svg+xml,...'`) — displayed as a color image.
+- An array with `mono_url` — rendered as a monochrome CSS mask that follows the text color:
+
+```php
+public function icon() {
+    return [
+        'mono_url' => 'data:image/svg+xml,' . rawurlencode('<svg ...>...</svg>'),
+    ];
+}
+```
+
+You can optionally add `light_tint` and `dark_tint` (`#RGB` or `#RRGGBB`) to use theme-specific colors instead of `currentColor`:
+
+```php
+return [
+    'mono_url'   => 'data:image/svg+xml,...',
+    'light_tint' => '#24292f',
+    'dark_tint'  => '#ffffff',
+];
+```
+
+For monochrome SVGs, the SVG path should use an opaque fill (e.g. `fill="white"`) and a transparent background, so the CSS mask renders only the shape.
 
 ## Custom grant resolver
 

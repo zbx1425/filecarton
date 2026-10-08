@@ -66,9 +66,24 @@ function dispatch(): void {
         return;
     }
 
-    // Identity exists but no usable grant or bad root → clear session, show login in-place.
+    // Identity exists but no usable grant or bad root.
     if (!Settings::embed() && !Settings::filesOpen()) {
         $token = Grants::current() === null ? 'allowlist' : 'bad_root';
+        if (Auth::hasImplicit()) {
+            // Implicit login: identity is synthesized each request, logout is meaningless.
+            // Fall through to the self-check page with a descriptive error.
+            require_once FILECARTON_SCRIPT_DIR . '/lib/StartupCheck.php';
+            http_response_code(403);
+            $msg = $token === 'bad_root'
+                ? 'The root directory for this account is not a valid directory.'
+                : 'No grant found for the current identity.';
+            echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>FileCarton</title></head><body>'
+                . '<div style="margin:4em auto;max-width:60em;font-family:Arial,sans-serif">'
+                . '<h1>FileCarton Configuration Error</h1><p>' . htmlspecialchars($msg, ENT_QUOTES, 'UTF-8') . '</p>'
+                . '</div></body></html>';
+            return;
+        }
+        // Interactive login: clear session once, show login page with error.
         Auth::setInlineError($token);
         Auth::logout();
         Settings::resetForRequest();

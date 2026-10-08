@@ -53,7 +53,9 @@ async function save() {
     navigation.editDirty = false
     toast.success('File saved')
   } catch (e: unknown) {
-    if (e instanceof ApiError && e.status === 409) {
+    if (e instanceof ApiError && e.authError) {
+      /* handled by the global onUnauthorized handler */
+    } else if (e instanceof ApiError && e.status === 409) {
       const choice = await showEditorConflict()
       if (choice === 'overwrite') {
         try {
@@ -62,14 +64,16 @@ async function save() {
           navigation.editDirty = false
           toast.success('File saved (overwritten)')
         } catch (e2: unknown) {
-          if (!(e2 instanceof ApiError && e2.status === 401)) {
+          if (e2 instanceof ApiError && e2.authError) {
+            /* handled by the global onUnauthorized handler */
+          } else {
             toast.error(e2 instanceof Error ? e2.message : 'Save failed')
           }
         }
       } else if (choice === 'reload') {
         await reloadContent()
       }
-    } else if (!(e instanceof ApiError && e.status === 401)) {
+    } else {
       toast.error(e instanceof Error ? e.message : 'Save failed')
     }
   } finally {
@@ -86,7 +90,11 @@ async function reloadContent() {
     navigation.editDirty = false
     toast.info('File reloaded')
   } catch (e: unknown) {
-    toast.error(e instanceof Error ? e.message : 'Failed to reload')
+    if (e instanceof ApiError && e.authError) {
+      /* handled by maybeUnauthorized */
+    } else {
+      toast.error(e instanceof Error ? e.message : 'Failed to reload')
+    }
   }
 }
 

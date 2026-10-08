@@ -53,15 +53,13 @@ try {
         }
     } elseif (!Settings::filesOpen()) {
         if (!Settings::embed() && Auth::identity() === null) {
-            Response::error('Authentication required', 401);
+            Response::error('Authentication required', 401, 'expired');
         }
         if (!Settings::embed()) {
-            $token = Grants::current() === null ? 'allowlist' : 'bad_root';
-            Auth::logout();
-            Settings::resetForRequest();
-            Response::error($token === 'bad_root'
+            $authError = Grants::current() === null ? 'allowlist' : 'bad_root';
+            Response::error($authError === 'bad_root'
                 ? 'Account root directory is missing' : 'Authentication required',
-                $token === 'bad_root' ? 403 : 401);
+                $authError === 'bad_root' ? 403 : 401, $authError);
         }
         Response::error('FILECARTON_ROOT_PATH is not configured', 403);
     }

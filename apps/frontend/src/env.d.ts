@@ -1,8 +1,14 @@
+interface FileCartonAuthPluginIcon {
+  mono_url: string
+  light_tint?: string
+  dark_tint?: string
+}
+
 interface FileCartonAuthPlugin {
   id: string
   label: string
   kind: 'password' | 'redirect'
-  icon?: string
+  icon?: string | FileCartonAuthPluginIcon
 }
 
 interface FileCartonAuthUser {
