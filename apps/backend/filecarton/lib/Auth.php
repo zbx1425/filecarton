@@ -11,6 +11,9 @@ interface AuthProvider {
 
     /** 'password' | 'redirect' | 'implicit' */
     public function kind(): string;
+
+    /** @return string[] Configuration problems specific to this provider. */
+    public function validateConfig(): array;
 }
 
 class AuthIdentity {
@@ -158,6 +161,8 @@ class Auth {
     private static $bootErrors = [];
     /** @var string[] provider id => absolute path */
     private static $pluginFiles = [];
+    /** @var string Error token to inject into the frontend config (in-place rendering). */
+    private static $inlineError = '';
 
     public static function instantiateFromSpec(array $spec, $mustBe) {
         if (isset($spec['file']) && is_string($spec['file']) && $spec['file'] !== '') {
@@ -228,9 +233,25 @@ class Auth {
         return null;
     }
 
-    /** @return string[] */
+    /** @return string[] provider id => absolute path */
     public static function pluginFiles(): array {
         return self::$pluginFiles;
+    }
+
+    /**
+     * Resolved absolute paths of all auth/grant plugin files, for PathSecurity auto-ignore.
+     * @return string[]
+     */
+    public static function pluginIgnorePaths(): array {
+        $paths = [];
+        $files = self::$pluginFiles + Grants::pluginFiles();
+        foreach ($files as $file) {
+            $real = realpath($file);
+            if ($real !== false) {
+                $paths[] = str_replace('\\', '/', $real);
+            }
+        }
+        return $paths;
     }
 
     public static function boot() {
@@ -276,6 +297,7 @@ class Auth {
         $p = self::$bootErrors;
         if (Settings::embed()) return $p;
 
+        // Static user list format
         $list = self::staticUserList();
         $ids = [];
         foreach ($list as $i => $row) {
@@ -288,13 +310,9 @@ class Auth {
                 $p[] = 'FILECARTON_STATIC_USER_LIST duplicate id: ' . $row['id'];
             }
             $ids[$key] = true;
-            if (isset($row['passwordHash']) && is_string($row['passwordHash']) && $row['passwordHash'] !== '') {
-                if (!preg_match('/^(\$2[ayb]\$|\$argon2)/', $row['passwordHash'])) {
-                    $p[] = 'FILECARTON_STATIC_USER_LIST passwordHash must be password_hash() ($2y$ / $2a$ / $2b$ / $argon2).';
-                }
-            }
         }
 
+        // Provider combination rules
         $nImplicit = 0;
         $nInteractive = 0;
         foreach (self::$providers as $prov) {
@@ -307,13 +325,11 @@ class Auth {
         if ($nImplicit > 0 && $nInteractive > 0) {
             $p[] = 'NoLoginAuth cannot be combined with password or redirect providers.';
         }
-        if ($nImplicit > 0 && ($list === [] || !isset($list[0]['id']) || !is_string($list[0]['id']) || $list[0]['id'] === '')) {
-            $p[] = 'NoLoginAuth requires FILECARTON_STATIC_USER_LIST[0].id.';
-        }
         if ($nImplicit === 0 && $nInteractive === 0) {
             $p[] = 'No auth providers registered (add NoLoginAuth, passwordHash rows, or AUTH_PROVIDERS).';
         }
 
+        // Grant resolver availability
         $grantSpecs = defined('FILECARTON_GRANT_RESOLVERS') ? FILECARTON_GRANT_RESOLVERS : [];
         $grantSpecs = is_array($grantSpecs) ? $grantSpecs : [];
         $hasAnyResolver = false;
@@ -338,39 +354,18 @@ class Auth {
             $p[] = $e;
         }
 
-        $gh = self::pluginById('github');
-        if ($gh instanceof GitHubOAuth) {
-            if ($gh->clientIdPublic() === '' || $gh->clientSecretPublic() === '') {
-                $p[] = 'GitHubOAuth clientId / clientSecret is empty.';
+        // Provider and resolver self-reported problems
+        foreach (self::$providers as $prov) {
+            foreach ($prov->validateConfig() as $msg) {
+                $p[] = $msg;
             }
-            if (!extension_loaded('curl')) {
-                $p[] = 'GitHub OAuth requires the curl PHP extension.';
+        }
+        foreach (Grants::resolvers() as $r) {
+            foreach ($r->validateConfig() as $msg) {
+                $p[] = $msg;
             }
         }
 
-        $root = defined('FILECARTON_ROOT_PATH') ? FILECARTON_ROOT_PATH : '';
-        $ignore = defined('FILECARTON_IGNORE_REALPATH') && is_array(FILECARTON_IGNORE_REALPATH)
-            ? FILECARTON_IGNORE_REALPATH : [];
-        $rootReal = ($root !== '' && is_string($root)) ? realpath($root) : false;
-        $files = self::$pluginFiles + Grants::pluginFiles();
-        foreach ($files as $id => $file) {
-            $real = realpath($file);
-            if ($real === false || $rootReal === false) continue;
-            $realN = str_replace('\\', '/', $real);
-            $rootN = rtrim(str_replace('\\', '/', $rootReal), '/');
-            if ($realN !== $rootN && strpos($realN, $rootN . '/') !== 0) continue;
-            $ignored = false;
-            foreach ($ignore as $ig) {
-                $igReal = realpath($ig);
-                if ($igReal !== false && str_replace('\\', '/', $igReal) === $realN) {
-                    $ignored = true;
-                    break;
-                }
-            }
-            if (!$ignored) {
-                $p[] = 'Auth/grant plugin file for "' . $id . '" is under FILECARTON_ROOT_PATH and not in FILECARTON_IGNORE_REALPATH: ' . $file;
-            }
-        }
         return $p;
     }
 
@@ -431,6 +426,9 @@ class Auth {
      * @return AuthIdentity|null
      */
     public static function loginPassword($username, $password) {
+        if (!Csrf::isHttps()) {
+            throw new AuthException('config', 400, 'password login without https');
+        }
         self::ensureSession();
         $username = is_string($username) ? $username : '';
         $password = is_string($password) ? $password : '';
@@ -513,15 +511,23 @@ class Auth {
         return $out;
     }
 
+    public static function setInlineError(string $token): void {
+        self::$inlineError = $token;
+    }
+
     public static function frontendConfig(): array {
         $user = self::identity();
-        return [
+        $cfg = [
             'enabled'       => true,
             'implicit'      => self::hasImplicit(),
             'authenticated' => $user !== null,
             'user'          => $user ? $user->toPublicArray() : null,
             'plugins'       => self::catalog(),
         ];
+        if (self::$inlineError !== '') {
+            $cfg['error'] = self::$inlineError;
+        }
+        return $cfg;
     }
 
     // ── Redirect pending bag ──
@@ -567,6 +573,27 @@ class Auth {
         }
         $_SESSION[self::SESSION_PENDING][$nonce] = $row;
         return $nonce;
+    }
+
+    /**
+     * Look up a pending row without consuming it (for error-recovery context).
+     */
+    public static function peekPending($pluginId, $signedOrNonce) {
+        self::ensureSession();
+        $nonce = null;
+        if (is_string($signedOrNonce) && strpos($signedOrNonce, '.') !== false) {
+            $nonce = self::verifySignedPending($pluginId, $signedOrNonce);
+        } elseif (is_string($signedOrNonce) && preg_match('/^[a-f0-9]{32}$/', $signedOrNonce)) {
+            $nonce = $signedOrNonce;
+        }
+        if ($nonce === null) return null;
+        if (empty($_SESSION[self::SESSION_PENDING][$nonce])
+            || !is_array($_SESSION[self::SESSION_PENDING][$nonce])) {
+            return null;
+        }
+        $row = $_SESSION[self::SESSION_PENDING][$nonce];
+        if (($row['plugin'] ?? '') !== $pluginId) return null;
+        return $row;
     }
 
     public static function consumePending($pluginId, $signedOrNonce) {
@@ -683,8 +710,11 @@ class Auth {
         if (!is_string($pathInfo) || $pathInfo === '') return '';
         if ($pathInfo[0] !== '/') return '';
         if (strpos($pathInfo, '//') !== false) return '';
-        if (strpos($pathInfo, "\n") !== false || strpos($pathInfo, "\r") !== false || strpos($pathInfo, "\0") !== false) return '';
+        if (strpbrk($pathInfo, "\r\n\0\\?#") !== false) return '';
         if (preg_match('#^[a-z][a-z0-9+.-]*:#i', $pathInfo)) return '';
+        foreach (explode('/', $pathInfo) as $seg) {
+            if ($seg === '.' || $seg === '..') return '';
+        }
         return $pathInfo;
     }
 
@@ -697,10 +727,7 @@ class Auth {
     }
 
     private static function requestIsHttps(): bool {
-        if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') return true;
-        if ((int)($_SERVER['SERVER_PORT'] ?? 0) === 443) return true;
-        if (strtolower($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') return true;
-        return false;
+        return Csrf::isHttps();
     }
 
     private static function capturePassthroughQuery(): array {

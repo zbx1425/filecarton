@@ -17,6 +17,7 @@ interface FileCartonAuthConfig {
   authenticated?: boolean
   user?: FileCartonAuthUser | null
   plugins?: FileCartonAuthPlugin[]
+  error?: string
 }
 
 interface FileCartonConfig {

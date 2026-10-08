@@ -7,6 +7,10 @@ abstract class PasswordAuth implements AuthProvider {
         return 'password';
     }
 
+    public function validateConfig(): array {
+        return [];
+    }
+
     /**
      * Return an identity on success, null on failure.
      * Must not throw on bad credentials.
@@ -41,6 +45,20 @@ class StaticPasswordAuth extends PasswordAuth {
     public function id(): string { return 'password'; }
 
     public function label(): string { return 'Username and password'; }
+
+    public function validateConfig(): array {
+        $p = [];
+        foreach (Auth::staticUserList() as $row) {
+            if (!is_array($row) || !isset($row['id']) || !is_string($row['id'])) continue;
+            if (isset($row['passwordHash']) && is_string($row['passwordHash']) && $row['passwordHash'] !== '') {
+                if (!preg_match('/^(\$2[ayb]\$|\$argon2)/', $row['passwordHash'])) {
+                    $p[] = 'FILECARTON_STATIC_USER_LIST passwordHash must be password_hash().';
+                    break;
+                }
+            }
+        }
+        return $p;
+    }
 
     public function verify(string $username, string $password) {
         if (!isset($this->users[$username]) || !is_string($this->users[$username])) {

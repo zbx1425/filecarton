@@ -7,6 +7,7 @@ import { useUiStore } from './stores/ui'
 import { usePreferencesStore } from './stores/preferences'
 import { useAuthStore } from './stores/auth'
 import { onUnauthorized } from './api/client'
+import { confirm } from './composables/useDialogs'
 
 // Consume fc_return_hash / fc_auth_error before SPA routing kicks in
 const startUrl = new URL(window.location.href)
@@ -35,6 +36,14 @@ const preferences = usePreferencesStore()
 const auth = useAuthStore()
 
 onUnauthorized(() => {
+  if (navigation.editDirty) {
+    confirm(
+      'Can\'t save',
+      'Saving failed because your login has expired. Please back up the current content and then refresh this page.',
+      { actionLabel: 'Cancel', hideCancel: true },
+    )
+    return
+  }
   sessionStorage.setItem('filecarton_auth_error', 'expired')
   location.reload()
 })

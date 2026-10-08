@@ -53,6 +53,17 @@ class Csrf {
     }
 
     /**
+     * Detect whether the current request arrived over HTTPS.
+     * Checks HTTPS env, port 443, and X-Forwarded-Proto from a reverse proxy.
+     */
+    public static function isHttps(): bool {
+        if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') return true;
+        if ((int)($_SERVER['SERVER_PORT'] ?? 0) === 443) return true;
+        if (strtolower($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') return true;
+        return false;
+    }
+
+    /**
      * Embedders may already have started a session. Leave that session alone.
      * When we start the session ourselves, set SameSite=Lax for OAuth GET callbacks.
      */
@@ -61,9 +72,7 @@ class Csrf {
             throw new \RuntimeException('Sessions are disabled', 500);
         }
         if (session_status() === PHP_SESSION_NONE) {
-            $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-                || (int)($_SERVER['SERVER_PORT'] ?? 0) === 443
-                || strtolower($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+            $secure = self::isHttps();
             if (PHP_VERSION_ID >= 70300) {
                 session_set_cookie_params([
                     'lifetime' => 0,

@@ -7,6 +7,9 @@ interface GrantResolver {
      * @return AuthGrant|null  null = pass to the next resolver
      */
     public function resolve(AuthIdentity $identity);
+
+    /** @return string[] Configuration problems specific to this resolver. */
+    public function validateConfig(): array;
 }
 
 class AuthGrant {
@@ -48,6 +51,10 @@ class StaticGrantResolver implements GrantResolver {
     public function __construct(array $opts = []) {
     }
 
+    public function validateConfig(): array {
+        return [];
+    }
+
     public function resolve(AuthIdentity $identity) {
         $list = defined('FILECARTON_STATIC_USER_LIST') ? FILECARTON_STATIC_USER_LIST : [];
         if (!is_array($list)) return null;
@@ -82,6 +89,11 @@ class Grants {
     /** @return string[] */
     public static function bootErrors(): array {
         return self::$bootErrors;
+    }
+
+    /** @return GrantResolver[] */
+    public static function resolvers(): array {
+        return self::$resolvers;
     }
 
     /** @return string[] */

@@ -34,18 +34,24 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
   }
 
+  const errorMessages: Record<string, string> = {
+    denied: 'Login was cancelled.',
+    allowlist: 'This account is not allowed to log in.',
+    expired: 'Session expired, please sign in again.',
+    exchange: 'Login authentication failed.',
+    config: 'Login configuration error.',
+    bad_root: 'Your account\'s root directory is not usable.',
+  }
+
   function initError() {
+    // Injected error from in-place render (F3: no redirect needed)
+    if (config?.error && typeof config.error === 'string') {
+      error.value = errorMessages[config.error] ?? 'Login failed.'
+    }
     const stored = sessionStorage.getItem('filecarton_auth_error')
     if (stored) {
       sessionStorage.removeItem('filecarton_auth_error')
-      const messages: Record<string, string> = {
-        denied: 'Login was cancelled.',
-        allowlist: 'This account is not allowed to log in.',
-        expired: 'Session expired, please sign in again.',
-        exchange: 'Login authentication failed.',
-        config: 'Login configuration error.',
-      }
-      error.value = messages[stored] ?? 'Login failed.'
+      error.value = errorMessages[stored] ?? 'Login failed.'
     }
   }
 

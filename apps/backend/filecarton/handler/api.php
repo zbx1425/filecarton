@@ -56,9 +56,12 @@ try {
             Response::error('Authentication required', 401);
         }
         if (!Settings::embed()) {
+            $token = Grants::current() === null ? 'allowlist' : 'bad_root';
             Auth::logout();
             Settings::resetForRequest();
-            Response::error('Authentication required', 401);
+            Response::error($token === 'bad_root'
+                ? 'Account root directory is missing' : 'Authentication required',
+                $token === 'bad_root' ? 403 : 401);
         }
         Response::error('FILECARTON_ROOT_PATH is not configured', 403);
     }

@@ -44,6 +44,10 @@ const upload = useUploadStore()
 const auth = useAuthStore()
 
 async function handleLogout() {
+  if (navigation.editDirty) {
+    const leave = await navigation.checkDirty()
+    if (!leave) return
+  }
   try {
     await apiPost('auth_logout', {})
   } catch { /* session already invalid */ }

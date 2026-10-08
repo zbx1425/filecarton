@@ -62,12 +62,14 @@ async function save() {
           navigation.editDirty = false
           toast.success('File saved (overwritten)')
         } catch (e2: unknown) {
-          toast.error(e2 instanceof Error ? e2.message : 'Save failed')
+          if (!(e2 instanceof ApiError && e2.status === 401)) {
+            toast.error(e2 instanceof Error ? e2.message : 'Save failed')
+          }
         }
       } else if (choice === 'reload') {
         await reloadContent()
       }
-    } else {
+    } else if (!(e instanceof ApiError && e.status === 401)) {
       toast.error(e instanceof Error ? e.message : 'Save failed')
     }
   } finally {

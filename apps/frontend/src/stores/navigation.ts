@@ -170,6 +170,7 @@ export const useNavigationStore = defineStore('navigation', () => {
     openFile,
     openEditor,
     backToList,
+    checkDirty,
     init,
   }
 })

@@ -120,9 +120,15 @@ class StartupCheck {
         }
 
         // ROOT_PATH — skip on the login page (grant overlays resolve after login).
-        $isLoginPage = class_exists(__NAMESPACE__ . '\\Auth', false)
-            && !Settings::embed()
-            && Auth::identity() === null;
+        $isLoginPage = false;
+        if (class_exists(__NAMESPACE__ . '\\Auth', false) && !Settings::embed()) {
+            try {
+                $isLoginPage = Auth::identity() === null;
+            } catch (\Throwable $e) {
+                $p[] = $e->getMessage();
+                $isLoginPage = true;
+            }
+        }
         $rootPath = FILECARTON_ROOT_PATH;
         if ($rootPath !== '' && !$isLoginPage) {
             if (!is_dir($rootPath)) {
@@ -154,6 +160,18 @@ class StartupCheck {
 
         // Auth configuration (standalone only)
         if (class_exists(__NAMESPACE__ . '\\Auth', false) && !Settings::embed()) {
+            $hasPasswordProvider = false;
+            foreach (Auth::providers() as $prov) {
+                if ($prov instanceof PasswordAuth) {
+                    $hasPasswordProvider = true;
+                    break;
+                }
+            }
+            if ($hasPasswordProvider && !Csrf::isHttps()) {
+                $p[] = 'Password login is configured but the request is not HTTPS. '
+                    . 'Please serve FileCarton with and only with HTTPS. '
+                    . 'If TLS is terminated at a reverse proxy, please set that proxy to send X-Forwarded-Proto: https.';
+            }
             foreach (Auth::configProblems() as $authProblem) {
                 $p[] = $authProblem;
             }

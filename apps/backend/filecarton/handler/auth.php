@@ -5,9 +5,16 @@ namespace FileCarton;
 function handle_auth(): void {
     $action = $_GET['fcauth'] ?? '';
     $pluginId = isset($_GET['plugin']) && is_string($_GET['plugin']) ? $_GET['plugin'] : '';
-    $pendingForCatch = ($action === 'callback')
-        ? Auth::emptyReturnContext()
-        : Auth::captureReturnFallback();
+    if ($action === 'callback') {
+        $token = $_GET['state'] ?? $_GET['fc_nonce'] ?? '';
+        $token = is_string($token) ? $token : '';
+        $peeked = ($pluginId !== '' && $token !== '')
+            ? Auth::peekPending($pluginId, $token) : null;
+        $pendingForCatch = $peeked !== null
+            ? $peeked : Auth::emptyReturnContext();
+    } else {
+        $pendingForCatch = Auth::captureReturnFallback();
+    }
     try {
         $problems = Auth::configProblems();
         if ($problems !== []) {

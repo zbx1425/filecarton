@@ -12,6 +12,15 @@ class NoLoginAuth implements AuthProvider {
 
     public function kind(): string { return 'implicit'; }
 
+    public function validateConfig(): array {
+        $list = Auth::staticUserList();
+        if ($list === [] || !is_array($list[0]) || !isset($list[0]['id'])
+            || !is_string($list[0]['id']) || $list[0]['id'] === '') {
+            return ['NoLoginAuth requires FILECARTON_STATIC_USER_LIST[0].id.'];
+        }
+        return [];
+    }
+
     /** Synthesize every request. Must not persist to session. */
     public function identity(): AuthIdentity {
         $list = Auth::staticUserList();

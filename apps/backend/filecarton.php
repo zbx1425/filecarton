@@ -66,12 +66,15 @@ function dispatch(): void {
         return;
     }
 
-    // Identity exists but no usable grant → clear session, redirect to login.
+    // Identity exists but no usable grant or bad root → clear session, show login in-place.
     if (!Settings::embed() && !Settings::filesOpen()) {
+        $token = Grants::current() === null ? 'allowlist' : 'bad_root';
+        Auth::setInlineError($token);
         Auth::logout();
         Settings::resetForRequest();
-        header('Location: ' . script_url() . '?fc_auth_error=allowlist', true, 302);
-        exit;
+        require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
+        handle_page();
+        return;
     }
 
     if (!Settings::filesOpen()) {

@@ -51,6 +51,12 @@ class PathSecurity {
             }
         }
 
+        if (class_exists(__NAMESPACE__ . '\\Auth', false)) {
+            foreach (Auth::pluginIgnorePaths() as $pluginPath) {
+                $this->ignorePaths[] = $pluginPath;
+            }
+        }
+
         if (defined('FILECARTON_IGNORE_PATTERN') && is_array(FILECARTON_IGNORE_PATTERN)) {
             foreach (FILECARTON_IGNORE_PATTERN as $pattern) {
                 $this->addIgnorePattern($pattern);
