@@ -11,7 +11,7 @@ namespace FileCarton;
 function api_create(PathSecurity $pathSec, FileOps $fileOps): void {
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input || !isset($input['path'], $input['name'], $input['type'])) {
-    Response::error('Missing required fields: path, name, type', 400);
+    Response::error('missing_fields', 400, ['fields' => 'path, name, type']);
 }
 
 $parentPath = $input['path'];
@@ -19,15 +19,15 @@ $name = $input['name'];
 $type = $input['type'];
 
 if ($type !== 'file' && $type !== 'dir') {
-    Response::error('Type must be "file" or "dir"', 400);
+    Response::error('create.invalid_type', 400);
 }
 
 if (!$pathSec->isValidFileName($name)) {
-    Response::error('Invalid filename', 400);
+    Response::error('invalid_filename', 400);
 }
 
 if ($type === 'file' && $pathSec->isExtensionBlocked($name)) {
-    Response::error('File type is restricted', 403);
+    Response::error('extension_blocked', 403);
 }
 
 $relativePath = ($parentPath === '' || $parentPath === '/') ? $name : rtrim($parentPath, '/') . '/' . $name;
@@ -35,11 +35,11 @@ $targetAbs = $pathSec->resolveParent($relativePath);
 $pathSec->assertNotIgnored(dirname($targetAbs));
 
 if ($pathSec->wouldBeIgnored($targetAbs, $type === 'dir')) {
-    Response::error('Access denied', 403);
+    Response::error('access_denied', 403);
 }
 
 if (file_exists($targetAbs)) {
-    Response::error('Name already exists', 409);
+    Response::error('already_exists', 409);
 }
 
 if ($type === 'dir') {

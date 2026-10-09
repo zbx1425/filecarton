@@ -16,7 +16,7 @@ $targetDir = $_POST['path'] ?? '';
 $targetAbs = $pathSec->resolveOrCreate($targetDir);
 
 if (empty($_FILES['files'])) {
-    Response::error('No files uploaded', 400);
+    Response::error('missing_fields', 400, ['fields' => 'files']);
 }
 
 $files = $_FILES['files'];
@@ -34,7 +34,7 @@ for ($i = 0; $i < $count; $i++) {
     $size = $isMultiple ? $files['size'][$i] : $files['size'];
 
     if ($error !== UPLOAD_ERR_OK) {
-        $failed[] = ['name' => $name, 'error' => 'Upload error code: ' . $error];
+        $failed[] = ['name' => $name, 'error' => 'upload.invalid'];
         continue;
     }
 
@@ -42,7 +42,7 @@ for ($i = 0; $i < $count; $i++) {
         $sanitizedName = $pathSec->sanitizeFileName($name);
 
         if ($pathSec->isExtensionBlocked($sanitizedName)) {
-            $failed[] = ['name' => $name, 'error' => 'File type is restricted'];
+            $failed[] = ['name' => $name, 'error' => 'extension_blocked'];
             continue;
         }
 
@@ -66,7 +66,7 @@ for ($i = 0; $i < $count; $i++) {
         $pathSec->assertWithinRoot($destination);
 
         if ($pathSec->wouldBeIgnored($destination, false)) {
-            $failed[] = ['name' => $name, 'error' => 'Access denied'];
+            $failed[] = ['name' => $name, 'error' => 'access_denied'];
             continue;
         }
 

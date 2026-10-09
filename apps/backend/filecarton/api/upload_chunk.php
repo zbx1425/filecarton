@@ -16,32 +16,27 @@ function api_upload_chunk(PathSecurity $pathSec, FileOps $fileOps): void {
     $totalChunks = (int)($_POST['totalChunks'] ?? 0);
 
     if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $uploadId)) {
-        Response::error('Invalid uploadId format', 400);
+        Response::error('upload.invalid_id', 400);
     }
 
     if ($chunkIndex < 0 || $totalChunks < 1 || $chunkIndex >= $totalChunks) {
-        Response::error('Invalid chunkIndex or totalChunks', 400);
+        Response::error('upload.invalid_chunk', 400);
     }
 
     $maxChunks = (int)ceil(FILECARTON_UPLOAD_MAX_FILE_SIZE / max(1, FILECARTON_UPLOAD_CHUNK_SIZE));
     if ($totalChunks > $maxChunks) {
-        Response::error('Too many chunks (max: ' . $maxChunks . ')', 400);
+        Response::error('upload.too_many_chunks', 400, ['max' => $maxChunks]);
     }
 
     $phpMaxUpload = parse_php_size(ini_get('upload_max_filesize') ?: '0');
     $phpMaxPost = parse_php_size(ini_get('post_max_size') ?: '0');
     $effectivePhpLimit = ($phpMaxPost > 0) ? min($phpMaxUpload, $phpMaxPost) : $phpMaxUpload;
     if ($effectivePhpLimit > 0 && FILECARTON_UPLOAD_CHUNK_SIZE > $effectivePhpLimit) {
-        Response::error(
-            'Server misconfiguration: FILECARTON_UPLOAD_CHUNK_SIZE (' .
-            round(FILECARTON_UPLOAD_CHUNK_SIZE / 1024 / 1024, 1) . ' MB) exceeds PHP upload limit (' .
-            round($effectivePhpLimit / 1024 / 1024, 1) . ' MB). Adjust php.ini or FileCarton config.',
-            500
-        );
+        Response::error('upload.server_misconfigured', 500);
     }
 
     if (empty($_FILES['chunk']) || $_FILES['chunk']['error'] !== UPLOAD_ERR_OK) {
-        Response::error('Chunk upload failed', 400);
+        Response::error('upload.chunk_failed', 400);
     }
 
     $chunksBase = sys_get_temp_dir() . '/filecarton_chunks';
@@ -52,7 +47,7 @@ function api_upload_chunk(PathSecurity $pathSec, FileOps $fileOps): void {
 
     $chunkFile = $tempDir . '/chunk_' . $chunkIndex;
     if (!move_uploaded_file($_FILES['chunk']['tmp_name'], $chunkFile)) {
-        Response::error('Failed to save chunk', 500);
+        Response::error('server_error', 500);
     }
 
     cleanup_expired_chunks($chunksBase);

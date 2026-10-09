@@ -14,7 +14,7 @@ namespace FileCarton;
 function api_check_upload_conflicts(PathSecurity $pathSec, FileOps $fileOps): void {
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input || !isset($input['paths']) || !is_array($input['paths'])) {
-    Response::error('Missing required field: paths (array)', 400);
+    Response::error('missing_fields', 400, ['fields' => 'paths']);
 }
 
 if (empty($input['paths'])) {
