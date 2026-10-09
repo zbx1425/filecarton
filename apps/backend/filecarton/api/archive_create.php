@@ -16,7 +16,7 @@ function api_archive_create(PathSecurity $pathSec, FileOps $fileOps): void {
 
     $format = $input['format'];
     if ($format !== 'zip' && $format !== 'tar') {
-        Response::error('archive.invalid_format', 400);
+        Response::error('invalid_input', 400, ['field' => 'format']);
     }
 
     $dirAbs = $pathSec->resolveExistingDir($input['path']);

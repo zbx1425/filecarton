@@ -21,7 +21,7 @@ $totalChunks = (int)$input['totalChunks'];
 $fileName = $input['fileName'];
 
 if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $uploadId)) {
-    Response::error('upload.invalid_id', 400);
+    Response::error('invalid_input', 400, ['field' => 'uploadId']);
 }
 
 $sanitizedName = $pathSec->sanitizeFileName($fileName);

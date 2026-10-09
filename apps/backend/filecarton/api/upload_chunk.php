@@ -16,11 +16,11 @@ function api_upload_chunk(PathSecurity $pathSec, FileOps $fileOps): void {
     $totalChunks = (int)($_POST['totalChunks'] ?? 0);
 
     if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $uploadId)) {
-        Response::error('upload.invalid_id', 400);
+        Response::error('invalid_input', 400, ['field' => 'uploadId']);
     }
 
     if ($chunkIndex < 0 || $totalChunks < 1 || $chunkIndex >= $totalChunks) {
-        Response::error('upload.invalid_chunk', 400);
+        Response::error('invalid_input', 400, ['field' => 'chunkIndex']);
     }
 
     $maxChunks = (int)ceil(FILECARTON_UPLOAD_MAX_FILE_SIZE / max(1, FILECARTON_UPLOAD_CHUNK_SIZE));

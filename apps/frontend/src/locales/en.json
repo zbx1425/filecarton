@@ -15,7 +15,7 @@
   "err.path_traversal": "Path traversal denied",
   "err.path_too_deep": "Path too deep (max {max} levels)",
   "err.not_found.path": "Path not found",
-  "err.invalid_input": "Invalid input",
+  "err.invalid_input": "Invalid input: {field}",
 
   "err.file_too_large": "File too large to edit ({maxMB} MB limit). Please download instead.",
   "err.not_utf8": "File is not valid UTF-8. Please download to view.",
@@ -27,8 +27,6 @@
   "err.upload.missing_chunk": "Missing chunk: {index}",
   "err.upload.session_not_found": "Upload session not found",
   "err.upload.merge_in_progress": "Merge already in progress for this upload",
-  "err.upload.invalid_id": "Invalid upload ID format",
-  "err.upload.invalid_chunk": "Invalid chunk index or total chunks",
   "err.upload.too_many_chunks": "Too many chunks (max: {max})",
   "err.upload.server_misconfigured": "Server upload configuration error",
   "err.upload.chunk_failed": "Chunk upload failed",
@@ -38,7 +36,6 @@
   "err.archive.unsupported_format": "Unsupported archive format",
   "err.archive.cannot_open": "Cannot open archive",
   "err.archive.size_exceeded": "Extracted data exceeds size limit ({limitGB} GB)",
-  "err.archive.invalid_format": "Format must be \"zip\" or \"tar\"",
 
   "err.blocked.extension": "Blocked file extension",
   "err.blocked.ignored": "Path is ignored by server rules",
@@ -60,8 +57,5 @@
 
   "err.unknown_action": "Unknown action",
   "err.not_configured": "File manager is not configured",
-  "err.network_error": "Network error",
-
-  "err.create.invalid_type": "Type must be \"file\" or \"dir\"",
-  "err.rename.no_change": "Name unchanged"
+  "err.network_error": "Network error"
 }

@@ -19,7 +19,7 @@ $name = $input['name'];
 $type = $input['type'];
 
 if ($type !== 'file' && $type !== 'dir') {
-    Response::error('create.invalid_type', 400);
+    Response::error('invalid_input', 400, ['field' => 'type']);
 }
 
 if (!$pathSec->isValidFileName($name)) {
