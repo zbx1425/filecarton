@@ -71,17 +71,12 @@ abstract class OAuth2Auth extends RedirectAuth {
     abstract protected function fetchIdentity(array $token, AuthContext $ctx): AuthIdentity;
 
     public function start(AuthContext $ctx): string {
-        $verifier = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
-        $ctx->setExtra('pkce_verifier', $verifier);
-        $challenge = rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=');
         $q = [
-            'client_id'             => $this->clientId(),
-            'redirect_uri'          => $ctx->callbackUrl(false),
-            'scope'                 => $this->scopes(),
-            'state'                 => $ctx->signedState(),
-            'response_type'         => 'code',
-            'code_challenge'        => $challenge,
-            'code_challenge_method' => 'S256',
+            'client_id'     => $this->clientId(),
+            'redirect_uri'  => $ctx->callbackUrl(false),
+            'scope'         => $this->scopes(),
+            'state'         => $ctx->signedState(),
+            'response_type' => 'code',
         ];
         return $this->authorizeEndpoint() . '?' . http_build_query($q, '', '&', PHP_QUERY_RFC3986);
     }
@@ -95,14 +90,12 @@ abstract class OAuth2Auth extends RedirectAuth {
         if ($code === null) {
             throw new AuthException('exchange', 400, 'OAuth code missing');
         }
-        $verifier = $ctx->getExtra('pkce_verifier', '');
         $resp = HttpClient::post($this->tokenEndpoint(), http_build_query([
             'client_id'     => $this->clientId(),
             'client_secret' => $this->clientSecret(),
             'code'          => $code,
             'redirect_uri'  => $ctx->callbackUrl(false),
             'grant_type'    => 'authorization_code',
-            'code_verifier' => $verifier,
         ]), [
             'Accept'       => 'application/json',
             'Content-Type' => 'application/x-www-form-urlencoded',
