@@ -87,6 +87,9 @@ function dispatch(): void {
         Auth::setInlineError($token);
         Auth::logout();
         Settings::resetForRequest();
+        if (class_exists(__NAMESPACE__ . '\\Grants', false)) {
+            Grants::resetForRequest();
+        }
         require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
         handle_page();
         return;

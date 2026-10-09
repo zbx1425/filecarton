@@ -49,9 +49,6 @@ class Settings {
         self::$readonly = false;
         self::$branding = '';
         self::$repoName = '';
-        if (class_exists(__NAMESPACE__ . '\\Grants', false)) {
-            Grants::resetForRequest();
-        }
     }
 
     private static function constString($name, $default = '') {

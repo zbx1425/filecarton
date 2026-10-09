@@ -257,7 +257,7 @@ class Auth {
     public static function boot() {
         if (self::$booted) return;
         self::$booted = true;
-        if (Settings::embed()) {
+        if (defined('FILECARTON_EMBED') && FILECARTON_EMBED === true) {
             return;
         }
         self::ensureSession();
@@ -295,7 +295,7 @@ class Auth {
      */
     public static function configProblems(): array {
         $p = self::$bootErrors;
-        if (Settings::embed()) return $p;
+        if (defined('FILECARTON_EMBED') && FILECARTON_EMBED === true) return $p;
 
         // Static user list format
         $list = self::staticUserList();
@@ -387,7 +387,7 @@ class Auth {
      * @return AuthIdentity|null
      */
     public static function identity() {
-        if (Settings::embed()) return null;
+        if (defined('FILECARTON_EMBED') && FILECARTON_EMBED === true) return null;
         foreach (self::$providers as $p) {
             if ($p instanceof NoLoginAuth) {
                 return $p->identity();
