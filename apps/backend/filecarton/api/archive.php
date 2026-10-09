@@ -14,7 +14,7 @@ namespace FileCarton;
 function api_archive(PathSecurity $pathSec, FileOps $fileOps): void {
     $input = json_decode(file_get_contents('php://input'), true);
     if (!$input || !isset($input['operation'])) {
-        Response::error('Missing required field: operation', 400);
+        Response::error('missing_fields', 400, ['fields' => 'operation']);
     }
 
     $operation = $input['operation'];
@@ -24,42 +24,42 @@ function api_archive(PathSecurity $pathSec, FileOps $fileOps): void {
     } elseif ($operation === 'extract') {
         archive_extract($input, $pathSec);
     } else {
-        Response::error('Operation must be "create" or "extract"', 400);
+        Response::error('missing_fields', 400, ['fields' => 'operation']);
     }
 }
 
 function archive_create(array $input, PathSecurity $pathSec, FileOps $fileOps) {
     if (!isset($input['format'], $input['path'], $input['items']) || !is_array($input['items'])) {
-        Response::error('Missing fields: format, path, items', 400);
+        Response::error('missing_fields', 400, ['fields' => 'format, path, items']);
     }
 
     $format = $input['format'];
     if ($format !== 'zip' && $format !== 'tar') {
-        Response::error('Format must be "zip" or "tar"', 400);
+        Response::error('archive.invalid_format', 400);
     }
 
     $dirAbs = $pathSec->resolve($input['path']);
     $pathSec->assertNotIgnored($dirAbs);
     if (!is_dir($dirAbs)) {
-        Response::error('Directory not found', 404);
+        Response::error('not_found.dir', 404);
     }
 
     $archiveName = $input['archiveName'] ?? ('archive_' . date('ymd_His') . '.' . $format);
     $sanitizedName = $pathSec->sanitizeFileName($archiveName);
 
     if ($pathSec->isExtensionBlocked($sanitizedName)) {
-        Response::error('Archive file type is restricted', 403);
+        Response::error('extension_blocked', 403);
     }
 
     $archivePath = $dirAbs . '/' . $sanitizedName;
     $pathSec->assertWithinRoot($archivePath);
 
     if ($pathSec->wouldBeIgnored($archivePath, false)) {
-        Response::error('Access denied', 403);
+        Response::error('access_denied', 403);
     }
 
     if (file_exists($archivePath)) {
-        Response::error('Archive name already exists', 409);
+        Response::error('already_exists', 409);
     }
 
     $fileCount = 0;
@@ -67,10 +67,10 @@ function archive_create(array $input, PathSecurity $pathSec, FileOps $fileOps) {
     count_items_for_archive($dirAbs, $input['items'], $pathSec, $fileCount, $totalSize);
 
     if ($fileCount > FILECARTON_ARCHIVE_MAX_FILES) {
-        Response::error('Too many files to archive (limit: ' . FILECARTON_ARCHIVE_MAX_FILES . ')', 400);
+        Response::error('archive.too_many_files', 400, ['limit' => FILECARTON_ARCHIVE_MAX_FILES]);
     }
     if ($totalSize > FILECARTON_ARCHIVE_MAX_SIZE) {
-        Response::error('Total size too large to archive (limit: ' . round(FILECARTON_ARCHIVE_MAX_SIZE / 1024 / 1024 / 1024, 1) . ' GB)', 400);
+        Response::error('archive.too_large', 400, ['limitGB' => round(FILECARTON_ARCHIVE_MAX_SIZE / 1024 / 1024 / 1024, 1)]);
     }
 
     $skipped = [];
@@ -91,26 +91,26 @@ function archive_create(array $input, PathSecurity $pathSec, FileOps $fileOps) {
 
 /**
  * Check if an archive entry should be blocked by security rules.
- * Returns a reason string (e.g. 'blocked_dotfile') or null if allowed.
+ * Returns a reason string (dot-separated) or null if allowed.
  */
 function check_extract_entry(string $normalized, string $finalTarget, PathSecurity $pathSec, bool $isDir): ?string {
     $segments = explode('/', $normalized);
     foreach ($segments as $seg) {
         if (preg_match('#[:*?"<>|]#', $seg)) {
-            return 'blocked_invalid';
+            return 'blocked.invalid';
         }
     }
 
     if (!$isDir) {
         $basename = basename($normalized);
         if ($pathSec->isExtensionBlocked($basename)) {
-            return 'blocked_extension';
+            return 'blocked.extension';
         }
     }
 
     $destPath = $finalTarget . '/' . $normalized;
     if ($pathSec->wouldBeIgnored($destPath, $isDir)) {
-        return 'blocked_ignored';
+        return 'blocked.ignored';
     }
 
     return null;
@@ -133,19 +133,19 @@ function sanitize_entry_path(string $entryPath): string {
 
 function archive_extract(array $input, PathSecurity $pathSec) {
     if (!isset($input['path'], $input['targetPath'])) {
-        Response::error('Missing fields: path, targetPath', 400);
+        Response::error('missing_fields', 400, ['fields' => 'path, targetPath']);
     }
 
     $archiveAbs = $pathSec->resolve($input['path']);
     $pathSec->assertNotIgnored($archiveAbs);
     if (!is_file($archiveAbs)) {
-        Response::error('Archive file not found', 404);
+        Response::error('not_found.file', 404);
     }
 
     $targetAbs = $pathSec->resolve($input['targetPath']);
     $pathSec->assertNotIgnored($targetAbs);
     if (!is_dir($targetAbs)) {
-        Response::error('Target directory not found', 404);
+        Response::error('not_found.dir', 404);
     }
 
     $dryRun = !empty($input['dryRun']);
@@ -156,7 +156,7 @@ function archive_extract(array $input, PathSecurity $pathSec) {
         $targetAbs .= '/' . $baseName;
         $pathSec->assertWithinRoot($targetAbs);
         if ($pathSec->wouldBeIgnored($targetAbs, true)) {
-            Response::error('Access denied', 403);
+            Response::error('access_denied', 403);
         }
         if (!$dryRun && !is_dir($targetAbs)) {
             mkdir($targetAbs, 0755, true);
@@ -173,7 +173,7 @@ function archive_extract(array $input, PathSecurity $pathSec) {
         } elseif ($ext === 'tar' || $ext === 'gz' || $ext === 'tgz') {
             $result = dry_run_tar($archiveAbs, $normalizedTarget, $pathSec);
         } else {
-            Response::error('Unsupported archive format', 400);
+            Response::error('archive.unsupported_format', 400);
         }
 
         $relTarget = substr($normalizedTarget, strlen($pathSec->getRootPath()) + 1);
@@ -187,7 +187,7 @@ function archive_extract(array $input, PathSecurity $pathSec) {
 
     $tempExtractDir = $targetAbs . '/__fc_extract_' . bin2hex(random_bytes(4));
     if (!mkdir($tempExtractDir, 0755, true)) {
-        Response::error('Cannot create temporary extraction directory', 500);
+        Response::error('server_error', 500);
     }
     $normalizedTemp = str_replace('\\', '/', $tempExtractDir);
 
@@ -202,12 +202,12 @@ function archive_extract(array $input, PathSecurity $pathSec) {
         } elseif ($ext === 'tar' || $ext === 'gz' || $ext === 'tgz') {
             $extracted = extract_tar_safe($archiveAbs, $tempExtractDir, $normalizedTemp, $pathSec, $bytesExtracted, $maxBytes, $normalizedTarget, $failed);
         } else {
-            throw new \RuntimeException('Unsupported archive format');
+            throw new ApiException('archive.unsupported_format', 400);
         }
 
         $mergeSkipped = merge_extracted_to_target($tempExtractDir, $targetAbs, $pathSec);
         foreach ($mergeSkipped as $skippedEntry) {
-            $failed[] = ['path' => $skippedEntry, 'reason' => 'blocked_ignored'];
+            $failed[] = ['path' => $skippedEntry, 'reason' => 'blocked.ignored'];
         }
     } finally {
         Platform::deleteRecursive($tempExtractDir);
@@ -267,7 +267,7 @@ function merge_extracted_to_target(string $tempDir, string $targetDir, PathSecur
 function extract_zip_safe(string $archiveAbs, string $targetAbs, string $normalizedTarget, PathSecurity $pathSec, int &$bytesExtracted, int $maxBytes, string $finalTarget, array &$failed): int {
     $zip = new \ZipArchive();
     if ($zip->open($archiveAbs) !== true) {
-        throw new \RuntimeException('Cannot open ZIP archive');
+        throw new ApiException('archive.cannot_open', 400);
     }
 
     $extracted = 0;
@@ -322,7 +322,7 @@ function extract_zip_safe(string $archiveAbs, string $targetAbs, string $normali
                     fclose($stream);
                     fclose($outFile);
                     $zip->close();
-                    throw new \RuntimeException('Extracted data exceeds size limit (' . round($maxBytes / 1024 / 1024 / 1024, 1) . ' GB)', 413);
+                    throw new ApiException('archive.size_exceeded', 413, ['limitGB' => round($maxBytes / 1024 / 1024 / 1024, 1)]);
                 }
             }
 
@@ -340,7 +340,7 @@ function extract_tar_safe(string $archiveAbs, string $targetAbs, string $normali
     try {
         $phar = new \PharData($archiveAbs);
     } catch (\Throwable $e) {
-        throw new \RuntimeException('Cannot open TAR archive: ' . $e->getMessage());
+        throw new ApiException('archive.cannot_open', 400);
     }
 
     $extracted = 0;
@@ -397,7 +397,7 @@ function extract_tar_safe(string $archiveAbs, string $targetAbs, string $normali
                 if ($bytesExtracted > $maxBytes) {
                     fclose($inStream);
                     fclose($outFile);
-                    throw new \RuntimeException('Extracted data exceeds size limit (' . round($maxBytes / 1024 / 1024 / 1024, 1) . ' GB)', 413);
+                    throw new ApiException('archive.size_exceeded', 413, ['limitGB' => round($maxBytes / 1024 / 1024 / 1024, 1)]);
                 }
             }
 
@@ -414,7 +414,7 @@ function extract_tar_safe(string $archiveAbs, string $targetAbs, string $normali
 function dry_run_zip(string $archiveAbs, string $normalizedTarget, PathSecurity $pathSec): array {
     $zip = new \ZipArchive();
     if ($zip->open($archiveAbs) !== true) {
-        Response::error('Cannot open ZIP archive', 400);
+        Response::error('archive.cannot_open', 400);
     }
 
     $wouldExtract = 0;
@@ -459,7 +459,7 @@ function dry_run_tar(string $archiveAbs, string $normalizedTarget, PathSecurity 
     try {
         $phar = new \PharData($archiveAbs);
     } catch (\Throwable $e) {
-        Response::error('Cannot open TAR archive: ' . $e->getMessage(), 400);
+        Response::error('archive.cannot_open', 400);
     }
 
     $wouldExtract = 0;
@@ -541,7 +541,7 @@ function count_items_for_archive(string $baseDir, array $items, PathSecurity $pa
 function create_zip(string $baseDir, array $items, string $archivePath, PathSecurity $pathSec, bool $filter = false, array &$skipped = []): void {
     $zip = new \ZipArchive();
     if ($zip->open($archivePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
-        throw new \RuntimeException('Cannot create ZIP file');
+        throw new ApiException('server_error', 500);
     }
 
     foreach ($items as $name) {

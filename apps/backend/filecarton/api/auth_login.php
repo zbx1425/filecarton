@@ -11,12 +11,12 @@ function api_auth_login($pathSec = null, $fileOps = null) {
         $user = Auth::loginPassword($username, $password);
     } catch (AuthException $e) {
         if ($e->token === 'allowlist') {
-            Response::error('This account is not allowed to log in', 403, 'allowlist');
+            Response::error('auth.allowlist', 403, [], 'allowlist');
         }
         throw $e;
     }
     if ($user === null) {
-        Response::error('Invalid username or password', 401);
+        Response::error('auth.invalid_credentials', 401);
     }
     Response::ok([
         'user'      => $user->toPublicArray(),

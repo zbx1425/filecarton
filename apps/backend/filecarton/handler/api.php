@@ -45,36 +45,19 @@ $postActions = [
 
 try {
     if (!in_array($action, $validActions, true)) {
-        Response::error('Unknown action: ' . $action, 400);
+        Response::error('unknown_action', 400);
     }
 
-    if ($isAuthAction) {
-        if (Settings::embed()) {
-            Response::error('Builtin auth is disabled', 404);
-        }
-    } elseif (!Settings::embed() && Auth::configProblems() !== []) {
-        Response::error('Server configuration error', 500);
-    } elseif (!Settings::filesOpen()) {
-        if (!Settings::embed() && Auth::identity() === null) {
-            Response::error('Authentication required', 401, 'expired');
-        }
-        if (!Settings::embed()) {
-            $authError = Grants::current() === null ? 'allowlist' : 'bad_root';
-            Response::error($authError === 'bad_root'
-                ? 'Account root directory is missing' : 'Authentication required',
-                $authError === 'bad_root' ? 403 : 401, $authError);
-        }
-        Response::error('FILECARTON_ROOT_PATH is not configured', 403);
-    }
+    assert_api_access($isAuthAction);
 
     if (in_array($action, $postActions, true) && $_SERVER['REQUEST_METHOD'] !== 'POST') {
-        Response::error('Method not allowed', 405);
+        Response::error('method_not_allowed', 405);
     }
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         Csrf::validate();
         if (!$isAuthAction && Settings::readonly()) {
-            Response::error('Read-only mode', 403);
+            Response::error('readonly', 403);
         }
     }
 
@@ -99,4 +82,32 @@ try {
     error_log('FileCarton error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
     Response::error('server_error', 500);
 }
+}
+
+/**
+ * Check authentication and authorization state before API dispatch.
+ * Sends an error response and exits if the request is not authorized.
+ */
+function assert_api_access(bool $isAuthAction): void {
+    if ($isAuthAction) {
+        if (Settings::embed()) {
+            Response::error('auth.disabled', 404);
+        }
+        return;
+    }
+
+    if (!Settings::embed() && Auth::configProblems() !== []) {
+        Response::error('auth.config', 500);
+    }
+
+    if (!Settings::filesOpen()) {
+        if (!Settings::embed() && Auth::identity() === null) {
+            Response::error('auth.required', 401, [], 'expired');
+        }
+        if (!Settings::embed()) {
+            $authError = Grants::current() === null ? 'allowlist' : 'bad_root';
+            Response::error('auth.' . $authError, $authError === 'bad_root' ? 403 : 401, [], $authError);
+        }
+        Response::error('not_configured', 403);
+    }
 }

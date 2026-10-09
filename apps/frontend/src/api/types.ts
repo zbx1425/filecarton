@@ -105,7 +105,7 @@ export interface ArchiveCreateResponse {
 
 export interface ArchiveExtractFailedEntry {
   path: string
-  reason: 'blocked_extension' | 'blocked_ignored' | 'blocked_invalid' | 'io_error'
+  reason: 'blocked.extension' | 'blocked.ignored' | 'blocked.invalid' | 'io_error'
 }
 
 export interface ArchiveExtractResponse {
