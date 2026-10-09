@@ -104,9 +104,9 @@ class AuthContext {
         return $url;
     }
 
-    /** `{pluginId}.{nonce}.{hmac}` */
+    /** `{pluginId}.{nonce}` */
     public function signedState(): string {
-        return Auth::signPending($this->plugin->id(), $this->nonce());
+        return $this->plugin->id() . '.' . $this->nonce();
     }
 
     public function param($key) {
@@ -148,7 +148,6 @@ class AuthContext {
 class Auth {
     const SESSION_USER    = 'filecarton_auth';
     const SESSION_PENDING = 'filecarton_auth_pending';
-    const SESSION_HMAC    = 'filecarton_auth_hmac_key';
     const PENDING_TTL     = 600;
     const PENDING_MAX     = 10;
     const ID_PATTERN      = '/^[a-z][a-z0-9_]{0,31}$/';
@@ -367,18 +366,6 @@ class Auth {
 
     public static function ensureSession() {
         Csrf::ensureSession();
-        self::ensureHmacKey();
-    }
-
-    private static function ensureHmacKey() {
-        if (empty($_SESSION[self::SESSION_HMAC]) || !is_string($_SESSION[self::SESSION_HMAC])) {
-            $_SESSION[self::SESSION_HMAC] = bin2hex(random_bytes(32));
-        }
-    }
-
-    private static function hmacSecret(): string {
-        self::ensureSession();
-        return $_SESSION[self::SESSION_HMAC];
     }
 
     /**
@@ -587,12 +574,7 @@ class Auth {
      */
     public static function peekPending($pluginId, $signedOrNonce) {
         self::ensureSession();
-        $nonce = null;
-        if (is_string($signedOrNonce) && strpos($signedOrNonce, '.') !== false) {
-            $nonce = self::verifySignedPending($pluginId, $signedOrNonce);
-        } elseif (is_string($signedOrNonce) && preg_match('/^[a-f0-9]{32}$/', $signedOrNonce)) {
-            $nonce = $signedOrNonce;
-        }
+        $nonce = self::extractNonce($pluginId, $signedOrNonce);
         if ($nonce === null) return null;
         if (empty($_SESSION[self::SESSION_PENDING][$nonce])
             || !is_array($_SESSION[self::SESSION_PENDING][$nonce])) {
@@ -606,12 +588,7 @@ class Auth {
     public static function consumePending($pluginId, $signedOrNonce) {
         self::ensureSession();
         self::gcPending();
-        $nonce = null;
-        if (is_string($signedOrNonce) && strpos($signedOrNonce, '.') !== false) {
-            $nonce = self::verifySignedPending($pluginId, $signedOrNonce);
-        } elseif (is_string($signedOrNonce) && preg_match('/^[a-f0-9]{32}$/', $signedOrNonce)) {
-            $nonce = $signedOrNonce;
-        }
+        $nonce = self::extractNonce($pluginId, $signedOrNonce);
         if ($nonce === null) return null;
         if (empty($_SESSION[self::SESSION_PENDING][$nonce])
             || !is_array($_SESSION[self::SESSION_PENDING][$nonce])) {
@@ -628,20 +605,20 @@ class Auth {
         return $row;
     }
 
-    public static function signPending($pluginId, $nonce): string {
-        $hmac = hash_hmac('sha256', $pluginId . "\0" . $nonce, self::hmacSecret());
-        return $pluginId . '.' . $nonce . '.' . $hmac;
-    }
-
-    public static function verifySignedPending($pluginId, $signed) {
-        $parts = explode('.', $signed, 3);
-        if (count($parts) !== 3) return null;
-        list($id, $nonce, $hmac) = $parts;
-        if ($id !== $pluginId) return null;
-        if (!preg_match('/^[a-f0-9]{32}$/', $nonce)) return null;
-        $expect = hash_hmac('sha256', $id . "\0" . $nonce, self::hmacSecret());
-        if (!hash_equals($expect, $hmac)) return null;
-        return $nonce;
+    /**
+     * Extract nonce from a state string.
+     * Accepts: bare nonce (32-char hex), or "{pluginId}.{nonce}" format.
+     */
+    private static function extractNonce(string $pluginId, $signedOrNonce): ?string {
+        if (!is_string($signedOrNonce) || $signedOrNonce === '') return null;
+        if (preg_match('/^[a-f0-9]{32}$/', $signedOrNonce)) {
+            return $signedOrNonce;
+        }
+        $parts = explode('.', $signedOrNonce, 3);
+        if (count($parts) >= 2 && $parts[0] === $pluginId && preg_match('/^[a-f0-9]{32}$/', $parts[1])) {
+            return $parts[1];
+        }
+        return null;
     }
 
     public static function errorToken(\Throwable $e): string {
