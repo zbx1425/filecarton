@@ -45,6 +45,8 @@ class AuthIdentity {
 class AuthException extends \RuntimeException {
     /** @var string SPA token: denied|expired|allowlist|exchange|config|unknown */
     public $token;
+    /** @var string|null Identity id when relevant (e.g. allowlist) */
+    public $identityId;
 
     public function __construct($token, $httpCode, $logMessage = '') {
         $this->token = (string)$token;
@@ -244,7 +246,7 @@ class AuthPendingBag {
         return null;
     }
 
-    public static function returnLocation(array $pending, $error = null): string {
+    public static function returnLocation(array $pending, $error = null, $errorId = null): string {
         $pathInfo = self::sanitizePathInfo($pending['path_info'] ?? '');
         $url = script_url() . $pathInfo;
         $pairs = [];
@@ -263,6 +265,9 @@ class AuthPendingBag {
         }
         if (is_string($error) && $error !== '') {
             $pairs[] = 'fc_auth_error=' . rawurlencode($error);
+        }
+        if (is_string($errorId) && $errorId !== '') {
+            $pairs[] = 'fc_auth_error_id=' . rawurlencode($errorId);
         }
         if ($pairs) {
             $url .= '?' . implode('&', $pairs);
@@ -349,6 +354,8 @@ class Auth {
     private static $pluginFiles = [];
     /** @var string Error token to inject into the frontend config (in-place rendering). */
     private static $inlineError = '';
+    /** @var array Params for the inline error (e.g. ['id' => 'github:583231']). */
+    private static $inlineErrorParams = [];
 
     public static function instantiateFromSpec(array $spec, $mustBe) {
         if (isset($spec['file']) && is_string($spec['file']) && $spec['file'] !== '') {
@@ -650,7 +657,9 @@ class Auth {
     public static function establish(AuthIdentity $identity) {
         self::ensureSession();
         if (Grants::resolveFor($identity) === null) {
-            throw new AuthException('allowlist', 403, 'No grant for identity');
+            $e = new AuthException('allowlist', 403, 'No grant for identity');
+            $e->identityId = $identity->id;
+            throw $e;
         }
         $_SESSION[self::SESSION_USER] = [
             'id'          => $identity->id,
@@ -696,8 +705,9 @@ class Auth {
         return $out;
     }
 
-    public static function setInlineError(string $token): void {
+    public static function setInlineError(string $token, array $params = []): void {
         self::$inlineError = $token;
+        self::$inlineErrorParams = $params;
     }
 
     public static function frontendConfig(): array {
@@ -711,6 +721,9 @@ class Auth {
         ];
         if (self::$inlineError !== '') {
             $cfg['error'] = self::$inlineError;
+            if (!empty(self::$inlineErrorParams)) {
+                $cfg['errorParams'] = self::$inlineErrorParams;
+            }
         }
         return $cfg;
     }

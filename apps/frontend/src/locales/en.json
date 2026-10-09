@@ -46,7 +46,7 @@
   "err.paste.target_protected": "Target directory contains protected items",
 
   "err.auth.required": "Authentication required",
-  "err.auth.allowlist": "This account is not allowed to log in",
+  "err.auth.allowlist": "This account is not allowed to log in. Your account ID is: {id}",
   "err.auth.bad_root": "Account root directory is missing",
   "err.auth.denied": "Authentication denied",
   "err.auth.expired": "Session expired, please sign in again",

@@ -151,6 +151,7 @@ export interface FileCartonAuthConfig {
   user?: FileCartonAuthUser | null
   plugins?: FileCartonAuthPlugin[]
   error?: string
+  errorParams?: Record<string, string>
 }
 
 export interface FileCartonConfig {

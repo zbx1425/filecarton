@@ -11,7 +11,7 @@ function api_auth_login($pathSec = null, $fileOps = null) {
         $user = Auth::loginPassword($username, $password);
     } catch (AuthException $e) {
         if ($e->token === 'allowlist') {
-            Response::error('auth.allowlist', 403, [], 'allowlist');
+            Response::error('auth.allowlist', 403, ['id' => $e->identityId ?? ''], 'allowlist');
         }
         throw $e;
     }

@@ -39,7 +39,8 @@ function handle_auth(): void {
             error_log('FileCarton auth: ' . $e->getMessage());
         }
         $token = Auth::errorToken($e);
-        $loc = AuthPendingBag::returnLocation($pendingForCatch, $token);
+        $errorId = ($e instanceof AuthException) ? $e->identityId : null;
+        $loc = AuthPendingBag::returnLocation($pendingForCatch, $token, $errorId);
         header('Location: ' . $loc, true, 302);
         exit;
     }

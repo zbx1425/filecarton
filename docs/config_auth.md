@@ -75,11 +75,22 @@ define_default('FILECARTON_AUTH_PROVIDERS', [
 ]);
 ```
 
+The following OAuth providers are built in:
+
+| Class | User ID format | Notes |
+|---|---|---|
+| `GitHubOAuth` | `github:<numeric id>` | Find the numeric ID at `https://api.github.com/users/<username>` (the `id` field). |
+| `MicrosoftOAuth` | `microsoft:<object id>` | Accepts any Microsoft account by default. Pass `'tenant' => 'consumers'` for personal accounts only, or a specific tenant ID for a single org. |
+| `GoogleOAuth` | `google:<sub>` | The `sub` is a stable numeric string from Google's OpenID Connect. Find it at the OAuth consent screen or via the userinfo endpoint. |
+| `DiscordOAuth` | `discord:<snowflake id>` | The snowflake is the user's numeric ID visible in Discord developer mode. |
+
+All providers accept `clientId` and `clientSecret` in the config array.
+
 You'll need to create an OAuth app on the provider's website and get the client ID and client secret.
 
-You'll need to whitelist a list of users that are allowed to use your app by adding them into `FILECARTON_STATIC_USER_LIST`.
+You'll need to whitelist users by adding them to `FILECARTON_STATIC_USER_LIST` with the provider-prefixed ID (see the table above).
 
-The `id` for GitHub users is `github:` followed by the user's **numeric GitHub ID** (not the login name). You can find this at `https://api.github.com/users/<username>` (look for the `id` field). If the user's id does not match any row in `FILECARTON_STATIC_USER_LIST`, the user will see "This account is not allowed to log in". You can also configure e.g. `root`, `readonly` for users logged in with OAuth.
+If the user's ID does not match any row in `FILECARTON_STATIC_USER_LIST`, the user will see "This account is not allowed to log in" along with their account ID (e.g. `github:583231`), which they can forward to the administrator for whitelisting.
 
 If you want to automatically allow all users from a certain OAuth provider to be granted access, you should write your custom `GrantResolver`. By doing so you can also do fancy things like automatically assigning users their own folder.
 
@@ -108,7 +119,7 @@ Each row in `FILECARTON_STATIC_USER_LIST` is an array with these fields:
 
 | Field | Required | What it does |
 |---|---|---|
-| `id` | yes | The username for password login (must not contain `:`), or the provider-prefixed ID for OAuth (e.g. `github:583231`). Also used by `StaticGrantResolver` to look up grants. |
+| `id` | yes | The username for password login (must not contain `:`), or the provider-prefixed ID for OAuth (e.g. `github:583231`, `google:1234567890`). Also used by `StaticGrantResolver` to look up grants. |
 | `passwordHash` | no | A `password_hash()` output. If present, `StaticPasswordAuth` will accept this user with the matching password. |
 | `displayName` | no | Shown in the toolbar. Defaults to `id`. |
 | `root` | no | Overrides `FILECARTON_ROOT_PATH` for this user. Use an absolute path. If the directory does not exist, the user gets a "not configured" error (not a 500 for everyone else). |

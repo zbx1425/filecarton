@@ -78,7 +78,9 @@ function dispatch(): void {
             return;
         }
         // Interactive login: clear session once, show login page with error.
-        Auth::setInlineError($token);
+        $errorParams = ($token === 'allowlist' && Auth::identity() !== null)
+            ? ['id' => Auth::identity()->id] : [];
+        Auth::setInlineError($token, $errorParams);
         Auth::logout();
         Settings::resetForRequest();
         if (class_exists(__NAMESPACE__ . '\\Grants', false)) {

@@ -14,15 +14,20 @@ import { confirm } from './composables/useDialogs'
 const startUrl = new URL(window.location.href)
 const fcReturnHash = startUrl.searchParams.get('fc_return_hash')
 const fcAuthError = startUrl.searchParams.get('fc_auth_error')
+const fcAuthErrorId = startUrl.searchParams.get('fc_auth_error_id')
 if (fcReturnHash || fcAuthError) {
   startUrl.searchParams.delete('fc_return_hash')
   startUrl.searchParams.delete('fc_auth_error')
+  startUrl.searchParams.delete('fc_auth_error_id')
   const hash = fcReturnHash
     ? (fcReturnHash.startsWith('#') ? fcReturnHash : '#' + fcReturnHash)
     : window.location.hash
   history.replaceState(null, '', startUrl.pathname + startUrl.search + hash)
   if (fcAuthError) {
     sessionStorage.setItem('filecarton_auth_error', fcAuthError)
+    if (fcAuthErrorId) {
+      sessionStorage.setItem('filecarton_auth_error_id', fcAuthErrorId)
+    }
   }
 }
 

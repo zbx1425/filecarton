@@ -107,7 +107,9 @@ function assert_api_access(bool $isAuthAction): void {
         }
         if (!Settings::embed()) {
             $authError = Grants::current() === null ? 'allowlist' : 'bad_root';
-            Response::error('auth.' . $authError, $authError === 'bad_root' ? 403 : 401, [], $authError);
+            $params = ($authError === 'allowlist' && Auth::identity() !== null)
+                ? ['id' => Auth::identity()->id] : [];
+            Response::error('auth.' . $authError, $authError === 'bad_root' ? 403 : 401, $params, $authError);
         }
         Response::error('not_configured', 403);
     }

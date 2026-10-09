@@ -21,14 +21,22 @@ export const useAuthStore = defineStore('auth', () => {
 
   function initError() {
     const stored = sessionStorage.getItem('filecarton_auth_error')
+    const storedId = sessionStorage.getItem('filecarton_auth_error_id')
     if (stored) {
       sessionStorage.removeItem('filecarton_auth_error')
+      sessionStorage.removeItem('filecarton_auth_error_id')
     }
     const token = (config?.error && typeof config.error === 'string')
       ? config.error
       : stored
     if (token) {
-      error.value = { code: `auth.${token}` }
+      const params: Record<string, string> = {}
+      if (config?.error && typeof config.error === 'string' && config.errorParams) {
+        Object.assign(params, config.errorParams)
+      } else if (storedId) {
+        params.id = storedId
+      }
+      error.value = { code: `auth.${token}`, params: Object.keys(params).length > 0 ? params : undefined }
     }
   }
 
