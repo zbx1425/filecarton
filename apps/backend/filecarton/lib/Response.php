@@ -20,10 +20,13 @@ class Response {
         exit;
     }
 
-    public static function error(string $msg, int $code = 400, ?string $authError = null) {
+    public static function error(string $code, int $httpStatus = 400, array $params = [], ?string $authError = null) {
         self::discardOutputBuffer();
-        http_response_code($code);
-        $body = ['ok' => false, 'error' => $msg];
+        http_response_code($httpStatus);
+        $body = ['ok' => false, 'error' => $code];
+        if (!empty($params)) {
+            $body['params'] = $params;
+        }
         if ($authError !== null) {
             $body['authError'] = $authError;
         }

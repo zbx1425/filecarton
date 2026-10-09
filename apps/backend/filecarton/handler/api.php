@@ -16,6 +16,7 @@ require_once FILECARTON_SCRIPT_DIR . '/lib/FileOps.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/MimeType.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/Csrf.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/Response.php';
+require_once FILECARTON_SCRIPT_DIR . '/lib/ApiException.php';
 
 $action = $_GET['fcapi'] ?? '';
 $authPublic = ['auth_login', 'auth_logout'];
@@ -87,6 +88,8 @@ try {
     require_once FILECARTON_SCRIPT_DIR . '/api/' . $action . '.php';
     $actionFn = __NAMESPACE__ . '\\api_' . $action;
     $actionFn($pathSec, $fileOps);
+} catch (ApiException $e) {
+    Response::error($e->errorCode, $e->getCode(), $e->params);
 } catch (\InvalidArgumentException $e) {
     Response::error($e->getMessage(), 400);
 } catch (\RuntimeException $e) {
@@ -94,6 +97,6 @@ try {
     Response::error($e->getMessage(), ($code >= 400 && $code < 600) ? $code : 500);
 } catch (\Throwable $e) {
     error_log('FileCarton error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
-    Response::error('Internal server error', 500);
+    Response::error('server_error', 500);
 }
 }

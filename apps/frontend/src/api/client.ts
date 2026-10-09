@@ -1,15 +1,20 @@
 export class ApiError extends Error {
+  code: string
   status: number
+  params?: Record<string, string | number>
   authError?: string
 
   constructor(
-    message: string,
+    code: string,
     status: number,
+    params?: Record<string, string | number>,
     authError?: string,
   ) {
-    super(message)
+    super(code)
     this.name = 'ApiError'
+    this.code = code
     this.status = status
+    this.params = params
     this.authError = authError
   }
 }
@@ -58,18 +63,20 @@ function buildUrl(action: string, params?: Record<string, string>): string {
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    let message = `HTTP ${response.status}`
+    let code = `http_${response.status}`
+    let params: Record<string, string | number> | undefined
     let authError: string | undefined
     try {
       const body = await response.json()
-      if (body?.error) message = body.error
+      if (body?.error) code = body.error
+      if (body?.params) params = body.params
       if (body?.authError) authError = body.authError
     } catch { /* non-JSON error body */ }
-    throw new ApiError(message, response.status, authError)
+    throw new ApiError(code, response.status, params, authError)
   }
   const body = await response.json()
   if (!body.ok) {
-    throw new ApiError(body.error ?? 'Unknown error', response.status)
+    throw new ApiError(body.error ?? 'unknown', response.status, body.params)
   }
   return body.data as T
 }
@@ -127,23 +134,23 @@ export function apiUpload<T>(
       try {
         const body = JSON.parse(xhr.responseText)
         if (xhr.status < 200 || xhr.status >= 300) {
-          const err = new ApiError(body?.error ?? `HTTP ${xhr.status}`, xhr.status, body?.authError)
+          const err = new ApiError(body?.error ?? `http_${xhr.status}`, xhr.status, body?.params, body?.authError)
           maybeUnauthorized(action, err)
           reject(err)
           return
         }
         if (!body.ok) {
-          reject(new ApiError(body.error ?? 'Unknown error', xhr.status))
+          reject(new ApiError(body.error ?? 'unknown', xhr.status, body.params))
           return
         }
         resolve(body.data as T)
       } catch {
-        reject(new ApiError(`HTTP ${xhr.status}`, xhr.status))
+        reject(new ApiError(`http_${xhr.status}`, xhr.status))
       }
     })
 
     xhr.addEventListener('error', () => {
-      reject(new ApiError('Network error', 0))
+      reject(new ApiError('network_error', 0))
     })
 
     xhr.send(formData)

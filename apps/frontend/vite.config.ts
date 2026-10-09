@@ -6,6 +6,7 @@ import tailwindcss from '@tailwindcss/vite'
 const cdnExternals = [
   'vue',
   'pinia',
+  'vue-i18n',
   '@vue/devtools-api',
   '@vue/devtools-kit',
   '@vue/devtools-shared',
