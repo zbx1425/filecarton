@@ -9,33 +9,35 @@ namespace FileCarton;
  * Supports both Vite dev server mode and production manifest mode.
  */
 
+/**
+ * Render a simple error page for configuration/access errors.
+ *
+ * @param string   $title      Page heading
+ * @param string[] $messages   One or more error messages (rendered as <ul> list)
+ * @param int      $httpStatus HTTP status code
+ */
+function render_error_page(string $title, array $messages, int $httpStatus = 403): void {
+    http_response_code($httpStatus);
+    $items = '';
+    foreach ($messages as $msg) {
+        $items .= '<li>' . htmlspecialchars($msg, ENT_QUOTES, 'UTF-8') . '</li>';
+    }
+    echo '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
+        . '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        . '<title>FileCarton</title></head><body>'
+        . '<div style="margin:4em auto;max-width:60em;font-family:Arial,sans-serif">'
+        . '<h1>' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</h1>'
+        . '<ul>' . $items . '</ul>'
+        . '</div></body></html>';
+}
+
 function handle_page(): void {
 
 require_once FILECARTON_SCRIPT_DIR . '/lib/StartupCheck.php';
 $startupProblems = StartupCheck::problems();
 
 if (!empty($startupProblems)) {
-    http_response_code(500);
-    $repoName = Settings::repoName();
-?><!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>FileCarton</title>
-</head>
-<body>
-    <div style="margin-left: 4em; margin-top: 4em; font-family: Arial, Helvetica, sans-serif; max-width: 60em; margin: auto;">
-        <h1>FileCarton Self-Check Failed</h1>
-        <ul>
-    <?php foreach ($startupProblems as $problem): ?>
-            <li><?= htmlspecialchars($problem, ENT_QUOTES, 'UTF-8') ?></li>
-    <?php endforeach; ?>
-        </ul>
-    </div>
-</body>
-</html>
-<?php
+    render_error_page('FileCarton Self-Check Failed', $startupProblems, 500);
     return;
 }
 
