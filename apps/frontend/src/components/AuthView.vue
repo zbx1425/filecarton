@@ -98,6 +98,7 @@ function handleRedirect(pluginId: string) {
           @submit.prevent="handlePasswordLogin"
         >
           <div class="space-y-2">
+            <label for="fc-username" class="sr-only">Username</label>
             <Input
               id="fc-username"
               v-model="username"
@@ -110,6 +111,7 @@ function handleRedirect(pluginId: string) {
             />
           </div>
           <div class="space-y-2">
+            <label for="fc-password" class="sr-only">Password</label>
             <Input
               id="fc-password"
               v-model="password"

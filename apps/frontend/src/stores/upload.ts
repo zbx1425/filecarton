@@ -3,7 +3,7 @@ import { ref, computed, markRaw } from 'vue'
 import { toast } from 'vue-sonner'
 import { useDebounceFn } from '@vueuse/core'
 import UploadToast from '@/components/upload/UploadToast.vue'
-import { apiUpload, apiPost, toErrorInfo } from '@/api/client'
+import { apiUpload, apiPost, toErrorInfo, ApiError } from '@/api/client'
 import type { ErrorInfo } from '@/api/client'
 import type { UploadResponse, UploadChunkResponse, UploadCompleteResponse, CheckUploadConflictsResponse } from '@/api/types'
 import { showPasteConflict, confirm } from '@/composables/useDialogs'
@@ -366,7 +366,8 @@ export const useUploadStore = defineStore('upload', () => {
       task.progress = Math.round((loaded / total) * 100)
     })
     if (result.failed && result.failed.length > 0) {
-      throw new Error(result.failed[0].error || 'Upload rejected')
+      const fail = result.failed[0]
+      throw new ApiError(fail.error || 'server_error', 200, fail.params)
     }
     task.progress = 100
   }

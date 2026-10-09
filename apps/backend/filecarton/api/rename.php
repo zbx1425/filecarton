@@ -29,7 +29,7 @@ if (!file_exists($oldAbs)) {
     Response::error('not_found.file', 404);
 }
 
-$pathSec->assertNotIgnored($oldAbs);
+$pathSec->assertNotIgnored($oldAbs, 'not_found.file');
 
 $isFile = is_file($oldAbs);
 

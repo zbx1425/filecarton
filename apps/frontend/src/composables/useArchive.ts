@@ -31,7 +31,7 @@ export async function createArchive(
       await showOperationReport({
         title: 'Archive Created',
         description: `${archiveName} created. ${result.skipped.length} item(s) were skipped due to restrictions.`,
-        items: result.skipped.map(s => ({ name: s, reason: 'Restricted' })),
+        items: result.skipped.map(s => ({ name: s, reason: 'blocked.ignored' })),
       })
     } else {
       toast.success(`Archive created: ${archiveName}`)

@@ -129,10 +129,10 @@ class PathSecurity {
 
         foreach ($parts as $part) {
             if ($part === '' || $part === '.' || $part === '..') {
-                throw new \InvalidArgumentException('Invalid path component');
+                throw new ApiException('invalid_input', 400, ['field' => 'path']);
             }
             if (!$this->isValidFileName($part)) {
-                throw new \InvalidArgumentException('Invalid character in path component: ' . $part);
+                throw new ApiException('invalid_input', 400, ['field' => 'path']);
             }
 
             $next = $current . '/' . $part;
@@ -183,11 +183,11 @@ class PathSecurity {
         $basename = basename($relativePath);
 
         if ($basename === '' || $basename === '.' || $basename === '..') {
-            throw new \InvalidArgumentException('Invalid target name');
+            throw new ApiException('invalid_input', 400, ['field' => 'name']);
         }
 
         if (!$this->isValidFileName($basename)) {
-            throw new \InvalidArgumentException('Invalid characters in name: ' . $basename);
+            throw new ApiException('invalid_input', 400, ['field' => 'name']);
         }
 
         $parentAbs = ($dirname === '.' || $dirname === '')
@@ -221,7 +221,7 @@ class PathSecurity {
         $name = str_replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], '', $name);
         $name = rtrim($name, '. ');
         if ($name === '' || $name === '.' || $name === '..') {
-            throw new \InvalidArgumentException('Invalid filename');
+            throw new ApiException('invalid_input', 400, ['field' => 'name']);
         }
         return $name;
     }
@@ -248,10 +248,10 @@ class PathSecurity {
      */
     public function resolveItemIn(string $baseAbs, string $itemName): string {
         if ($itemName === '' || $itemName === '.' || $itemName === '..') {
-            throw new \InvalidArgumentException('Invalid item name');
+            throw new ApiException('invalid_input', 400, ['field' => 'name']);
         }
         if (str_contains($itemName, "\0") || str_contains($itemName, '/') || str_contains($itemName, '\\')) {
-            throw new \InvalidArgumentException('Invalid item name: contains path separators');
+            throw new ApiException('invalid_input', 400, ['field' => 'name']);
         }
 
         $target = $baseAbs . '/' . $itemName;
@@ -497,11 +497,12 @@ class PathSecurity {
     // ------------------------------------------------------------------
 
     /**
-     * Validate that an existing path can be accessed (not ignored).
+     * Reject an ignored path with the same code a missing path would use.
+     * Rename passes not_found.file; everyone else matches resolve()'s not_found.path.
      */
-    public function assertNotIgnored(string $absPath): void {
+    public function assertNotIgnored(string $absPath, string $missingCode = 'not_found.path'): void {
         if ($this->isIgnored($absPath)) {
-            throw new ApiException('access_denied', 404);
+            throw new ApiException($missingCode, 404);
         }
     }
 
@@ -563,36 +564,6 @@ class PathSecurity {
         if (!$isDir && $this->isExtensionBlocked(basename($absPath))) {
             throw new ApiException('extension_blocked', 403);
         }
-    }
-
-    /**
-     * Validate a named item inside a base directory for batch operations.
-     * Returns null if the item is operable, or an associative array with
-     * 'absPath' and 'error' (error code string) if not.
-     *
-     * Combines resolveItemIn + isIgnored + isExtensionBlocked (files only)
-     * + hasProtectedDescendants (directories, when $checkDescendants is true).
-     */
-    public function checkItemOperable(string $baseAbs, string $name, bool $checkDescendants = false): ?array {
-        try {
-            $absPath = $this->resolveItemIn($baseAbs, $name);
-        } catch (\Throwable $e) {
-            return ['absPath' => '', 'error' => 'invalid_filename'];
-        }
-
-        if ($this->isIgnored($absPath)) {
-            return ['absPath' => $absPath, 'error' => 'access_denied'];
-        }
-
-        if (is_file($absPath) && $this->isExtensionBlocked(basename($absPath))) {
-            return ['absPath' => $absPath, 'error' => 'extension_blocked'];
-        }
-
-        if ($checkDescendants && is_dir($absPath) && $this->hasProtectedDescendants($absPath)) {
-            return ['absPath' => $absPath, 'error' => 'protected_items'];
-        }
-
-        return null;
     }
 
     /**
@@ -780,7 +751,7 @@ class PathSecurity {
 
     private function rejectNullBytes(string $path): void {
         if (str_contains($path, "\0")) {
-            throw new \InvalidArgumentException('Invalid path: null byte detected');
+            throw new ApiException('invalid_input', 400, ['field' => 'path']);
         }
     }
 

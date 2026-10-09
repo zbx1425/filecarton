@@ -66,7 +66,9 @@ for ($i = 0; $i < $count; $i++) {
         }
         $uploaded[] = ['name' => basename($destination), 'size' => $size];
     } catch (ApiException $e) {
-        $failed[] = ['name' => $name, 'error' => $e->errorCode];
+        $entry = ['name' => $name, 'error' => $e->errorCode];
+        if ($e->params) $entry['params'] = $e->params;
+        $failed[] = $entry;
     } catch (\Throwable $e) {
         $failed[] = ['name' => $name, 'error' => 'server_error'];
     }

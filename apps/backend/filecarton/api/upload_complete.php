@@ -60,7 +60,7 @@ try {
     }
 
     if ($totalSize > FILECARTON_UPLOAD_MAX_FILE_SIZE) {
-        Response::error('file_too_large', 413, ['maxMB' => round(FILECARTON_UPLOAD_MAX_FILE_SIZE / 1024 / 1024)]);
+        Response::error('upload.content_too_large', 413, ['maxMB' => round(FILECARTON_UPLOAD_MAX_FILE_SIZE / 1024 / 1024)]);
     }
 
     $outFile = fopen($tempOutputPath, 'wb');

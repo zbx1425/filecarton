@@ -16,10 +16,18 @@ import {
 } from '@/components/ui/accordion'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import { dialogState, reasonLabel } from '@/composables/useDialogs'
+import { dialogState } from '@/composables/useDialogs'
 import { AlertTriangle } from '@lucide/vue'
+import { useI18n } from 'vue-i18n'
+
+const { t, te } = useI18n()
 
 const state = dialogState.operationReport
+
+function translateReason(reason: string): string {
+  const key = 'err.' + reason
+  return te(key) ? t(key) : reason
+}
 
 interface Group {
   reason: string
@@ -36,7 +44,7 @@ const groups = computed<Group[]>(() => {
   }
   return Array.from(map.entries()).map(([reason, items]) => ({
     reason,
-    label: reasonLabel(reason),
+    label: translateReason(reason),
     items,
   }))
 })

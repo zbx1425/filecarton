@@ -55,6 +55,9 @@ class Csrf {
     /**
      * Detect whether the current request arrived over HTTPS.
      * Checks HTTPS env, port 443, and X-Forwarded-Proto from a reverse proxy.
+     * X-Forwarded-Proto is trusted as sent. A client that can reach PHP
+     * directly can mark its own cookie Secure and its own OAuth redirect_uri
+     * as https; the IdP still requires redirect_uri to match its allowlist.
      */
     public static function isHttps(): bool {
         if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') return true;

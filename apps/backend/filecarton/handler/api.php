@@ -74,8 +74,6 @@ try {
     $actionFn($pathSec, $fileOps);
 } catch (ApiException $e) {
     Response::error($e->errorCode, $e->getCode(), $e->params);
-} catch (\InvalidArgumentException $e) {
-    Response::error('invalid_input', 400);
 } catch (\RuntimeException $e) {
     $code = $e->getCode();
     Response::error('server_error', ($code >= 400 && $code < 600) ? $code : 500);

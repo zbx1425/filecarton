@@ -75,7 +75,7 @@ abstract class OAuth2Auth extends RedirectAuth {
             'client_id'     => $this->clientId(),
             'redirect_uri'  => $ctx->callbackUrl(false),
             'scope'         => $this->scopes(),
-            'state'         => $ctx->signedState(),
+            'state'         => $ctx->stateKey(),
             'response_type' => 'code',
         ];
         return $this->authorizeEndpoint() . '?' . http_build_query($q, '', '&', PHP_QUERY_RFC3986);
@@ -100,9 +100,9 @@ abstract class OAuth2Auth extends RedirectAuth {
             'Accept'       => 'application/json',
             'Content-Type' => 'application/x-www-form-urlencoded',
         ]);
+        HttpClient::assertSuccess($resp, 'OAuth token exchange');
         $token = json_decode($resp['body'], true);
         if (!is_array($token) || empty($token['access_token'])) {
-            error_log('FileCarton auth: token endpoint HTTP ' . $resp['status']);
             throw new AuthException('exchange', 401, 'OAuth token exchange failed');
         }
         return $this->fetchIdentity($token, $ctx);
@@ -148,6 +148,7 @@ class GitHubOAuth extends OAuth2Auth {
             'Accept'        => 'application/vnd.github+json',
             'Authorization' => 'Bearer ' . $token['access_token'],
         ]);
+        HttpClient::assertSuccess($resp, 'GitHub user lookup');
         $user = json_decode($resp['body'], true);
         if (!is_array($user) || empty($user['id'])) {
             throw new AuthException('exchange', 401, 'GitHub user lookup failed');
@@ -182,6 +183,9 @@ class MicrosoftOAuth extends OAuth2Auth {
         if ($this->clientId === '' || $this->clientSecret === '') {
             $p[] = 'MicrosoftOAuth clientId / clientSecret is empty.';
         }
+        if (!preg_match('/^[A-Za-z0-9.\-]{1,64}$/', $this->tenant)) {
+            $p[] = 'MicrosoftOAuth tenant is invalid (allowed: A-Z, 0-9, dot, hyphen, max 64 chars).';
+        }
         return $p;
     }
 
@@ -199,6 +203,7 @@ class MicrosoftOAuth extends OAuth2Auth {
         $resp = HttpClient::get('https://graph.microsoft.com/v1.0/me', [
             'Authorization' => 'Bearer ' . $token['access_token'],
         ]);
+        HttpClient::assertSuccess($resp, 'Microsoft user lookup');
         $user = json_decode($resp['body'], true);
         if (!is_array($user) || empty($user['id'])) {
             throw new AuthException('exchange', 401, 'Microsoft user lookup failed');
@@ -247,6 +252,7 @@ class GoogleOAuth extends OAuth2Auth {
         $resp = HttpClient::get('https://openidconnect.googleapis.com/v1/userinfo', [
             'Authorization' => 'Bearer ' . $token['access_token'],
         ]);
+        HttpClient::assertSuccess($resp, 'Google user lookup');
         $user = json_decode($resp['body'], true);
         if (!is_array($user) || empty($user['sub'])) {
             throw new AuthException('exchange', 401, 'Google user lookup failed');
@@ -299,6 +305,7 @@ class DiscordOAuth extends OAuth2Auth {
         $resp = HttpClient::get('https://discord.com/api/v10/users/@me', [
             'Authorization' => 'Bearer ' . $token['access_token'],
         ]);
+        HttpClient::assertSuccess($resp, 'Discord user lookup');
         $user = json_decode($resp['body'], true);
         if (!is_array($user) || empty($user['id'])) {
             throw new AuthException('exchange', 401, 'Discord user lookup failed');

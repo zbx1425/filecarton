@@ -43,18 +43,6 @@ export interface OperationReportState {
   resolve: ((value: boolean) => void) | null
 }
 
-export const REASON_LABELS: Record<string, string> = {
-  blocked_extension: 'Restricted extension',
-  blocked_ignored: 'Restricted path',
-  blocked_invalid: 'Invalid characters',
-  io_error: 'I/O error',
-  'File already exists': 'File already exists',
-}
-
-export function reasonLabel(reason: string): string {
-  return REASON_LABELS[reason] ?? reason
-}
-
 export const dialogState = reactive({
   confirm: {
     open: false, title: '', message: '', actionLabel: 'Confirm', danger: false, hideCancel: false, resolve: null,
@@ -153,7 +141,7 @@ export function showPasteConflict(files: string[]): Promise<boolean> {
   return showOperationReport({
     title: 'File Conflict',
     description: `The following ${files.length} file(s) already exist in the target directory:`,
-    items: files.map(f => ({ name: f, reason: 'File already exists' })),
+    items: files.map(f => ({ name: f, reason: 'already_exists' })),
     continueLabel: 'Overwrite All',
     dangerContinue: true,
     highlightItem: highlightName,

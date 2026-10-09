@@ -60,7 +60,7 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
             }
 
             if ($pathSec->isIgnored($srcAbs)) {
-                $failed[] = ['name' => $name, 'error' => 'access_denied'];
+                $failed[] = ['name' => $name, 'error' => 'not_found.file'];
                 continue;
             }
 
@@ -133,7 +133,7 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
         }
 
         if ($pathSec->isIgnored($srcAbs)) {
-            $failed[] = ['name' => $name, 'error' => 'access_denied'];
+            $failed[] = ['name' => $name, 'error' => 'not_found.file'];
             continue;
         }
 

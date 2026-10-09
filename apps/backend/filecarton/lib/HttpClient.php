@@ -21,6 +21,18 @@ class HttpClient {
         return self::request('POST', $url, $body, $headers, $timeout);
     }
 
+    /**
+     * Assert that an OAuth response is 2xx. Logs the status only, then throws.
+     *
+     * @param array{status: int, body: string} $resp
+     * @param string $context Description for log messages (e.g. "GitHub user lookup")
+     */
+    public static function assertSuccess(array $resp, string $context = 'HTTP request'): void {
+        if ($resp['status'] >= 200 && $resp['status'] < 300) return;
+        error_log('FileCarton auth: ' . $context . ' HTTP ' . $resp['status']);
+        throw new AuthException('exchange', 401, $context . ' HTTP ' . $resp['status']);
+    }
+
     private static function request($method, $url, $body, array $headers, $timeout): array {
         if (!is_string($url) || !preg_match('#^https?://#i', $url)) {
             throw new \RuntimeException('Invalid URL scheme', 502);

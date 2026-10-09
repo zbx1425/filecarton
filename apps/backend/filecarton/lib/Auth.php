@@ -106,8 +106,8 @@ class AuthContext {
         return $url;
     }
 
-    /** `{pluginId}.{nonce}` */
-    public function signedState(): string {
+    /** OAuth state `{pluginId}.{nonce}`. */
+    public function stateKey(): string {
         return $this->plugin->id() . '.' . $this->nonce();
     }
 
@@ -151,7 +151,7 @@ class AuthContext {
  * Manages redirect-auth pending entries in the session.
  *
  * Each pending entry stores the nonce, plugin id, return context, and optional
- * extra data set by the auth plugin (e.g. PKCE verifiers).
+ * extra data set by the auth plugin.
  */
 class AuthPendingBag {
     const SESSION_KEY   = 'filecarton_auth_pending';
@@ -732,29 +732,19 @@ class Auth {
         if ($e instanceof AuthException && $e->token !== '') {
             return $e->token;
         }
-        $map = [
-            'OAuth denied' => 'denied',
-            'No grant for identity' => 'allowlist',
-            'OAuth token exchange failed' => 'exchange',
-            'OAuth code missing' => 'exchange',
-            'GitHub user lookup failed' => 'exchange',
-        ];
-        $msg = $e->getMessage();
-        if (isset($map[$msg])) return $map[$msg];
-        $code = (int)$e->getCode();
-        if ($code === 403) return 'allowlist';
-        if ($code === 401) return 'denied';
         return 'unknown';
     }
 
     /**
      * Absolute URL of the entry script, for OAuth callback URLs.
      *
-     * When FILECARTON_PUBLIC_ORIGIN is empty, falls back to HTTP_HOST and
-     * X-Forwarded-Proto. A spoofed Host could produce a wrong origin, but
-     * PHP 7.0+ header() rejects CRLF so header injection is not possible,
-     * and OAuth providers validate redirect_uri against their allowlist.
-     * Set FILECARTON_PUBLIC_ORIGIN for production lockdown.
+     * When FILECARTON_PUBLIC_ORIGIN is empty, the origin is taken from this
+     * request (HTTPS, port 443, X-Forwarded-Proto, and HTTP_HOST). A wrong
+     * Host or forwarded proto makes redirect_uri disagree with the IdP
+     * allowlist, so that login fails closed. It is not an open redirect of
+     * the FileCarton session. PHP header() rejects CR/LF, so the Location
+     * value cannot inject headers. Set FILECARTON_PUBLIC_ORIGIN when the
+     * process is not reached at its public origin.
      */
     public static function absoluteScriptUrl(): string {
         $origin = defined('FILECARTON_PUBLIC_ORIGIN') ? FILECARTON_PUBLIC_ORIGIN : '';

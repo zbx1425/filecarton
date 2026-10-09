@@ -42,7 +42,7 @@
   "err.blocked.invalid": "Invalid characters in path",
   "err.io_error": "I/O error",
 
-  "err.paste.into_self": "Cannot {mode} directory into itself",
+  "err.paste.into_self": "Cannot place a directory inside itself",
   "err.paste.target_protected": "Target directory contains protected items",
 
   "err.auth.required": "Authentication required",
@@ -52,6 +52,7 @@
   "err.auth.expired": "Session expired, please sign in again",
   "err.auth.exchange": "Login authentication failed",
   "err.auth.config": "Server authentication configuration error",
+  "err.auth.unknown": "An unexpected error occurred during authentication",
   "err.auth.invalid_credentials": "Invalid username or password",
   "err.auth.disabled": "Built-in auth is disabled",
   "err.auth.csrf": "Session expired or CSRF token invalid, please reload",

@@ -7,7 +7,7 @@ namespace FileCarton;
  * POST ?fcapi=delete
  * Body: { path, items: string[] }
  *
- * Items that don't exist are silently counted as deleted.
+ * Missing names and ignore-rule names are counted as deleted and not unlinked.
  * Items that fail are added to the `failed` array.
  */
 
@@ -25,16 +25,20 @@ $failed = [];
 foreach ($input['items'] as $name) {
     if (!is_string($name) || $name === '') continue;
 
-    $check = $pathSec->checkItemOperable($basePath, $name, true);
-    if ($check !== null) {
-        $failed[] = ['name' => $name, 'error' => $check['error']];
+    try {
+        $itemPath = $pathSec->resolveItemIn($basePath, $name);
+    } catch (\Throwable $e) {
+        $failed[] = ['name' => $name, 'error' => 'invalid_filename'];
         continue;
     }
 
-    $itemPath = $pathSec->resolveItemIn($basePath, $name);
-
-    if (!file_exists($itemPath) && !is_link($itemPath)) {
+    if ($pathSec->isIgnored($itemPath) || (!file_exists($itemPath) && !is_link($itemPath))) {
         $deleted++;
+        continue;
+    }
+
+    if (is_dir($itemPath) && $pathSec->hasProtectedDescendants($itemPath)) {
+        $failed[] = ['name' => $name, 'error' => 'protected_items'];
         continue;
     }
 

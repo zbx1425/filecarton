@@ -34,7 +34,10 @@ define_default('FILECARTON_GRANT_RESOLVERS', [
 ]);
 
 // Origin for OAuth redirect_uri, without trailing slash or path.
-// Empty = auto-detect from HTTPS / Host / X-Forwarded-Proto.
+// Empty = detect from this request (HTTPS, port 443, X-Forwarded-Proto, Host).
+// A mismatched redirect_uri is rejected by the IdP, so a spoofed Host does not
+// sign the browser into FileCarton. Set this when a reverse proxy terminates
+// TLS or the process is not reached at its public origin.
 define_default('FILECARTON_PUBLIC_ORIGIN', '');
 
 // Session cookie name for standalone deployments.
