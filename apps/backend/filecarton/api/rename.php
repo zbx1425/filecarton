@@ -11,7 +11,7 @@ namespace FileCarton;
 function api_rename(PathSecurity $pathSec, FileOps $fileOps): void {
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input || !isset($input['path'], $input['oldName'], $input['newName'])) {
-    Response::error('Missing required fields: path, oldName, newName', 400);
+    Response::error('missing_fields', 400, ['fields' => 'path, oldName, newName']);
 }
 
 $dirPath = $input['path'];
@@ -19,19 +19,19 @@ $oldName = $input['oldName'];
 $newName = $input['newName'];
 
 if (!$pathSec->isValidFileName($newName)) {
-    Response::error('Invalid new filename', 400);
+    Response::error('invalid_filename', 400);
 }
 
 $dirAbs = $pathSec->resolve($dirPath);
 $pathSec->assertNotIgnored($dirAbs);
 if (!is_dir($dirAbs)) {
-    Response::error('Directory not found', 404);
+    Response::error('not_found.dir', 404);
 }
 
 $oldAbs = $pathSec->resolveItemIn($dirAbs, $oldName);
 
 if (!file_exists($oldAbs)) {
-    Response::error('Source not found', 404);
+    Response::error('not_found.file', 404);
 }
 
 $pathSec->assertNotIgnored($oldAbs);
@@ -39,18 +39,18 @@ $pathSec->assertNotIgnored($oldAbs);
 $isFile = is_file($oldAbs);
 
 if ($isFile && $pathSec->isExtensionBlocked($newName)) {
-    Response::error('File type is restricted', 403);
+    Response::error('extension_blocked', 403);
 }
 
 if (!$isFile && $pathSec->hasProtectedDescendants($oldAbs)) {
-    Response::error('Directory contains protected items', 403);
+    Response::error('protected_items', 403);
 }
 
 $newRelPath = ($dirPath === '' || $dirPath === '/') ? $newName : rtrim($dirPath, '/') . '/' . $newName;
 $newAbs = $pathSec->resolveParent($newRelPath);
 
 if ($pathSec->wouldBeIgnored($newAbs, !$isFile)) {
-    Response::error('Access denied', 403);
+    Response::error('access_denied', 403);
 }
 
 if (basename($oldAbs) === $newName) {
@@ -61,7 +61,7 @@ if (file_exists($newAbs)) {
     $oldReal = realpath($oldAbs);
     $newReal = realpath($newAbs);
     if ($oldReal === false || $newReal === false || $oldReal !== $newReal) {
-        Response::error('Name already exists', 409);
+        Response::error('already_exists', 409);
     }
 }
 

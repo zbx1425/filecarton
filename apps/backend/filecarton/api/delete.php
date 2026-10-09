@@ -14,16 +14,16 @@ namespace FileCarton;
 function api_delete(PathSecurity $pathSec, FileOps $fileOps): void {
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input || !isset($input['path'], $input['items']) || !is_array($input['items'])) {
-    Response::error('Missing required fields: path, items', 400);
+    Response::error('missing_fields', 400, ['fields' => 'path, items']);
 }
 
 $basePath = $pathSec->resolve($input['path']);
 $pathSec->assertNotIgnored($basePath);
 if (!file_exists($basePath)) {
-    Response::error('Directory not found', 404);
+    Response::error('not_found.dir', 404);
 }
 if (!is_dir($basePath)) {
-    Response::error('Not a directory', 400);
+    Response::error('not_a_dir', 400);
 }
 
 $deleted = 0;
@@ -35,17 +35,17 @@ foreach ($input['items'] as $name) {
     try {
         $itemPath = $pathSec->resolveItemIn($basePath, $name);
     } catch (\Throwable $e) {
-        $failed[] = ['name' => $name, 'error' => 'Invalid item name'];
+        $failed[] = ['name' => $name, 'error' => 'invalid_filename'];
         continue;
     }
 
     if ($pathSec->isIgnored($itemPath)) {
-        $failed[] = ['name' => $name, 'error' => 'Access denied'];
+        $failed[] = ['name' => $name, 'error' => 'access_denied'];
         continue;
     }
 
     if (is_dir($itemPath) && $pathSec->hasProtectedDescendants($itemPath)) {
-        $failed[] = ['name' => $name, 'error' => 'Directory contains protected items'];
+        $failed[] = ['name' => $name, 'error' => 'protected_items'];
         continue;
     }
 
@@ -58,7 +58,7 @@ foreach ($input['items'] as $name) {
         $fileOps->deleteItem($itemPath);
         $deleted++;
     } catch (\Throwable $e) {
-        $failed[] = ['name' => $name, 'error' => $e->getMessage()];
+        $failed[] = ['name' => $name, 'error' => 'server_error'];
     }
 }
 

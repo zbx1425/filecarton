@@ -9,8 +9,8 @@ namespace FileCarton;
  *
  * Atomic semantics for overwrite=false:
  *   Phase 1: check all items for conflicts (no side effects)
- *   If conflicts exist → return immediately with completed=0
- *   If no conflicts → Phase 2: execute all items
+ *   If conflicts exist -> return immediately with completed=0
+ *   If no conflicts -> Phase 2: execute all items
  *
  * Copy to same directory auto-renames (e.g. "file - Copy.txt").
  * Returns { completed, conflicts, failed, renamed }.
@@ -19,28 +19,28 @@ namespace FileCarton;
 function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
     $input = json_decode(file_get_contents('php://input'), true);
     if (!$input || !isset($input['mode'], $input['sourcePath'], $input['items'], $input['targetPath'])) {
-        Response::error('Missing required fields: mode, sourcePath, items, targetPath', 400);
+        Response::error('missing_fields', 400, ['fields' => 'mode, sourcePath, items, targetPath']);
     }
 
     $mode = $input['mode'];
     $overwrite = !empty($input['overwrite']);
 
     if ($mode !== 'copy' && $mode !== 'cut') {
-        Response::error('Mode must be "copy" or "cut"', 400);
+        Response::error('missing_fields', 400, ['fields' => 'mode']);
     }
 
     if (!is_array($input['items']) || empty($input['items'])) {
-        Response::error('Items array is empty', 400);
+        Response::error('missing_fields', 400, ['fields' => 'items']);
     }
 
     $sourceAbs = $pathSec->resolve($input['sourcePath']);
     $targetAbs = $pathSec->resolve($input['targetPath']);
 
     if (!is_dir($sourceAbs)) {
-        Response::error('Source directory not found', 404);
+        Response::error('not_found.dir', 404);
     }
     if (!is_dir($targetAbs)) {
-        Response::error('Target directory not found', 404);
+        Response::error('not_found.dir', 404);
     }
 
     $pathSec->assertNotIgnored($sourceAbs);
@@ -60,36 +60,36 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
             try {
                 $srcAbs = $pathSec->resolveItemIn($sourceAbs, $name);
             } catch (\Throwable $e) {
-                $failed[] = ['name' => $name, 'error' => 'Invalid item name'];
+                $failed[] = ['name' => $name, 'error' => 'invalid_filename'];
                 continue;
             }
 
             if (!file_exists($srcAbs) && !is_link($srcAbs)) {
-                $failed[] = ['name' => $name, 'error' => 'Source not found'];
+                $failed[] = ['name' => $name, 'error' => 'not_found.file'];
                 continue;
             }
 
             if ($pathSec->isIgnored($srcAbs)) {
-                $failed[] = ['name' => $name, 'error' => 'Access denied'];
+                $failed[] = ['name' => $name, 'error' => 'access_denied'];
                 continue;
             }
 
             $itemBaseName = basename($srcAbs);
 
             if (is_file($srcAbs) && $pathSec->isExtensionBlocked($itemBaseName)) {
-                $failed[] = ['name' => $name, 'error' => 'File type is restricted'];
+                $failed[] = ['name' => $name, 'error' => 'extension_blocked'];
                 continue;
             }
 
             if (is_dir($srcAbs) && $pathSec->hasProtectedDescendants($srcAbs)) {
-                $failed[] = ['name' => $name, 'error' => 'Directory contains protected items'];
+                $failed[] = ['name' => $name, 'error' => 'protected_items'];
                 continue;
             }
 
             $dstAbs = $normalizedTarget . '/' . $itemBaseName;
 
             if ($pathSec->wouldBeIgnored($dstAbs, is_dir($srcAbs))) {
-                $failed[] = ['name' => $name, 'error' => 'Access denied'];
+                $failed[] = ['name' => $name, 'error' => 'access_denied'];
                 continue;
             }
 
@@ -133,50 +133,50 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
         try {
             $srcAbs = $pathSec->resolveItemIn($sourceAbs, $name);
         } catch (\Throwable $e) {
-            $failed[] = ['name' => $name, 'error' => 'Invalid item name'];
+            $failed[] = ['name' => $name, 'error' => 'invalid_filename'];
             continue;
         }
 
         if (!file_exists($srcAbs) && !is_link($srcAbs)) {
-            $failed[] = ['name' => $name, 'error' => 'Source not found'];
+            $failed[] = ['name' => $name, 'error' => 'not_found.file'];
             continue;
         }
 
         if ($pathSec->isIgnored($srcAbs)) {
-            $failed[] = ['name' => $name, 'error' => 'Access denied'];
+            $failed[] = ['name' => $name, 'error' => 'access_denied'];
             continue;
         }
 
         $itemBaseName = basename($srcAbs);
 
         if (is_file($srcAbs) && $pathSec->isExtensionBlocked($itemBaseName)) {
-            $failed[] = ['name' => $name, 'error' => 'File type is restricted'];
+            $failed[] = ['name' => $name, 'error' => 'extension_blocked'];
             continue;
         }
 
         if (is_dir($srcAbs) && $pathSec->hasProtectedDescendants($srcAbs)) {
-            $failed[] = ['name' => $name, 'error' => 'Directory contains protected items'];
+            $failed[] = ['name' => $name, 'error' => 'protected_items'];
             continue;
         }
 
         $dstAbs = $normalizedTarget . '/' . $itemBaseName;
 
         if ($pathSec->wouldBeIgnored($dstAbs, is_dir($srcAbs))) {
-            $failed[] = ['name' => $name, 'error' => 'Access denied'];
+            $failed[] = ['name' => $name, 'error' => 'access_denied'];
             continue;
         }
 
         try {
             $pathSec->assertWithinRoot($dstAbs);
         } catch (\Throwable $e) {
-            $failed[] = ['name' => $name, 'error' => 'Invalid target path'];
+            $failed[] = ['name' => $name, 'error' => 'path_traversal'];
             continue;
         }
 
         if (is_dir($srcAbs)) {
             $realSrc = str_replace('\\', '/', realpath($srcAbs) ?: $srcAbs);
             if ($normalizedTarget === $realSrc || str_starts_with($normalizedTarget . '/', $realSrc . '/')) {
-                $failed[] = ['name' => $name, 'error' => 'Cannot ' . ($mode === 'copy' ? 'copy' : 'move') . ' directory into itself'];
+                $failed[] = ['name' => $name, 'error' => 'paste.into_self'];
                 continue;
             }
         }
@@ -190,7 +190,7 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
             $newName = generate_copy_name($itemBaseName, $targetAbs);
             $dstAbs = $normalizedTarget . '/' . $newName;
             if ($pathSec->wouldBeIgnored($dstAbs, is_dir($srcAbs))) {
-                $failed[] = ['name' => $name, 'error' => 'Access denied'];
+                $failed[] = ['name' => $name, 'error' => 'access_denied'];
                 continue;
             }
             $renamed[] = ['original' => $itemBaseName, 'newName' => $newName];
@@ -203,7 +203,7 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
 
         try {
             if (file_exists($dstAbs) && $overwrite && is_dir($dstAbs) && $pathSec->hasProtectedDescendants($dstAbs)) {
-                $failed[] = ['name' => $name, 'error' => 'Target directory contains protected items'];
+                $failed[] = ['name' => $name, 'error' => 'paste.target_protected'];
                 continue;
             }
 
@@ -228,7 +228,7 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
             }
             $completed++;
         } catch (\Throwable $e) {
-            $failed[] = ['name' => $name, 'error' => $e->getMessage()];
+            $failed[] = ['name' => $name, 'error' => 'server_error'];
         }
     }
 
