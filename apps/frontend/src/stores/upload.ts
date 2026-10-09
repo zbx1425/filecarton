@@ -3,7 +3,8 @@ import { ref, computed, markRaw } from 'vue'
 import { toast } from 'vue-sonner'
 import { useDebounceFn } from '@vueuse/core'
 import UploadToast from '@/components/upload/UploadToast.vue'
-import { apiUpload, apiPost } from '@/api/client'
+import { apiUpload, apiPost, toErrorInfo } from '@/api/client'
+import type { ErrorInfo } from '@/api/client'
 import type { UploadResponse, UploadChunkResponse, UploadCompleteResponse, CheckUploadConflictsResponse } from '@/api/types'
 import { showPasteConflict, confirm } from '@/composables/useDialogs'
 import { useFileListStore } from '@/stores/fileList'
@@ -22,7 +23,7 @@ export interface UploadTask {
   targetDir: string
   progress: number
   status: 'pending' | 'uploading' | 'success' | 'error'
-  error?: string
+  error?: ErrorInfo
 }
 
 export interface BatchResult {
@@ -319,7 +320,7 @@ export const useUploadStore = defineStore('upload', () => {
       task.progress = 100
     } catch (e: unknown) {
       task.status = 'error'
-      task.error = e instanceof Error ? e.message : 'Upload failed'
+      task.error = toErrorInfo(e)
     }
     processQueue()
     refreshAfterUpload(task.targetDir)

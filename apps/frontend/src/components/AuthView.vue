@@ -3,7 +3,8 @@ import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { usePreferencesStore } from '@/stores/preferences'
-import { apiPost, buildAuthStartUrl } from '@/api/client'
+import { apiPost, toErrorInfo } from '@/api/client'
+import { buildAuthStartUrl } from '@/api/client'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -42,13 +43,13 @@ const submitting = ref(false)
 
 async function handlePasswordLogin() {
   if (submitting.value) return
-  auth.error = ''
+  auth.error = null
   submitting.value = true
   try {
     await apiPost('auth_login', { username: username.value, password: password.value })
     location.reload()
   } catch (e: any) {
-    auth.error = e?.message ?? 'Login failed.'
+    auth.error = toErrorInfo(e)
     submitting.value = false
   }
 }
@@ -87,7 +88,7 @@ function handleRedirect(pluginId: string) {
           v-if="auth.error"
           class="mb-4 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
         >
-          {{ auth.error }}
+          {{ $t('err.' + auth.error.code, auth.error.params ?? {}) }}
         </div>
 
         <!-- Password form -->

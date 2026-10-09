@@ -21,6 +21,8 @@ class StartupCheck {
      * @return string[]
      */
     public static function problems(): array {
+        require_once FILECARTON_SCRIPT_DIR . '/lib/Platform.php';
+        
         $p = [];
 
         // PHP version

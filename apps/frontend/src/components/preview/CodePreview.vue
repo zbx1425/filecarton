@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import type * as Monaco from 'monaco-editor'
-import { apiGet } from '@/api/client'
+import { apiGet, toErrorInfo } from '@/api/client'
+import type { ErrorInfo } from '@/api/client'
 import type { ReadResponse } from '@/api/types'
 import { loadMonaco } from '@/composables/useMonaco'
 import { monacoLanguage } from '@/composables/useFileType'
@@ -17,7 +18,7 @@ const prefs = usePreferencesStore()
 
 const containerRef = ref<HTMLElement | null>(null)
 const loading = ref(true)
-const error = ref<string | null>(null)
+const error = ref<ErrorInfo | null>(null)
 let editor: Monaco.editor.IStandaloneCodeEditor | null = null
 let resizeObserver: ResizeObserver | null = null
 
@@ -54,7 +55,7 @@ onMounted(async () => {
     watch(() => prefs.editorWordWrap, (w) => editor?.updateOptions({ wordWrap: w ? 'on' : 'off' }))
     watch(() => prefs.editorLineNumbers, (l) => editor?.updateOptions({ lineNumbers: l ? 'on' : 'off' }))
   } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Failed to load file'
+    error.value = toErrorInfo(e)
   } finally {
     loading.value = false
   }
@@ -72,7 +73,7 @@ onBeforeUnmount(() => {
       <Loader2 class="size-5 animate-spin text-muted-foreground" />
     </div>
     <div v-if="error" class="absolute inset-0 flex items-center justify-center text-sm text-destructive">
-      {{ error }}
+      {{ $t('err.' + error.code, error.params ?? {}) }}
     </div>
     <div ref="containerRef" class="h-full" />
   </div>

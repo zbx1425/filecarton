@@ -2,9 +2,11 @@
 import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue'
 import type * as Monaco from 'monaco-editor'
 import { toast } from 'vue-sonner'
+import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import { apiGet, apiWrite } from '@/api/client'
-import { ApiError } from '@/api/client'
+import { ApiError, toErrorInfo } from '@/api/client'
+import type { ErrorInfo } from '@/api/client'
 import type { ReadResponse } from '@/api/types'
 import { useNavigationStore } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
@@ -19,10 +21,11 @@ import EditorStatusBar from './EditorStatusBar.vue'
 const navigation = useNavigationStore()
 const ui = useUiStore()
 const prefs = usePreferencesStore()
+const { t } = useI18n()
 
 const containerRef = ref<HTMLElement | null>(null)
 const loading = ref(true)
-const error = ref<string | null>(null)
+const error = ref<ErrorInfo | null>(null)
 const saving = ref(false)
 
 const editorInstance = ref<Monaco.editor.IStandaloneCodeEditor | null>(null)
@@ -67,14 +70,16 @@ async function save() {
           if (e2 instanceof ApiError && e2.authError) {
             /* handled by the global onUnauthorized handler */
           } else {
-            toast.error(e2 instanceof Error ? e2.message : 'Save failed')
+            const info2 = toErrorInfo(e2)
+            toast.error(t(`err.${info2.code}`, (info2.params as Record<string, unknown>) ?? {}))
           }
         }
       } else if (choice === 'reload') {
         await reloadContent()
       }
     } else {
-      toast.error(e instanceof Error ? e.message : 'Save failed')
+      const info = toErrorInfo(e)
+      toast.error(t(`err.${info.code}`, (info.params as Record<string, unknown>) ?? {}))
     }
   } finally {
     saving.value = false
@@ -93,7 +98,7 @@ async function reloadContent() {
     if (e instanceof ApiError && e.authError) {
       /* handled by maybeUnauthorized */
     } else {
-      toast.error(e instanceof Error ? e.message : 'Failed to reload')
+      toast.error(t(`err.${toErrorInfo(e).code}`))
     }
   }
 }
@@ -142,7 +147,7 @@ onMounted(async () => {
     })
     watch(() => prefs.editorFontSize, (s) => editor?.updateOptions({ fontSize: s }))
   } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Failed to load editor'
+    error.value = toErrorInfo(e)
   } finally {
     loading.value = false
   }
@@ -192,7 +197,7 @@ onBeforeUnmount(() => {
         <Loader2 class="size-5 animate-spin text-muted-foreground" />
       </div>
       <div v-if="error" class="absolute inset-0 flex items-center justify-center text-sm text-destructive">
-        {{ error }}
+        {{ $t('err.' + error.code, error.params ?? {}) }}
       </div>
       <div ref="containerRef" class="h-full" />
     </div>

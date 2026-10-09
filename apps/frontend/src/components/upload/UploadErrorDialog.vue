@@ -47,7 +47,7 @@ function handleOpenChange(open: boolean) {
               </div>
               <div class="text-muted-foreground mt-0.5 break-words">
                 {{ formatSize(task.file.size) }}
-                <span v-if="task.error" class="text-destructive"> &mdash; {{ task.error }}</span>
+                <span v-if="task.error" class="text-destructive"> &mdash; {{ $t('err.' + task.error.code, task.error.params ?? {}) }}</span>
               </div>
             </div>
             <div class="flex items-center gap-0.5 shrink-0">

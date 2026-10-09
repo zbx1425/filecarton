@@ -9,6 +9,7 @@ import { useUiStore } from '@/stores/ui'
 import { confirm, prompt, showPasteConflict, showOperationReport } from '@/composables/useDialogs'
 import { usePreferencesStore } from '@/stores/preferences'
 import { joinPath, validateFileName } from '@/utils/path'
+import { errorMessage } from '@/utils/errorMessage'
 
 function refreshCurrent() {
   const navigation = useNavigationStore()
@@ -56,7 +57,7 @@ export async function createItem(type: 'file' | 'dir') {
     toast.success(`Created ${name}`)
     refreshCurrent()
   } catch (e: unknown) {
-    toast.error(e instanceof Error ? e.message : 'Failed to create')
+    toast.error(errorMessage(e))
   }
 }
 
@@ -149,7 +150,7 @@ export async function deleteItems(dirPath: string, itemNames: string[]) {
 
     fileList.clearSelection()
   } catch (e: unknown) {
-    toast.error(e instanceof Error ? e.message : 'Failed to delete')
+    toast.error(errorMessage(e))
   }
 }
 
@@ -216,7 +217,7 @@ export async function renameItem(dirPath: string, oldName: string, isDir?: boole
     tree.invalidate(dirPath)
     tree.loadChildren(dirPath)
   } catch (e: unknown) {
-    toast.error(e instanceof Error ? e.message : 'Failed to rename')
+    toast.error(errorMessage(e))
   }
 }
 
@@ -304,7 +305,7 @@ export async function pasteItems(targetPath: string) {
     tree.loadChildren(targetPath)
   } catch (e: unknown) {
     if (e instanceof Error && e.message === '__cancelled__') return
-    toast.error(e instanceof Error ? e.message : 'Paste failed')
+    toast.error(errorMessage(e))
   }
 }
 

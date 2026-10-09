@@ -1,29 +1,6 @@
 # Configuring authentication
 
-FileCarton has a built-in auth system.  
-If you are to embed FileCarton in your own application, you're likely already handling authentication in other parts of your app and does not FileCarton to handle it, in which case you should see [embedding.md](embedding.md) instead.
-
-## TLDR
-
-To configure password login with optionally per-user directories:
-
-```php
-define_default('FILECARTON_STATIC_USER_LIST', [
-    ['id' => 'alice', 'passwordHash' => '$2y$10$...'],
-    ['id' => 'bob', 'passwordHash' => '$2y$10$...', 'root' => '/srv/files/bob'],
-    ['id' => 'charlie', 'passwordHash' => '$2y$10$...', 'root' => '/srv/files/charlie', 'readonly' => true],
-]);
-
-define_default('FILECARTON_AUTH_PROVIDERS', [
-    ['class' => \FileCarton\StaticPasswordAuth::class],
-]);
-```
-
-Generate hashes with `php -r "echo password_hash('the-password', PASSWORD_DEFAULT), PHP_EOL;"`.
-
-Read on for more details on the authentication configuration.
-
-## How it fits together
+FileCarton has a built-in auth system supporting password or OAuth login.
 
 ```mermaid
 flowchart LR
@@ -47,35 +24,25 @@ flowchart LR
     resolvers -.-> grant
 ```
 
-These parts being:
+- **Auth providers** handles password or OAuth login, and produces an `AuthIdentity` (a user ID + display name).
+- **Grant resolvers** map `AuthIdentity` to an `AuthGrant` (which directory to show, read-only or not, etc.).
+  The built-in `StaticGrantResolver` looks up the user's ID in `STATIC_USER_LIST`.
+- **`STATIC_USER_LIST`** is the user table used by built-in authentication plugins (`StaticPasswordAuth`, `NoLoginAuth` and `StaticGrantResolver`).
+- If you are to embed FileCarton in your own application, you're likely already handling authentication in other parts of your app. In which case you should see [embedding.md](embedding.md) instead.
 
-- **Auth providers** handle login. They accepts password or OAuth requests and produces an `AuthIdentity` (a user ID + display name).
-- **Grant resolvers** map user identities to access configurations. Given an identity, they return an `AuthGrant` (which directory to show, read-only or not, etc.). The built-in `StaticGrantResolver` looks up the user's ID in `STATIC_USER_LIST`.
-- **`STATIC_USER_LIST`** is the user table used by built-in authentication plugins (`StaticPasswordAuth`, `NoLoginAuth` and `StaticGrantResolver`): an array of rows, each with an `id` and optional fields like password hash, per-user root directory, and display name.
+## How do I configure FileCarton to use...
 
-## Open access
+### Password login
 
-The default configuration ships `NoLoginAuth`, which means anyone can access files without logging in.
-
-```php
-define_default('FILECARTON_STATIC_USER_LIST', [
-    ['id' => 'local'],
-]);
-define_default('FILECARTON_AUTH_PROVIDERS', [
-    ['class' => \FileCarton\NoLoginAuth::class],
-]);
-```
-
-## Password login
-
-Replace `NoLoginAuth` with `StaticPasswordAuth` and add a `passwordHash` to your user rows:
+Use `StaticPasswordAuth` and add a `passwordHash` to your user rows:
 
 ```php
 define_default('FILECARTON_STATIC_USER_LIST', [
     [
         'id'           => 'admin',
+        'displayName'  => 'Admin', // (Optional)
         'passwordHash' => '$2y$10$...your.bcrypt.hash.here...',
-        'displayName'  => 'Admin',
+        'root'         => __DIR__ . '/folder-for-admin', // (Optional, sets the user's root directory)
     ],
 ]);
 
@@ -92,13 +59,13 @@ php -r "echo password_hash('your-password', PASSWORD_DEFAULT), PHP_EOL;"
 
 Paste the output as the `passwordHash` value. Do not store the plaintext password anywhere.
 
-## GitHub OAuth
+### OAuth (Github as example)
 
 You can add GitHub login alongside or instead of passwords:
 
 ```php
 define_default('FILECARTON_STATIC_USER_LIST', [
-    ['id' => 'admin', 'passwordHash' => '$2y$10$...'],
+    ['id' => 'admin', 'passwordHash' => '$2y$10$...'], // Password user
     ['id' => 'github:583231'],  // GitHub user
 ]);
 
@@ -108,15 +75,11 @@ define_default('FILECARTON_AUTH_PROVIDERS', [
 ]);
 ```
 
-To set up the GitHub side:
+You'll need to create an OAuth app on the provider's website and get the client ID and client secret.
 
-1. Go to GitHub → Settings → Developer settings → OAuth Apps → New OAuth App.
-2. Set the authorization callback URL to `https://your-domain.com/filecarton.php?fcauth=callback&plugin=github` (adjust the script path to match your deployment).
-3. Copy the Client ID and Client Secret into the config above.
+You'll need to whitelist a list of users that are allowed to use your app by adding them into `FILECARTON_STATIC_USER_LIST`.
 
-You'll then need to whitelist a list of users that are allowed to use your app by adding them into `FILECARTON_STATIC_USER_LIST`. The `id` for GitHub users is `github:` followed by the user's **numeric GitHub ID** (not the login name). You can find this at `https://api.github.com/users/<username>` (look for the `id` field). 
-
-If the id does not match any row, the user will see "This account is not allowed to log in".
+The `id` for GitHub users is `github:` followed by the user's **numeric GitHub ID** (not the login name). You can find this at `https://api.github.com/users/<username>` (look for the `id` field). If the user's id does not match any row in `FILECARTON_STATIC_USER_LIST`, the user will see "This account is not allowed to log in". You can also configure e.g. `root`, `readonly` for users logged in with OAuth.
 
 If you want to automatically allow all users from a certain OAuth provider to be granted access, you should write your custom `GrantResolver`. By doing so you can also do fancy things like automatically assigning users their own folder.
 
@@ -124,6 +87,19 @@ If your server is behind a reverse proxy, set `FILECARTON_PUBLIC_ORIGIN` so the 
 
 ```php
 define_default('FILECARTON_PUBLIC_ORIGIN', 'https://files.example.com');
+```
+
+### Open access
+
+Anyone can access files without logging in. You need one entry in `FILECARTON_STATIC_USER_LIST` as the default identity.
+
+```php
+define_default('FILECARTON_STATIC_USER_LIST', [
+    ['id' => 'local'],
+]);
+define_default('FILECARTON_AUTH_PROVIDERS', [
+    ['class' => \FileCarton\NoLoginAuth::class],
+]);
 ```
 
 ## The user list
@@ -146,7 +122,7 @@ Example with per-user directories:
 define_default('FILECARTON_STATIC_USER_LIST', [
     ['id' => 'alice', 'passwordHash' => '$2y$10$...', 'root' => '/srv/files/alice'],
     ['id' => 'bob',   'passwordHash' => '$2y$10$...', 'root' => '/srv/files/bob', 'readonly' => true],
-    ['id' => 'github:583231', 'displayName' => 'octocat', 'root' => '/srv/files/shared'],  // GitHub only
+    ['id' => 'github:583231', 'displayName' => 'octocat', 'root' => '/srv/files/shared'], 
 ]);
 ```
 
@@ -161,13 +137,13 @@ The `FILECARTON_GRANT_RESOLVERS` array is evaluated in a chain, where each resol
 ```php
 define_default('FILECARTON_GRANT_RESOLVERS', [
     ['file' => __DIR__ . '/my_resolver.php', 'class' => \MyApp\DbGrantResolver::class, 'dsn' => '...'],
-    ['class' => \FileCarton\StaticGrantResolver::class],  // fallback
+    ['class' => \FileCarton\StaticGrantResolver::class],  // If you want fallback
 ]);
 ```
 
 ## Mixing providers
 
-You can combine password and redirect providers. The login page will show a form for passwords and a button for each redirect provider.
+You can combine password and redirect providers. The login page will show a form for passwords (which is checked against every password auth provider) and a button for each redirect provider.
 
 `NoLoginAuth` will just skip the login page and thus cannot be combined with other providers.
 

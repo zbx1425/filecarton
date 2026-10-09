@@ -5,6 +5,7 @@ import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
 import { useTreeStore } from '@/stores/tree'
 import { confirm, showPasteConflict, showOperationReport } from '@/composables/useDialogs'
+import { errorMessage } from '@/utils/errorMessage'
 
 export async function createArchive(
   format: 'zip' | 'tar',
@@ -39,7 +40,7 @@ export async function createArchive(
     tree.invalidate(effectiveDirPath)
     tree.loadChildren(effectiveDirPath)
   } catch (e: unknown) {
-    toast.error(e instanceof Error ? e.message : 'Failed to create archive')
+    toast.error(errorMessage(e))
   }
 }
 
@@ -108,6 +109,6 @@ export async function extractArchive(archivePath: string, targetDir: string) {
     tree.invalidateSubtree(targetDir)
     tree.loadChildren(targetDir)
   } catch (e: unknown) {
-    toast.error(e instanceof Error ? e.message : 'Failed to extract')
+    toast.error(errorMessage(e))
   }
 }

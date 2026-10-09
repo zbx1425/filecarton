@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { apiGet } from '@/api/client'
+import { apiGet, toErrorInfo } from '@/api/client'
+import type { ErrorInfo } from '@/api/client'
 import type { ArchiveListResponse } from '@/api/types'
 import { formatSize } from '@/utils/format'
 import { Loader2, FileArchive, Folder, File } from '@lucide/vue'
@@ -10,14 +11,14 @@ const props = defineProps<{
 }>()
 
 const loading = ref(true)
-const error = ref<string | null>(null)
+const error = ref<ErrorInfo | null>(null)
 const data = ref<ArchiveListResponse | null>(null)
 
 onMounted(async () => {
   try {
     data.value = await apiGet<ArchiveListResponse>('archive_list', { path: props.path })
   } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Failed to load archive'
+    error.value = toErrorInfo(e)
   } finally {
     loading.value = false
   }
@@ -31,7 +32,7 @@ onMounted(async () => {
     </div>
 
     <div v-else-if="error" class="text-center py-8 text-sm text-destructive">
-      {{ error }}
+      {{ $t('err.' + error.code, error.params ?? {}) }}
     </div>
 
     <template v-else-if="data">

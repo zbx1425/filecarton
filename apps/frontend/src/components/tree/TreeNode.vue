@@ -30,6 +30,7 @@ import type { CreateResponse } from '@/api/types'
 import { toast } from 'vue-sonner'
 import { prompt } from '@/composables/useDialogs'
 import { usePreferencesStore } from '@/stores/preferences'
+import { errorMessage } from '@/utils/errorMessage'
 
 const props = defineProps<{
   name: string
@@ -195,7 +196,7 @@ async function handleNewFolder() {
       fileList.useFileListStore().fetchDir(props.path)
     }
   } catch (e: unknown) {
-    toast.error(e instanceof Error ? e.message : 'Failed to create')
+    toast.error(errorMessage(e))
   }
 }
 </script>

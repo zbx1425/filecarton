@@ -142,7 +142,7 @@ function startResize(e: MouseEvent) {
 
     <!-- Error -->
     <div v-else-if="fileList.error" class="flex-1 flex flex-col items-center justify-center gap-2 text-sm text-destructive">
-      <p>{{ fileList.error }}</p>
+      <p>{{ $t('err.' + fileList.error.code, fileList.error.params ?? {}) }}</p>
     </div>
 
     <!-- File list with context menu on empty area -->

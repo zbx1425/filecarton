@@ -5,6 +5,7 @@ import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
 import { useTreeStore } from '@/stores/tree'
 import { showPasteConflict, showOperationReport } from '@/composables/useDialogs'
+import { errorMessage } from '@/utils/errorMessage'
 
 const MIME_TYPE = 'application/filecarton'
 
@@ -110,7 +111,7 @@ export async function handleDrop(e: DragEvent, targetPath: string) {
     tree.loadChildren(payload.sourcePath)
     tree.loadChildren(targetPath)
   } catch (e: unknown) {
-    toast.error(e instanceof Error ? e.message : 'Move failed')
+    toast.error(errorMessage(e))
   }
 }
 

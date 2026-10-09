@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
-import { apiGet } from '@/api/client'
+import { apiGet, toErrorInfo } from '@/api/client'
+import type { ErrorInfo } from '@/api/client'
 import { useUiStore } from '@/stores/ui'
 import { usePreferencesStore } from '@/stores/preferences'
 import type { DirEntry, FileEntry, ListResponse } from '@/api/types'
@@ -26,7 +27,7 @@ export const useFileListStore = defineStore('fileList', () => {
   const dirs = ref<DirEntry[]>([])
   const files = ref<FileEntry[]>([])
   const loading = ref(false)
-  const error = ref<string | null>(null)
+  const error = ref<ErrorInfo | null>(null)
   let fetchAbort: AbortController | null = null
 
   const savedSort = loadSortPreference()
@@ -132,7 +133,7 @@ export const useFileListStore = defineStore('fileList', () => {
       files.value = data.files
     } catch (e: unknown) {
       if (signal.aborted) return
-      error.value = e instanceof Error ? e.message : 'Failed to load directory'
+      error.value = toErrorInfo(e)
       dirs.value = []
       files.value = []
     } finally {

@@ -19,6 +19,18 @@ export class ApiError extends Error {
   }
 }
 
+export interface ErrorInfo {
+  code: string
+  params?: Record<string, string | number>
+}
+
+export function toErrorInfo(e: unknown): ErrorInfo {
+  if (e instanceof ApiError) {
+    return { code: e.code, params: e.params }
+  }
+  return { code: 'server_error' }
+}
+
 let unauthorizedHandler: ((action: string, authError: string) => void) | null = null
 
 export function onUnauthorized(handler: (action: string, authError: string) => void) {

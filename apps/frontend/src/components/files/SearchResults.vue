@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
-import { apiGet } from '@/api/client'
+import { apiGet, toErrorInfo } from '@/api/client'
+import type { ErrorInfo } from '@/api/client'
 import type { SearchResponse, SearchResult } from '@/api/types'
 import { useNavigationStore } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
@@ -30,7 +31,7 @@ const results = computed(() => {
 const loading = ref(false)
 const truncated = ref(false)
 const scanLimitReached = ref(false)
-const error = ref<string | null>(null)
+const error = ref<ErrorInfo | null>(null)
 
 async function doSearch(query: string) {
   if (!query.trim()) {
@@ -49,7 +50,7 @@ async function doSearch(query: string) {
     truncated.value = data.truncated
     scanLimitReached.value = data.scanLimitReached ?? false
   } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Search failed'
+    error.value = toErrorInfo(e)
   } finally {
     loading.value = false
   }
@@ -101,7 +102,7 @@ function navigateToDir(path: string) {
     </div>
 
     <div v-else-if="error" class="flex-1 flex items-center justify-center text-sm text-destructive">
-      {{ error }}
+      {{ $t('err.' + error.code, error.params ?? {}) }}
     </div>
 
     <div v-else-if="results.length === 0" class="flex-1 flex items-center justify-center text-sm text-muted-foreground">

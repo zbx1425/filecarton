@@ -1,9 +1,8 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import { createI18n } from 'vue-i18n'
 import './style.css'
 import App from './App.vue'
-import en from './locales/en.json'
+import i18n from './i18n'
 import { useNavigationStore } from './stores/navigation'
 import { useUiStore } from './stores/ui'
 import { usePreferencesStore } from './stores/preferences'
@@ -28,12 +27,6 @@ if (fcReturnHash || fcAuthError) {
 }
 
 const pinia = createPinia()
-const i18n = createI18n({
-  legacy: false,
-  locale: 'en',
-  fallbackLocale: 'en',
-  messages: { en },
-})
 const app = createApp(App)
 
 app.use(pinia)
