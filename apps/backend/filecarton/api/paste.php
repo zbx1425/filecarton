@@ -33,18 +33,8 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
         Response::error('missing_fields', 400, ['fields' => 'items']);
     }
 
-    $sourceAbs = $pathSec->resolve($input['sourcePath']);
-    $targetAbs = $pathSec->resolve($input['targetPath']);
-
-    if (!is_dir($sourceAbs)) {
-        Response::error('not_found.dir', 404);
-    }
-    if (!is_dir($targetAbs)) {
-        Response::error('not_found.dir', 404);
-    }
-
-    $pathSec->assertNotIgnored($sourceAbs);
-    $pathSec->assertNotIgnored($targetAbs);
+    $sourceAbs = $pathSec->resolveExistingDir($input['sourcePath']);
+    $targetAbs = $pathSec->resolveExistingDir($input['targetPath']);
 
     $normalizedSource = str_replace('\\', '/', $sourceAbs);
     $normalizedTarget = str_replace('\\', '/', $targetAbs);

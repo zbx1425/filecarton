@@ -11,15 +11,7 @@ namespace FileCarton;
 
 function api_read(PathSecurity $pathSec, FileOps $fileOps): void {
 $path = $_GET['path'] ?? '';
-$absPath = $pathSec->resolve($path);
-$pathSec->assertNotIgnored($absPath);
-
-if (!file_exists($absPath)) {
-    Response::error('not_found.file', 404);
-}
-if (!is_file($absPath)) {
-    Response::error('not_a_file', 400);
-}
+$absPath = $pathSec->resolveExistingFile($path);
 
 $size = filesize($absPath);
 if ($size > FILECARTON_MAX_EDIT_SIZE) {

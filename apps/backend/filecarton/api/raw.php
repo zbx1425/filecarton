@@ -5,23 +5,11 @@ namespace FileCarton;
 /**
  * API: raw — Serve file inline with correct MIME type.
  * GET ?fcapi=raw&path={filePath}
- *
- * Used by frontend for <img src> and <audio src> preview.
- * Frontend gates on file size before requesting.
- * Supports ETag/304 caching via Response::stream().
  */
 
 function api_raw(PathSecurity $pathSec, FileOps $fileOps): void {
 $path = $_GET['path'] ?? '';
-$absPath = $pathSec->resolve($path);
-$pathSec->assertNotIgnored($absPath);
-
-if (!file_exists($absPath)) {
-    Response::error('not_found.file', 404);
-}
-if (!is_file($absPath)) {
-    Response::error('not_a_file', 400);
-}
+$absPath = $pathSec->resolveExistingFile($path);
 
 $mime = MimeType::detect($absPath);
 

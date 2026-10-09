@@ -9,12 +9,7 @@ namespace FileCarton;
 
 function api_tree_node(PathSecurity $pathSec, FileOps $fileOps): void {
 $path = $_GET['path'] ?? '';
-$absPath = $pathSec->resolve($path);
-$pathSec->assertNotIgnored($absPath);
-
-if (!is_dir($absPath)) {
-    Response::error('not_found.dir', 404);
-}
+$absPath = $pathSec->resolveExistingDir($path);
 
 $children = $fileOps->treeChildren($absPath);
 $children = $pathSec->filterEntries($children, $absPath);

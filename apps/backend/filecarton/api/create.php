@@ -26,17 +26,10 @@ if (!$pathSec->isValidFileName($name)) {
     Response::error('invalid_filename', 400);
 }
 
-if ($type === 'file' && $pathSec->isExtensionBlocked($name)) {
-    Response::error('extension_blocked', 403);
-}
-
 $relativePath = ($parentPath === '' || $parentPath === '/') ? $name : rtrim($parentPath, '/') . '/' . $name;
 $targetAbs = $pathSec->resolveParent($relativePath);
 $pathSec->assertNotIgnored(dirname($targetAbs));
-
-if ($pathSec->wouldBeIgnored($targetAbs, $type === 'dir')) {
-    Response::error('access_denied', 403);
-}
+$pathSec->assertCanCreateAt($targetAbs, $type === 'dir');
 
 if (file_exists($targetAbs)) {
     Response::error('already_exists', 409);

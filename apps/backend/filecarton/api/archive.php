@@ -38,25 +38,14 @@ function archive_create(array $input, PathSecurity $pathSec, FileOps $fileOps) {
         Response::error('archive.invalid_format', 400);
     }
 
-    $dirAbs = $pathSec->resolve($input['path']);
-    $pathSec->assertNotIgnored($dirAbs);
-    if (!is_dir($dirAbs)) {
-        Response::error('not_found.dir', 404);
-    }
+    $dirAbs = $pathSec->resolveExistingDir($input['path']);
 
     $archiveName = $input['archiveName'] ?? ('archive_' . date('ymd_His') . '.' . $format);
     $sanitizedName = $pathSec->sanitizeFileName($archiveName);
 
-    if ($pathSec->isExtensionBlocked($sanitizedName)) {
-        Response::error('extension_blocked', 403);
-    }
-
     $archivePath = $dirAbs . '/' . $sanitizedName;
     $pathSec->assertWithinRoot($archivePath);
-
-    if ($pathSec->wouldBeIgnored($archivePath, false)) {
-        Response::error('access_denied', 403);
-    }
+    $pathSec->assertCanCreateAt($archivePath, false);
 
     if (file_exists($archivePath)) {
         Response::error('already_exists', 409);
@@ -136,17 +125,9 @@ function archive_extract(array $input, PathSecurity $pathSec) {
         Response::error('missing_fields', 400, ['fields' => 'path, targetPath']);
     }
 
-    $archiveAbs = $pathSec->resolve($input['path']);
-    $pathSec->assertNotIgnored($archiveAbs);
-    if (!is_file($archiveAbs)) {
-        Response::error('not_found.file', 404);
-    }
+    $archiveAbs = $pathSec->resolveExistingFile($input['path']);
 
-    $targetAbs = $pathSec->resolve($input['targetPath']);
-    $pathSec->assertNotIgnored($targetAbs);
-    if (!is_dir($targetAbs)) {
-        Response::error('not_found.dir', 404);
-    }
+    $targetAbs = $pathSec->resolveExistingDir($input['targetPath']);
 
     $dryRun = !empty($input['dryRun']);
     $createSubdir = !empty($input['createSubdir']);
@@ -257,7 +238,7 @@ function merge_extracted_to_target(string $tempDir, string $targetDir, PathSecur
                 Platform::deleteRecursive($dst);
             }
             if (!rename($src, $dst)) {
-                throw new \RuntimeException('Failed to move extracted item: ' . $entry);
+                throw new ApiException('server_error', 500);
             }
         }
     }

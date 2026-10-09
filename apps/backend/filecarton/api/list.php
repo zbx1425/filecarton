@@ -9,15 +9,7 @@ namespace FileCarton;
 
 function api_list(PathSecurity $pathSec, FileOps $fileOps): void {
 $path = $_GET['path'] ?? '';
-$absPath = $pathSec->resolve($path);
-$pathSec->assertNotIgnored($absPath);
-
-if (!file_exists($absPath)) {
-    Response::error('not_found.dir', 404);
-}
-if (!is_dir($absPath)) {
-    Response::error('not_a_dir', 400);
-}
+$absPath = $pathSec->resolveExistingDir($path);
 
 $result = $fileOps->listDir($absPath);
 $result['dirs'] = $pathSec->filterEntries($result['dirs'], $absPath);

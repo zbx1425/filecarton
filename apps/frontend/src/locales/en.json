@@ -13,8 +13,9 @@
   "err.server_error": "Internal server error",
   "err.missing_fields": "Missing required fields: {fields}",
   "err.path_traversal": "Path traversal denied",
-  "err.path_too_deep": "Path too deep (max {maxDepth} levels)",
-  "err.path_not_found": "Path not found",
+  "err.path_too_deep": "Path too deep (max {max} levels)",
+  "err.not_found.path": "Path not found",
+  "err.invalid_input": "Invalid input",
 
   "err.file_too_large": "File too large to edit ({maxMB} MB limit). Please download instead.",
   "err.not_utf8": "File is not valid UTF-8. Please download to view.",

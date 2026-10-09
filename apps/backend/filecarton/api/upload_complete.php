@@ -26,18 +26,11 @@ if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $uploadId)) {
 
 $sanitizedName = $pathSec->sanitizeFileName($fileName);
 
-if ($pathSec->isExtensionBlocked($sanitizedName)) {
-    Response::error('extension_blocked', 403);
-}
-
 $targetAbs = $pathSec->resolveOrCreate($input['targetPath']);
 
 $finalPath = $targetAbs . '/' . $sanitizedName;
 $pathSec->assertWithinRoot($finalPath);
-
-if ($pathSec->wouldBeIgnored($finalPath, false)) {
-    Response::error('access_denied', 403);
-}
+$pathSec->assertCanCreateAt($finalPath, false);
 
 $tempDir = sys_get_temp_dir() . '/filecarton_chunks/' . $uploadId;
 if (!is_dir($tempDir)) {

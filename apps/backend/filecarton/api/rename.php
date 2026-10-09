@@ -22,12 +22,7 @@ if (!$pathSec->isValidFileName($newName)) {
     Response::error('invalid_filename', 400);
 }
 
-$dirAbs = $pathSec->resolve($dirPath);
-$pathSec->assertNotIgnored($dirAbs);
-if (!is_dir($dirAbs)) {
-    Response::error('not_found.dir', 404);
-}
-
+$dirAbs = $pathSec->resolveExistingDir($dirPath);
 $oldAbs = $pathSec->resolveItemIn($dirAbs, $oldName);
 
 if (!file_exists($oldAbs)) {

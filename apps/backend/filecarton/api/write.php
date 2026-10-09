@@ -46,18 +46,11 @@ if (!is_string($tmp) || $tmp === '' || !is_uploaded_file($tmp)) {
 
 $content = file_get_contents($tmp);
 if ($content === false) {
-    throw new \RuntimeException('Failed to read uploaded content');
+    throw new ApiException('server_error', 500);
 }
 
-$absPath = $pathSec->resolve($path);
+$absPath = $pathSec->resolveExistingFile($path);
 $pathSec->assertCanModify($absPath);
-
-if (!file_exists($absPath)) {
-    Response::error('not_found.file', 404);
-}
-if (!is_file($absPath)) {
-    Response::error('not_a_file', 400);
-}
 
 if (isset($_POST['expectedMtime']) && $_POST['expectedMtime'] !== '') {
     clearstatcache(true, $absPath);

@@ -9,12 +9,7 @@ namespace FileCarton;
 
 function api_archive_list(PathSecurity $pathSec, FileOps $fileOps): void {
 $path = $_GET['path'] ?? '';
-$absPath = $pathSec->resolve($path);
-$pathSec->assertNotIgnored($absPath);
-
-if (!is_file($absPath)) {
-    Response::error('not_a_file', 404);
-}
+$absPath = $pathSec->resolveExistingFile($path);
 
 $ext = strtolower(pathinfo($absPath, PATHINFO_EXTENSION));
 $entries = [];

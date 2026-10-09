@@ -17,14 +17,7 @@ if (!$input || !isset($input['path'], $input['items']) || !is_array($input['item
     Response::error('missing_fields', 400, ['fields' => 'path, items']);
 }
 
-$basePath = $pathSec->resolve($input['path']);
-$pathSec->assertNotIgnored($basePath);
-if (!file_exists($basePath)) {
-    Response::error('not_found.dir', 404);
-}
-if (!is_dir($basePath)) {
-    Response::error('not_a_dir', 400);
-}
+$basePath = $pathSec->resolveExistingDir($input['path']);
 
 $deleted = 0;
 $failed = [];
@@ -32,22 +25,13 @@ $failed = [];
 foreach ($input['items'] as $name) {
     if (!is_string($name) || $name === '') continue;
 
-    try {
-        $itemPath = $pathSec->resolveItemIn($basePath, $name);
-    } catch (\Throwable $e) {
-        $failed[] = ['name' => $name, 'error' => 'invalid_filename'];
+    $check = $pathSec->checkItemOperable($basePath, $name, true);
+    if ($check !== null) {
+        $failed[] = ['name' => $name, 'error' => $check['error']];
         continue;
     }
 
-    if ($pathSec->isIgnored($itemPath)) {
-        $failed[] = ['name' => $name, 'error' => 'access_denied'];
-        continue;
-    }
-
-    if (is_dir($itemPath) && $pathSec->hasProtectedDescendants($itemPath)) {
-        $failed[] = ['name' => $name, 'error' => 'protected_items'];
-        continue;
-    }
+    $itemPath = $pathSec->resolveItemIn($basePath, $name);
 
     if (!file_exists($itemPath) && !is_link($itemPath)) {
         $deleted++;

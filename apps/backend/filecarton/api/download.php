@@ -9,12 +9,7 @@ namespace FileCarton;
 
 function api_download(PathSecurity $pathSec, FileOps $fileOps): void {
 $path = $_GET['path'] ?? '';
-$absPath = $pathSec->resolve($path);
-$pathSec->assertNotIgnored($absPath);
-
-if (!is_file($absPath)) {
-    Response::error('not_found.file', 404);
-}
+$absPath = $pathSec->resolveExistingFile($path);
 
 Response::file($absPath);
 }

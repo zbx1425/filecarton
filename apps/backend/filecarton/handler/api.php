@@ -74,10 +74,10 @@ try {
 } catch (ApiException $e) {
     Response::error($e->errorCode, $e->getCode(), $e->params);
 } catch (\InvalidArgumentException $e) {
-    Response::error($e->getMessage(), 400);
+    Response::error('invalid_input', 400);
 } catch (\RuntimeException $e) {
     $code = $e->getCode();
-    Response::error($e->getMessage(), ($code >= 400 && $code < 600) ? $code : 500);
+    Response::error('server_error', ($code >= 400 && $code < 600) ? $code : 500);
 } catch (\Throwable $e) {
     error_log('FileCarton error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
     Response::error('server_error', 500);

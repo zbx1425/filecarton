@@ -100,7 +100,7 @@ class PathSecurity {
         $target = $this->rootPath . '/' . $relativePath;
         $resolved = realpath($target);
         if ($resolved === false) {
-            throw new \RuntimeException('Path not found: ' . $relativePath, 404);
+            throw new ApiException('not_found.path', 404);
         }
 
         $resolved = str_replace('\\', '/', $resolved);
@@ -122,7 +122,7 @@ class PathSecurity {
 
         $parts = explode('/', $relativePath);
         if (count($parts) > FILECARTON_UPLOAD_MAX_DEPTH) {
-            throw new \RuntimeException('Path too deep (max ' . FILECARTON_UPLOAD_MAX_DEPTH . ' levels)', 400);
+            throw new ApiException('path_too_deep', 400, ['max' => FILECARTON_UPLOAD_MAX_DEPTH]);
         }
 
         $current = $this->rootPath;
@@ -138,22 +138,22 @@ class PathSecurity {
             $next = $current . '/' . $part;
 
             if ($this->wouldBeIgnored($next, true)) {
-                throw new \RuntimeException('Access denied', 403);
+                throw new ApiException('access_denied', 403);
             }
 
             if (is_dir($next)) {
                 $resolved = realpath($next);
                 if ($resolved === false) {
-                    throw new \RuntimeException('Path resolution failed: ' . $part);
+                    throw new ApiException('not_found.path', 404);
                 }
                 $resolved = str_replace('\\', '/', $resolved);
                 $this->assertWithinRoot($resolved);
                 $current = $resolved;
             } elseif (file_exists($next) || is_link($next)) {
-                throw new \RuntimeException('Path component is not a directory: ' . $part, 409);
+                throw new ApiException('not_a_dir', 409);
             } else {
                 if (!mkdir($next, 0755)) {
-                    throw new \RuntimeException('Failed to create directory: ' . $part, 500);
+                    throw new ApiException('server_error', 500);
                 }
                 $current = $next;
             }
@@ -161,7 +161,7 @@ class PathSecurity {
 
         $final = realpath($current);
         if ($final === false) {
-            throw new \RuntimeException('Final path resolution failed');
+            throw new ApiException('not_found.path', 404);
         }
         $final = str_replace('\\', '/', $final);
         $this->assertWithinRoot($final);
@@ -195,7 +195,7 @@ class PathSecurity {
             : $this->resolve($dirname);
 
         if (!is_dir($parentAbs)) {
-            throw new \RuntimeException('Parent directory not found', 404);
+            throw new ApiException('not_found.dir', 404);
         }
 
         $result = $parentAbs . '/' . $basename;
@@ -209,7 +209,7 @@ class PathSecurity {
     public function assertWithinRoot(string $absPath): void {
         $normalized = str_replace('\\', '/', $absPath);
         if ($normalized !== $this->rootPath && !str_starts_with($normalized, $this->rootPath . '/')) {
-            throw new \RuntimeException('Path traversal denied', 403);
+            throw new ApiException('path_traversal', 403);
         }
     }
 
@@ -501,7 +501,7 @@ class PathSecurity {
      */
     public function assertNotIgnored(string $absPath): void {
         if ($this->isIgnored($absPath)) {
-            throw new \RuntimeException('Path not found', 404);
+            throw new ApiException('access_denied', 404);
         }
     }
 
@@ -513,8 +513,86 @@ class PathSecurity {
         $this->assertNotIgnored($absPath);
         $basename = basename($absPath);
         if (is_file($absPath) && $this->isExtensionBlocked($basename)) {
-            throw new \RuntimeException('File type is restricted', 403);
+            throw new ApiException('extension_blocked', 403);
         }
+    }
+
+    /**
+     * Resolve a relative path to an existing directory.
+     * Combines resolve() + assertNotIgnored() + is_dir check.
+     * Throws ApiException with appropriate error codes.
+     */
+    public function resolveExistingDir(string $relativePath): string {
+        $absPath = $this->resolve($relativePath);
+        $this->assertNotIgnored($absPath);
+        if (!file_exists($absPath)) {
+            throw new ApiException('not_found.dir', 404);
+        }
+        if (!is_dir($absPath)) {
+            throw new ApiException('not_a_dir', 400);
+        }
+        return $absPath;
+    }
+
+    /**
+     * Resolve a relative path to an existing file.
+     * Combines resolve() + assertNotIgnored() + is_file check.
+     * Throws ApiException with appropriate error codes.
+     */
+    public function resolveExistingFile(string $relativePath): string {
+        $absPath = $this->resolve($relativePath);
+        $this->assertNotIgnored($absPath);
+        if (!file_exists($absPath)) {
+            throw new ApiException('not_found.file', 404);
+        }
+        if (!is_file($absPath)) {
+            throw new ApiException('not_a_file', 400);
+        }
+        return $absPath;
+    }
+
+    /**
+     * Assert that a path that is about to be created is allowed.
+     * Combines wouldBeIgnored() + isExtensionBlocked() (for files).
+     * Throws ApiException on violation.
+     */
+    public function assertCanCreateAt(string $absPath, bool $isDir): void {
+        if ($this->wouldBeIgnored($absPath, $isDir)) {
+            throw new ApiException('access_denied', 403);
+        }
+        if (!$isDir && $this->isExtensionBlocked(basename($absPath))) {
+            throw new ApiException('extension_blocked', 403);
+        }
+    }
+
+    /**
+     * Validate a named item inside a base directory for batch operations.
+     * Returns null if the item is operable, or an associative array with
+     * 'absPath' and 'error' (error code string) if not.
+     *
+     * Combines resolveItemIn + isIgnored + isExtensionBlocked (files only)
+     * + hasProtectedDescendants (directories, when $checkDescendants is true).
+     */
+    public function checkItemOperable(string $baseAbs, string $name, bool $checkDescendants = false): ?array {
+        try {
+            $absPath = $this->resolveItemIn($baseAbs, $name);
+        } catch (\Throwable $e) {
+            return ['absPath' => '', 'error' => 'invalid_filename'];
+        }
+
+        if ($this->isIgnored($absPath)) {
+            return ['absPath' => $absPath, 'error' => 'access_denied'];
+        }
+
+        if (is_file($absPath) && $this->isExtensionBlocked(basename($absPath))) {
+            return ['absPath' => $absPath, 'error' => 'extension_blocked'];
+        }
+
+        if ($checkDescendants && is_dir($absPath) && $this->hasProtectedDescendants($absPath)) {
+            return ['absPath' => $absPath, 'error' => 'protected_items'];
+        }
+
+        return null;
     }
 
     /**

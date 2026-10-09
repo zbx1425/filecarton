@@ -16,15 +16,7 @@ if ($query === '') {
     Response::error('missing_fields', 400, ['fields' => 'q']);
 }
 
-$absBase = $pathSec->resolve($basePath);
-$pathSec->assertNotIgnored($absBase);
-
-if (!file_exists($absBase)) {
-    Response::error('not_found.dir', 404);
-}
-if (!is_dir($absBase)) {
-    Response::error('not_a_dir', 400);
-}
+$absBase = $pathSec->resolveExistingDir($basePath);
 
 $rootPath = $pathSec->getRootPath();
 $results = [];

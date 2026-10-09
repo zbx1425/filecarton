@@ -41,11 +41,6 @@ for ($i = 0; $i < $count; $i++) {
     try {
         $sanitizedName = $pathSec->sanitizeFileName($name);
 
-        if ($pathSec->isExtensionBlocked($sanitizedName)) {
-            $failed[] = ['name' => $name, 'error' => 'extension_blocked'];
-            continue;
-        }
-
         $relPath = is_array($relativePaths) ? ($relativePaths[$i] ?? '') : '';
 
         if ($relPath !== '') {
@@ -64,18 +59,16 @@ for ($i = 0; $i < $count; $i++) {
         }
 
         $pathSec->assertWithinRoot($destination);
-
-        if ($pathSec->wouldBeIgnored($destination, false)) {
-            $failed[] = ['name' => $name, 'error' => 'access_denied'];
-            continue;
-        }
+        $pathSec->assertCanCreateAt($destination, false);
 
         if (!move_uploaded_file($tmpName, $destination)) {
             throw new \RuntimeException('move_uploaded_file failed');
         }
         $uploaded[] = ['name' => basename($destination), 'size' => $size];
+    } catch (ApiException $e) {
+        $failed[] = ['name' => $name, 'error' => $e->errorCode];
     } catch (\Throwable $e) {
-        $failed[] = ['name' => $name, 'error' => $e->getMessage()];
+        $failed[] = ['name' => $name, 'error' => 'server_error'];
     }
 }
 
