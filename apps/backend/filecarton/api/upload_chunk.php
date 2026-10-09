@@ -28,8 +28,8 @@ function api_upload_chunk(PathSecurity $pathSec, FileOps $fileOps): void {
         Response::error('upload.too_many_chunks', 400, ['max' => $maxChunks]);
     }
 
-    $phpMaxUpload = parse_php_size(ini_get('upload_max_filesize') ?: '0');
-    $phpMaxPost = parse_php_size(ini_get('post_max_size') ?: '0');
+    $phpMaxUpload = Platform::parsePhpSize(ini_get('upload_max_filesize') ?: '0');
+    $phpMaxPost = Platform::parsePhpSize(ini_get('post_max_size') ?: '0');
     $effectivePhpLimit = ($phpMaxPost > 0) ? min($phpMaxUpload, $phpMaxPost) : $phpMaxUpload;
     if ($effectivePhpLimit > 0 && FILECARTON_UPLOAD_CHUNK_SIZE > $effectivePhpLimit) {
         Response::error('upload.server_misconfigured', 500);
@@ -53,19 +53,6 @@ function api_upload_chunk(PathSecurity $pathSec, FileOps $fileOps): void {
     cleanup_expired_chunks($chunksBase);
 
     Response::ok(['received' => $chunkIndex]);
-}
-
-function parse_php_size(string $size): int {
-    $size = trim($size);
-    if ($size === '' || $size === '0') return 0;
-    $unit = strtolower(substr($size, -1));
-    $value = (int)$size;
-    switch ($unit) {
-        case 'g': return $value * 1024 * 1024 * 1024;
-        case 'm': return $value * 1024 * 1024;
-        case 'k': return $value * 1024;
-        default:  return $value;
-    }
 }
 
 function cleanup_expired_chunks(string $chunksBase): void {

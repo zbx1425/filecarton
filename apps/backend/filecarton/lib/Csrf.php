@@ -45,10 +45,10 @@ class Csrf {
         $sessionToken = $_SESSION[self::SESSION_KEY] ?? '';
 
         if ($sessionToken === '' || $headerToken === '') {
-            throw new \RuntimeException('CSRF token missing', 403);
+            throw new ApiException('auth.csrf', 403);
         }
         if (!hash_equals($sessionToken, $headerToken)) {
-            throw new \RuntimeException('CSRF token mismatch', 403);
+            throw new ApiException('auth.csrf', 403);
         }
     }
 

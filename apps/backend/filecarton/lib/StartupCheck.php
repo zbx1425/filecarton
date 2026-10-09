@@ -62,8 +62,8 @@ class StartupCheck {
                 $p[] = 'FILECARTON_UPLOAD_MAX_FILE_SIZE must be at least FILECARTON_UPLOAD_CHUNK_SIZE.';
             }
 
-            $phpMaxUpload = self::parsePhpSize(ini_get('upload_max_filesize') ?: '0');
-            $phpMaxPost   = self::parsePhpSize(ini_get('post_max_size') ?: '0');
+            $phpMaxUpload = Platform::parsePhpSize(ini_get('upload_max_filesize') ?: '0');
+            $phpMaxPost   = Platform::parsePhpSize(ini_get('post_max_size') ?: '0');
             $uploadLabel  = self::formatIniLimit('upload_max_filesize', $phpMaxUpload);
             $postLabel    = self::formatIniLimit('post_max_size', $phpMaxPost);
             $nginxNote    = 'Note: If you are using nginx, you likely need to also increase client_max_body_size in your nginx configuration, which cannot be detected by this self-check.';
@@ -181,19 +181,6 @@ class StartupCheck {
         }
 
         return $p;
-    }
-
-    private static function parsePhpSize(string $size): int {
-        $size = trim($size);
-        if ($size === '' || $size === '0') return 0;
-        $unit  = strtolower(substr($size, -1));
-        $value = (int)$size;
-        switch ($unit) {
-            case 'g': return $value * 1073741824;
-            case 'm': return $value * 1048576;
-            case 'k': return $value * 1024;
-            default:  return $value;
-        }
     }
 
     /**

@@ -168,6 +168,22 @@ class Platform {
     // Detection
     // ------------------------------------------------------------------
 
+    /**
+     * Parse a PHP ini shorthand byte value (e.g. '128M', '2G') into an integer.
+     */
+    public static function parsePhpSize(string $size): int {
+        $size = trim($size);
+        if ($size === '' || $size === '0') return 0;
+        $unit = strtolower(substr($size, -1));
+        $value = (int)$size;
+        switch ($unit) {
+            case 'g': return $value * 1024 * 1024 * 1024;
+            case 'm': return $value * 1024 * 1024;
+            case 'k': return $value * 1024;
+            default:  return $value;
+        }
+    }
+
     private static function useNativeCommands(): bool {
         if (self::$isWindows === null) {
             self::$isWindows = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN');

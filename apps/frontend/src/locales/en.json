@@ -56,6 +56,7 @@
   "err.auth.config": "Server authentication configuration error",
   "err.auth.invalid_credentials": "Invalid username or password",
   "err.auth.disabled": "Built-in auth is disabled",
+  "err.auth.csrf": "Session expired or CSRF token invalid, please reload",
 
   "err.unknown_action": "Unknown action",
   "err.not_configured": "File manager is not configured",
