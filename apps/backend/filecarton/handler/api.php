@@ -57,7 +57,7 @@ try {
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         Csrf::validate();
-        if (!$isAuthAction && Settings::readonly()) {
+        if (!$isAuthAction && RepoSetting::current()->readonly) {
             Response::error('readonly', 403);
         }
     }
@@ -65,7 +65,7 @@ try {
     $pathSec = null;
     $fileOps = null;
     if (!$isAuthAction) {
-        $pathSec = new PathSecurity(Settings::rootPath());
+        $pathSec = new PathSecurity(RepoSetting::current()->rootPath);
         $fileOps = new FileOps();
     }
 
@@ -89,21 +89,21 @@ try {
  */
 function assert_api_access(bool $isAuthAction): void {
     if ($isAuthAction) {
-        if (Settings::embed()) {
+        if (RepoSetting::embed()) {
             Response::error('auth.disabled', 404);
         }
         return;
     }
 
-    if (!Settings::embed() && Auth::configProblems() !== []) {
+    if (!RepoSetting::embed() && Auth::configProblems() !== []) {
         Response::error('auth.config', 500);
     }
 
-    if (!Settings::filesOpen()) {
-        if (!Settings::embed() && Auth::identity() === null) {
+    if (!RepoSetting::filesOpen()) {
+        if (!RepoSetting::embed() && Auth::identity() === null) {
             Response::error('auth.required', 401, [], 'expired');
         }
-        if (!Settings::embed()) {
+        if (!RepoSetting::embed()) {
             $authError = Grants::current() === null ? 'allowlist' : 'bad_root';
             $params = ($authError === 'allowlist' && Auth::identity() !== null)
                 ? ['id' => Auth::identity()->id] : [];

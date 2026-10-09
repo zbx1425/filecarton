@@ -30,7 +30,7 @@ namespace MyApp;
 
 use FileCarton\GrantResolver;
 use FileCarton\AuthIdentity;
-use FileCarton\AuthGrant;
+use FileCarton\RepoSetting;
 
 class DbGrantResolver implements GrantResolver {
     private $dsn;
@@ -51,10 +51,10 @@ class DbGrantResolver implements GrantResolver {
             return null;
         }
 
-        $grant = new AuthGrant();
-        $grant->rootPath = $row['root_path'];
-        $grant->readonly = (bool)$row['is_readonly'];
-        return $grant;
+        $setting = new RepoSetting();
+        $setting->rootPath = $row['root_path'];
+        $setting->readonly = (bool)$row['is_readonly'];
+        return $setting;
     }
 }
 ```
@@ -68,16 +68,16 @@ define_default('FILECARTON_GRANT_RESOLVERS', [
 ]);
 ```
 
-`GRANT_RESOLVERS` are evaluated in a chained fashion. Each resolver either returns an `AuthGrant` or returns `null` to pass. The first non-null grant is accepted. If every resolver returns null, the user is denied access (files are closed for that user).
+`GRANT_RESOLVERS` are evaluated in a chained fashion. Each resolver either returns a `RepoSetting` or returns `null` to pass. The first non-null result is combined with the default `FILECARTON_REPO_SETTING` from the config file. If every resolver returns null, the user is denied access (files are closed for that user).
 
-`AuthGrant` fields:
+`RepoSetting` fields (when used as a grant override, `null` means inherit the default):
 
 | Field | Effect of `null` | Effect of a value |
 |---|---|---|
-| `rootPath` | Inherit `FILECARTON_ROOT_PATH` | Use this directory instead. Resolved via `realpath()`; if the directory does not exist, the user gets "not configured." |
-| `readonly` | Inherit `FILECARTON_READONLY` | `true` forces read-only. `false` inherits the global setting (you cannot use it to override a global read-only). |
-| `branding` | Inherit `FILECARTON_BRANDING` | String (including `''`) overrides. |
-| `repoName` | Inherit `FILECARTON_REPO_NAME` | String (including `''`) overrides. |
+| `rootPath` | Inherit `FILECARTON_REPO_SETTING['rootPath']` | Use this directory instead. Resolved via `realpath()`; if the directory does not exist, the user gets "not configured." |
+| `readonly` | Inherit `FILECARTON_REPO_SETTING['readonly']` | `true` forces read-only; `false` forces writable. Neither can override `FILECARTON_MUST_READONLY` (when it is `true`, the instance is always read-only). |
+| `branding` | Inherit `FILECARTON_REPO_SETTING['branding']` | String (including `''`) overrides. |
+| `repoName` | Inherit `FILECARTON_REPO_SETTING['repoName']` | String (including `''`) overrides. |
 
 
 ## Custom password auth provider

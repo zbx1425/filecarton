@@ -45,7 +45,7 @@ $libFiles = [
     $fcDir . '/lib/Response.php',
     $fcDir . '/lib/ApiException.php',
     $fcDir . '/lib/StartupCheck.php',
-    $fcDir . '/lib/Settings.php',
+    $fcDir . '/lib/RepoSetting.php',
     $fcDir . '/lib/Auth.php',
     $fcDir . '/lib/AuthPassword.php',
     $fcDir . '/lib/AuthImplicit.php',

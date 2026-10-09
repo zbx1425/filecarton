@@ -4,10 +4,11 @@ FileCarton can be embedded into your PHP application, with its configuration dyn
 
 ## Basic setup
 
-1. In `filecarton.config.php`, set `define_default('FILECARTON_ROOT_PATH', '');`. This disables direct access to `filecarton.php`.
-2. In your bootstrap script, define `FILECARTON_EMBED` and other `FILECARTON_*` constants **before** including `filecarton.php`.  
+1. In `filecarton.config.php`, set `define_default('FILECARTON_MUST_EMBED', true);`. This makes FileCarton refuse to start when accessed directly.
+2. In your bootstrap script, define `FILECARTON_EMBED` and `FILECARTON_REPO_SETTING` **before** including `filecarton.php`.  
    These take precedence over the `define_default` values in `filecarton.config.php`.  
    You should set `FILECARTON_EMBED` to `true` to disable the built-in auth system, which you most likely don't want to run alongside your own authentication logic.
+   You must provide a complete `FILECARTON_REPO_SETTING` array with all 4 fields (`rootPath`, `readonly`, `branding`, `repoName`).
 3. Include `filecarton.php` at the end of your bootstrap script. FileCarton handles routing from there.
 4. Add an early exit for `?fcres` as described below.
 5. If needed, embed the bootstrap script into your main page using an `<iframe>`.
@@ -59,9 +60,12 @@ if (!isset($allRepos[$repoId])) {
 $repo = $allRepos[$repoId];
 
 // --- Configure FileCarton ---
-define('FILECARTON_ROOT_PATH',  $repo['path']);
-define('FILECARTON_READONLY',   (bool)($repo['readonly'] ?? false));
-define('FILECARTON_REPO_NAME',  $repo['name'] ?? $repoId);
+define('FILECARTON_REPO_SETTING', [
+    'rootPath' => $repo['path'],
+    'readonly' => (bool)($repo['readonly'] ?? false),
+    'branding' => 'FileCarton',
+    'repoName' => $repo['name'] ?? $repoId,
+]);
 
 // --- Hand off to FileCarton ---
 require __DIR__ . '/filecarton.php';
@@ -75,7 +79,12 @@ When embedding, you typically need to pass context into FileCarton's configurati
 ### Session
 
 ```php
-define('FILECARTON_ROOT_PATH', '/user-contents/' . $_SESSION['user_dir_name']);
+define('FILECARTON_REPO_SETTING', [
+    'rootPath' => '/user-contents/' . $_SESSION['user_dir_name'],
+    'readonly' => false,
+    'branding' => 'FileCarton',
+    'repoName' => '',
+]);
 ```
 
 Good for login state and user identity. Not suitable for per-tab state, since PHP sessions are shared across all browser tabs (If a user tries to open two tabs to manage different directories simultaneously, one will overwrite the other's session value).
@@ -86,7 +95,12 @@ FileCarton's frontend automatically forwards any query parameter named `state`, 
 
 ```php
 $repo = $_GET['state_selected_repo'] ?? 'default';
-define('FILECARTON_ROOT_PATH', '/user-contents/' . $_SESSION['user_dir_name'] . '/' . $repo);
+define('FILECARTON_REPO_SETTING', [
+    'rootPath' => '/user-contents/' . $_SESSION['user_dir_name'] . '/' . $repo,
+    'readonly' => false,
+    'branding' => 'FileCarton',
+    'repoName' => $repo,
+]);
 ```
 
 The user can then access FileCarton via:
@@ -104,7 +118,12 @@ Or alternatively, you can encode context in the URL path. FileCarton preserves P
 ```php
 $pathInfo = $_SERVER['PATH_INFO'] ?? '';
 $repo = explode('/', trim($pathInfo, '/'))[0] ?: 'default';
-define('FILECARTON_ROOT_PATH', '/user-contents/' . $_SESSION['user_dir_name'] . '/' . $repo);
+define('FILECARTON_REPO_SETTING', [
+    'rootPath' => '/user-contents/' . $_SESSION['user_dir_name'] . '/' . $repo,
+    'readonly' => false,
+    'branding' => 'FileCarton',
+    'repoName' => $repo,
+]);
 ```
 
 The user can then access FileCarton via:

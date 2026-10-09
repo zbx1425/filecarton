@@ -12,10 +12,14 @@ define('FILECARTON_GRANT_RESOLVERS', [['class' => \FileCarton\StaticGrantResolve
 define('FILECARTON_PUBLIC_ORIGIN', '');
 define('FILECARTON_SESSION_NAME', 'FILECARTON');
 
-define('FILECARTON_ROOT_PATH', '');
-define('FILECARTON_READONLY', false);
-define('FILECARTON_REPO_NAME', 'Files');
-define('FILECARTON_BRANDING', '');
+define('FILECARTON_REPO_SETTING', [
+    'rootPath' => '',
+    'readonly' => false,
+    'branding' => '',
+    'repoName' => '',
+]);
+define('FILECARTON_MUST_READONLY', false);
+define('FILECARTON_MUST_EMBED', false);
 
 define('FILECARTON_DOTFILES_BLOCK', false);
 define('FILECARTON_DOTFILES_FORCE_VISIBLE', false);

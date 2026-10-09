@@ -34,9 +34,18 @@ function dispatch(): void {
         exit;
     }
 
-    require_once FILECARTON_SCRIPT_DIR . '/lib/Settings.php';
+    require_once FILECARTON_SCRIPT_DIR . '/lib/RepoSetting.php';
 
-    if (!Settings::embed()) {
+    if (defined('FILECARTON_MUST_EMBED') && FILECARTON_MUST_EMBED 
+        && !RepoSetting::embed()) {
+        require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
+        render_error_page('FileCarton Self-Check Failed', [
+            'FileCarton is configured to require embedding.',
+        ], 403);
+        return;
+    }
+
+    if (!RepoSetting::embed()) {
         require_once FILECARTON_SCRIPT_DIR . '/lib/Csrf.php';
         require_once FILECARTON_SCRIPT_DIR . '/lib/Auth.php';
         require_once FILECARTON_SCRIPT_DIR . '/lib/AuthPassword.php';
@@ -60,14 +69,14 @@ function dispatch(): void {
     }
 
     // Standalone without identity → serve HTML shell (login page).
-    if (!Settings::embed() && Auth::identity() === null) {
+    if (!RepoSetting::embed() && Auth::identity() === null) {
         require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
         handle_page();
         return;
     }
 
     // Identity exists but no usable grant or bad root.
-    if (!Settings::embed() && !Settings::filesOpen()) {
+    if (!RepoSetting::embed() && !RepoSetting::filesOpen()) {
         $token = Grants::current() === null ? 'allowlist' : 'bad_root';
         if (Auth::hasImplicit()) {
             require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
@@ -82,7 +91,7 @@ function dispatch(): void {
             ? ['id' => Auth::identity()->id] : [];
         Auth::setInlineError($token, $errorParams);
         Auth::logout();
-        Settings::resetForRequest();
+        RepoSetting::resetForRequest();
         if (class_exists(__NAMESPACE__ . '\\Grants', false)) {
             Grants::resetForRequest();
         }
@@ -91,9 +100,9 @@ function dispatch(): void {
         return;
     }
 
-    if (!Settings::filesOpen()) {
+    if (!RepoSetting::filesOpen()) {
         require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
-        render_error_page('FileCarton Self-Check Failed', ['FILECARTON_ROOT_PATH is not configured.'], 403);
+        render_error_page('FileCarton Self-Check Failed', ['rootPath is invalid.'], 403);
         exit;
     }
 

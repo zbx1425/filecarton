@@ -25,6 +25,16 @@ class StartupCheck {
         
         $p = [];
 
+        // FILECARTON_REPO_SETTING structural validation
+        $repoArr = defined('FILECARTON_REPO_SETTING') ? FILECARTON_REPO_SETTING : [];
+        if (!is_array($repoArr)) {
+            $p[] = 'FILECARTON_REPO_SETTING must be an array.';
+        } else {
+            foreach (RepoSetting::fromConfigArray($repoArr)->verifyAllSet() as $msg) {
+                $p[] = $msg;
+            }
+        }
+
         // PHP version
         if (PHP_VERSION_ID < 70100) {
             $p[] = 'PHP 7.1 or later is required (running ' . PHP_VERSION . ').';
@@ -55,8 +65,9 @@ class StartupCheck {
             $p[] = 'FILECARTON_DOTFILES_BLOCK and FILECARTON_DOTFILES_FORCE_VISIBLE cannot both be enabled.';
         }
 
-        // Size checks (only meaningful when writes are allowed)
-        if (!FILECARTON_READONLY) {
+        // Size checks (only meaningful when writes are possible)
+        $mustReadonly = defined('FILECARTON_MUST_READONLY') && FILECARTON_MUST_READONLY === true;
+        if (!$mustReadonly) {
             if (FILECARTON_UPLOAD_CHUNK_SIZE <= 0) {
                 $p[] = 'FILECARTON_UPLOAD_CHUNK_SIZE must be greater than 0.';
             }
@@ -122,10 +133,10 @@ class StartupCheck {
             }
         }
 
-        // ROOT_PATH — use the merged per-user view from Settings when logged in.
+        // ROOT_PATH — use the merged per-user view from RepoSetting when logged in.
         // Skip on the login page (grant overlays resolve after login).
         $isLoginPage = false;
-        if (class_exists(__NAMESPACE__ . '\\Auth', false) && !Settings::embed()) {
+        if (class_exists(__NAMESPACE__ . '\\Auth', false) && !RepoSetting::embed()) {
             try {
                 $isLoginPage = Auth::identity() === null;
             } catch (\Throwable $e) {
@@ -134,12 +145,13 @@ class StartupCheck {
             }
         }
         if (!$isLoginPage) {
-            $rootPath = Settings::rootPath();
-            $readonly = Settings::readonly();
+            $current = RepoSetting::current();
+            $rootPath = $current->rootPath ?? '';
+            $readonly = $current->readonly ?? false;
             if ($rootPath === '' && class_exists(__NAMESPACE__ . '\\Auth', false)
-                && !Settings::embed() && Auth::hasImplicit()) {
+                && !RepoSetting::embed() && Auth::hasImplicit()) {
                 $p[] = 'Root directory is not available for the current identity. '
-                    . 'Check FILECARTON_ROOT_PATH or the per-user root in your grant configuration.';
+                    . 'Check FILECARTON_REPO_SETTING rootPath or the per-user root in your grant configuration.';
             } elseif ($rootPath !== '') {
                 if (!is_dir($rootPath)) {
                     $p[] = 'Root directory is not a directory: ' . $rootPath;
@@ -152,7 +164,7 @@ class StartupCheck {
         }
 
         // Temp dir (chunked uploads need a writable tmp)
-        if (!FILECARTON_READONLY) {
+        if (!$mustReadonly) {
             $tmp = sys_get_temp_dir();
             if (!is_dir($tmp) || !is_writable($tmp)) {
                 $p[] = 'Temporary directory is not writable: ' . $tmp . ' (needed for chunked uploads).';
@@ -176,7 +188,7 @@ class StartupCheck {
         }
 
         // Auth configuration (standalone only)
-        if (class_exists(__NAMESPACE__ . '\\Auth', false) && !Settings::embed()) {
+        if (class_exists(__NAMESPACE__ . '\\Auth', false) && !RepoSetting::embed()) {
             foreach (Auth::configProblems() as $authProblem) {
                 $p[] = $authProblem;
             }

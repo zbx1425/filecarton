@@ -7,25 +7,27 @@ flowchart LR
     mode{"FILECARTON_EMBED?"}
 
     mode -->|"yes"| entry["User's entry point script\ndefine(...)"]
-    entry --> settings["Settings\n(root dir, readonly, branding, ...)"]
+    entry --> repoSetting["RepoSetting\n(rootPath, readonly, branding, repoName)"]
 
     mode -->|"no"| browser["Login Page"]
     browser -->|"login"| provider["AuthProvider\n→ AuthIdentity"]
-    provider --> grant["GrantResolver\n→ AuthGrant"]
-    grant --> settings
+    provider --> grant["GrantResolver\n→ RepoSetting override"]
+    grant --> repoSetting
 
     subgraph config ["filecarton.config.php"]
+        defaultSetting["REPO_SETTING\n(default)"]
         userList["STATIC_USER_LIST"]
         providers["AUTH_PROVIDERS"]
         resolvers["GRANT_RESOLVERS"]
     end
 
+    defaultSetting -.-> repoSetting
     providers -.-> provider
     resolvers -.-> grant
 ```
 
-- **Auth providers** handles password or OAuth login, and produces an `AuthIdentity` (a user ID + display name).
-- **Grant resolvers** map `AuthIdentity` to an `AuthGrant` (which directory to show, read-only or not, etc.).
+- **Auth providers** handle password or OAuth login, and produce an `AuthIdentity` (a user ID + display name).
+- **Grant resolvers** map `AuthIdentity` to a `RepoSetting` override (which directory to show, read-only or not, etc.). The override is combined with the default `FILECARTON_REPO_SETTING` from the config.
   The built-in `StaticGrantResolver` looks up the user's ID in `STATIC_USER_LIST`.
 - **`STATIC_USER_LIST`** is the user table used by built-in authentication plugins (`StaticPasswordAuth`, `NoLoginAuth` and `StaticGrantResolver`).
 - If you are to embed FileCarton in your own application, you're likely already handling authentication in other parts of your app. In which case you should see [embedding.md](embedding.md) instead.
@@ -122,10 +124,10 @@ Each row in `FILECARTON_STATIC_USER_LIST` is an array with these fields:
 | `id` | yes | The username for password login (must not contain `:`), or the provider-prefixed ID for OAuth (e.g. `github:583231`, `google:1234567890`). Also used by `StaticGrantResolver` to look up grants. |
 | `passwordHash` | no | A `password_hash()` output. If present, `StaticPasswordAuth` will accept this user with the matching password. |
 | `displayName` | no | Shown in the toolbar. Defaults to `id`. |
-| `root` | no | Overrides `FILECARTON_ROOT_PATH` for this user. Use an absolute path. If the directory does not exist, the user gets a "not configured" error (not a 500 for everyone else). |
-| `readonly` | no | `true` forces read-only for this user. Cannot override a global `FILECARTON_READONLY = true` (i.e. you cannot grant write access to a user when the whole instance is read-only). |
-| `branding` | no | Overrides `FILECARTON_BRANDING` for this user. An empty string `''` hides the branding. |
-| `repoName` | no | Overrides `FILECARTON_REPO_NAME` for this user. |
+| `root` | no | Overrides the default `rootPath` in `FILECARTON_REPO_SETTING` for this user. Use an absolute path. |
+| `readonly` | no | `true` forces read-only for this user; `false` forces writable even if the default is read-only. Though when `FILECARTON_MUST_READONLY` is `true` the instance is always read-only. |
+| `branding` | no | Overrides the default `branding` in `FILECARTON_REPO_SETTING` for this user. An empty string `''` hides the branding. |
+| `repoName` | no | Overrides the default `repoName` in `FILECARTON_REPO_SETTING` for this user. |
 
 Example with per-user directories:
 
@@ -139,11 +141,11 @@ define_default('FILECARTON_STATIC_USER_LIST', [
 
 ## Grant resolvers
 
-The default `StaticGrantResolver` looks up the logged-in user's ID in `STATIC_USER_LIST` (case-insensitive) and returns any `root`/`readonly`/`branding`/`repoName` overrides it finds.
+The default `StaticGrantResolver` looks up the logged-in user's ID in `STATIC_USER_LIST` (case-insensitive) and returns any `root`/`readonly`/`branding`/`repoName` overrides it finds as a `RepoSetting`. These overrides are combined with the default `FILECARTON_REPO_SETTING` — non-null fields from the grant replace the default values.
 
 If the static list does not fit your needs (for example, you want to look up user directories from a database), you can write a custom grant resolver. See [auth_provider.md](auth_provider.md) for how to do that.
 
-The `FILECARTON_GRANT_RESOLVERS` array is evaluated in a chain, where each resolver can either returns a grant or passes. The first non-null result is used. If no resolver returns anything, the user is denied access.
+The `FILECARTON_GRANT_RESOLVERS` array is evaluated in a chain, where each resolver can either return a `RepoSetting` or pass. The first non-null result is used and combined with the default `FILECARTON_REPO_SETTING`. If no resolver returns anything, the user is denied access.
 
 ```php
 define_default('FILECARTON_GRANT_RESOLVERS', [

@@ -4,47 +4,12 @@ namespace FileCarton;
 
 interface GrantResolver {
     /**
-     * @return AuthGrant|null  null = pass to the next resolver
+     * @return RepoSetting|null  null = pass to the next resolver
      */
     public function resolve(AuthIdentity $identity);
 
     /** @return string[] Configuration problems specific to this resolver. */
     public function validateConfig(): array;
-}
-
-class AuthGrant {
-    /** @var string|null null = inherit FILECARTON_ROOT_PATH; non-empty = overlay */
-    public $rootPath;
-    /** @var bool|null true = force readonly; null/false = inherit global */
-    public $readonly;
-    /** @var string|null null = inherit; string including '' = use it */
-    public $branding;
-    /** @var string|null */
-    public $repoName;
-
-    public function __construct() {
-        $this->rootPath = null;
-        $this->readonly = null;
-        $this->branding = null;
-        $this->repoName = null;
-    }
-
-    public static function fromStaticRow(array $row): AuthGrant {
-        $g = new AuthGrant();
-        if (isset($row['root']) && is_string($row['root']) && $row['root'] !== '') {
-            $g->rootPath = $row['root'];
-        }
-        if (array_key_exists('readonly', $row) && $row['readonly'] === true) {
-            $g->readonly = true;
-        }
-        if (array_key_exists('branding', $row) && is_string($row['branding'])) {
-            $g->branding = $row['branding'];
-        }
-        if (array_key_exists('repoName', $row) && is_string($row['repoName'])) {
-            $g->repoName = $row['repoName'];
-        }
-        return $g;
-    }
 }
 
 class StaticGrantResolver implements GrantResolver {
@@ -84,7 +49,7 @@ class StaticGrantResolver implements GrantResolver {
                 continue;
             }
             if (strcasecmp($row['id'], $identity->id) === 0) {
-                return AuthGrant::fromStaticRow($row);
+                return RepoSetting::fromStaticRow($row);
             }
         }
         return null;
@@ -96,7 +61,7 @@ class Grants {
     private static $resolvers = [];
     /** @var bool */
     private static $booted = false;
-    /** @var AuthGrant|null|false */
+    /** @var RepoSetting|null|false */
     private static $cached = false;
     /** @var string[] */
     private static $bootErrors = [];
@@ -154,7 +119,7 @@ class Grants {
 
     /**
      * Request-cached grant for Auth::identity(). Null = unauthorized.
-     * @return AuthGrant|null
+     * @return RepoSetting|null
      */
     public static function current() {
         $identity = Auth::identity();
@@ -171,7 +136,7 @@ class Grants {
 
     /**
      * First non-null wins; resolver order follows FILECARTON_GRANT_RESOLVERS.
-     * @return AuthGrant|null
+     * @return RepoSetting|null
      */
     public static function resolveFor(AuthIdentity $identity) {
         foreach (self::$resolvers as $r) {
@@ -181,7 +146,7 @@ class Grants {
                 error_log('FileCarton auth: grant resolver threw: ' . $e->getMessage());
                 continue;
             }
-            if ($g instanceof AuthGrant) return $g;
+            if ($g instanceof RepoSetting) return $g;
         }
         return null;
     }

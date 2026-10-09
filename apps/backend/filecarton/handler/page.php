@@ -44,9 +44,10 @@ if (!empty($startupProblems)) {
 require_once FILECARTON_SCRIPT_DIR . '/lib/Csrf.php';
 
 $csrfToken = Csrf::getToken();
-$repoName = Settings::repoName();
-$readonly = Settings::readonly();
-$branding = Settings::branding();
+$current = RepoSetting::current();
+$repoName = $current->repoName ?? '';
+$readonly = $current->readonly ?? false;
+$branding = $current->branding ?? '';
 
 $apiBase = entry_url();
 
@@ -86,7 +87,7 @@ $configData['extensions'] = [
     'blocklist' => FILECARTON_EXTENSIONS_BLOCKLIST,
 ];
 $configData['auth'] = ['enabled' => false];
-if (!Settings::embed()) {
+if (!RepoSetting::embed()) {
     $configData['auth'] = Auth::frontendConfig();
     header('Cache-Control: no-store');
 }
