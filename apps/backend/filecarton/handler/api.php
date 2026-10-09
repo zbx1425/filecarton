@@ -32,14 +32,15 @@ ob_start();
 $validActions = [
     'list', 'tree_node', 'read', 'write', 'raw', 'download',
     'search', 'create', 'delete', 'rename', 'paste', 'upload',
-    'upload_chunk', 'upload_complete', 'archive', 'archive_list',
-    'check_upload_conflicts',
+    'upload_chunk', 'upload_complete', 'archive_create', 'archive_extract',
+    'archive_list', 'check_upload_conflicts',
     'auth_login', 'auth_logout',
 ];
 
 $postActions = [
     'write', 'create', 'delete', 'rename', 'paste', 'upload',
-    'upload_chunk', 'upload_complete', 'archive', 'check_upload_conflicts',
+    'upload_chunk', 'upload_complete', 'archive_create', 'archive_extract',
+    'check_upload_conflicts',
     'auth_login', 'auth_logout',
 ];
 

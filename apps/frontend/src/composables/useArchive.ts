@@ -20,8 +20,7 @@ export async function createArchive(
   if (effectiveItems.length === 0) return
 
   try {
-    const result = await apiPost<ArchiveCreateResponse>('archive', {
-      operation: 'create',
+    const result = await apiPost<ArchiveCreateResponse>('archive_create', {
       format,
       path: effectiveDirPath,
       items: effectiveItems,
@@ -50,8 +49,7 @@ export async function extractArchive(archivePath: string, targetDir: string) {
   const tree = useTreeStore()
 
   try {
-    const dryRun = await apiPost<ArchiveExtractDryRunResponse>('archive', {
-      operation: 'extract',
+    const dryRun = await apiPost<ArchiveExtractDryRunResponse>('archive_extract', {
       path: archivePath,
       targetPath: targetDir,
       createSubdir: false,
@@ -92,8 +90,7 @@ export async function extractArchive(archivePath: string, targetDir: string) {
       if (!confirmed) return
     }
 
-    const result = await apiPost<ArchiveExtractResponse>('archive', {
-      operation: 'extract',
+    const result = await apiPost<ArchiveExtractResponse>('archive_extract', {
       path: archivePath,
       targetPath: targetDir,
       createSubdir: false,
