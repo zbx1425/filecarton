@@ -13,7 +13,7 @@ $absPath = $pathSec->resolve($path);
 $pathSec->assertNotIgnored($absPath);
 
 if (!is_file($absPath)) {
-    Response::error('Not a file', 404);
+    Response::error('not_found.file', 404);
 }
 
 Response::file($absPath);

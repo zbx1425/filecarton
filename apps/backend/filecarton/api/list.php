@@ -13,10 +13,10 @@ $absPath = $pathSec->resolve($path);
 $pathSec->assertNotIgnored($absPath);
 
 if (!file_exists($absPath)) {
-    Response::error('Directory not found', 404);
+    Response::error('not_found.dir', 404);
 }
 if (!is_dir($absPath)) {
-    Response::error('Not a directory', 400);
+    Response::error('not_a_dir', 400);
 }
 
 $result = $fileOps->listDir($absPath);

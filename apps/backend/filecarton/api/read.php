@@ -6,7 +6,7 @@ namespace FileCarton;
  * API: read — Read file content for editor/preview.
  * GET ?fcapi=read&path={filePath}
  *
- * Returns UTF-8 text content. Rejects files > 5MB or non-UTF-8.
+ * Returns UTF-8 text content. Rejects files > max edit size or non-UTF-8.
  */
 
 function api_read(PathSecurity $pathSec, FileOps $fileOps): void {
@@ -15,21 +15,21 @@ $absPath = $pathSec->resolve($path);
 $pathSec->assertNotIgnored($absPath);
 
 if (!file_exists($absPath)) {
-    Response::error('File not found', 404);
+    Response::error('not_found.file', 404);
 }
 if (!is_file($absPath)) {
-    Response::error('Not a file', 400);
+    Response::error('not_a_file', 400);
 }
 
 $size = filesize($absPath);
 if ($size > FILECARTON_MAX_EDIT_SIZE) {
-    Response::error('File too large to edit (' . round($size / 1024 / 1024, 1) . ' MB). Please download instead.', 413);
+    Response::error('file_too_large', 413, ['maxMB' => round(FILECARTON_MAX_EDIT_SIZE / 1024 / 1024, 1)]);
 }
 
 $content = $fileOps->readFile($absPath);
 
 if (!mb_check_encoding($content, 'UTF-8')) {
-    Response::error('File is not valid UTF-8. Please download to view.', 400);
+    Response::error('not_utf8', 400);
 }
 
 $mime = MimeType::detect($absPath);

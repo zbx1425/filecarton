@@ -13,7 +13,7 @@ $absPath = $pathSec->resolve($path);
 $pathSec->assertNotIgnored($absPath);
 
 if (!is_file($absPath)) {
-    Response::error('Not a file', 404);
+    Response::error('not_a_file', 404);
 }
 
 $ext = strtolower(pathinfo($absPath, PATHINFO_EXTENSION));
@@ -25,7 +25,7 @@ $compressedSize = filesize($absPath);
 if ($ext === 'zip') {
     $zip = new \ZipArchive();
     if ($zip->open($absPath) !== true) {
-        Response::error('Cannot open ZIP archive', 400);
+        Response::error('archive.cannot_open', 400);
     }
     for ($i = 0; $i < $zip->numFiles; $i++) {
         $stat = $zip->statIndex($i);
@@ -64,10 +64,10 @@ if ($ext === 'zip') {
             }
         }
     } catch (\Throwable $e) {
-        Response::error('Cannot read TAR archive: ' . $e->getMessage(), 400);
+        Response::error('archive.cannot_open', 400);
     }
 } else {
-    Response::error('Unsupported archive format', 400);
+    Response::error('archive.unsupported_format', 400);
 }
 
 Response::ok([

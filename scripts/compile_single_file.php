@@ -43,6 +43,7 @@ $libFiles = [
     $fcDir . '/lib/MimeType.php',
     $fcDir . '/lib/Csrf.php',
     $fcDir . '/lib/Response.php',
+    $fcDir . '/lib/ApiException.php',
     $fcDir . '/lib/StartupCheck.php',
     $fcDir . '/lib/Settings.php',
     $fcDir . '/lib/Auth.php',

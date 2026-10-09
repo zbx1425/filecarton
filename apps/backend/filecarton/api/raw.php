@@ -17,10 +17,10 @@ $absPath = $pathSec->resolve($path);
 $pathSec->assertNotIgnored($absPath);
 
 if (!file_exists($absPath)) {
-    Response::error('File not found', 404);
+    Response::error('not_found.file', 404);
 }
 if (!is_file($absPath)) {
-    Response::error('Not a file', 400);
+    Response::error('not_a_file', 400);
 }
 
 $mime = MimeType::detect($absPath);

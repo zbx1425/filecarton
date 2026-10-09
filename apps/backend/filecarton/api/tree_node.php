@@ -13,7 +13,7 @@ $absPath = $pathSec->resolve($path);
 $pathSec->assertNotIgnored($absPath);
 
 if (!is_dir($absPath)) {
-    Response::error('Not a directory', 404);
+    Response::error('not_found.dir', 404);
 }
 
 $children = $fileOps->treeChildren($absPath);

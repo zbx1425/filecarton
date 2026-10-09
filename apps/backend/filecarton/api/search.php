@@ -13,17 +13,17 @@ $query = $_GET['q'] ?? '';
 $limit = max(1, min(FILECARTON_SEARCH_MAX_LIMIT, (int)($_GET['limit'] ?? FILECARTON_SEARCH_DEFAULT_LIMIT)));
 
 if ($query === '') {
-    Response::error('Search query required', 400);
+    Response::error('missing_fields', 400, ['fields' => 'q']);
 }
 
 $absBase = $pathSec->resolve($basePath);
 $pathSec->assertNotIgnored($absBase);
 
 if (!file_exists($absBase)) {
-    Response::error('Directory not found', 404);
+    Response::error('not_found.dir', 404);
 }
 if (!is_dir($absBase)) {
-    Response::error('Not a directory', 400);
+    Response::error('not_a_dir', 400);
 }
 
 $rootPath = $pathSec->getRootPath();
