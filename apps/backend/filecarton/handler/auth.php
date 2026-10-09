@@ -9,11 +9,11 @@ function handle_auth(): void {
         $token = $_GET['state'] ?? $_GET['fc_nonce'] ?? '';
         $token = is_string($token) ? $token : '';
         $peeked = ($pluginId !== '' && $token !== '')
-            ? Auth::peekPending($pluginId, $token) : null;
+            ? AuthPendingBag::peek($pluginId, $token) : null;
         $pendingForCatch = $peeked !== null
-            ? $peeked : Auth::emptyReturnContext();
+            ? $peeked : AuthPendingBag::emptyReturnContext();
     } else {
-        $pendingForCatch = Auth::captureReturnContext();
+        $pendingForCatch = AuthPendingBag::captureReturnContext();
     }
     try {
         $problems = Auth::configProblems();
@@ -39,7 +39,7 @@ function handle_auth(): void {
             error_log('FileCarton auth: ' . $e->getMessage());
         }
         $token = Auth::errorToken($e);
-        $loc = Auth::returnLocation($pendingForCatch, $token);
+        $loc = AuthPendingBag::returnLocation($pendingForCatch, $token);
         header('Location: ' . $loc, true, 302);
         exit;
     }
@@ -50,7 +50,7 @@ function auth_start($pluginId): void {
     if (!$plugin instanceof RedirectAuth) {
         throw new AuthException('config', 400, 'Unknown redirect plugin');
     }
-    $nonce = Auth::createPending($plugin->id());
+    $nonce = AuthPendingBag::create($plugin->id());
     $ctx = AuthContext::forStart($plugin, $nonce);
     $url = $plugin->start($ctx);
     if (!is_string($url) || strpbrk($url, "\r\n\0") !== false
@@ -72,13 +72,13 @@ function auth_callback($pluginId): void {
     } elseif (isset($_GET['fc_nonce']) && is_string($_GET['fc_nonce']) && $_GET['fc_nonce'] !== '') {
         $token = $_GET['fc_nonce'];
     }
-    $pending = Auth::consumePending($plugin->id(), $token);
+    $pending = AuthPendingBag::consume($plugin->id(), $token);
     if ($pending === null) {
         throw new AuthException('expired', 401, 'Pending login missing');
     }
     $ctx = AuthContext::forComplete($plugin, $pending);
     $identity = $plugin->complete($ctx);
     Auth::establish($identity);
-    header('Location: ' . Auth::returnLocation($pending), true, 302);
+    header('Location: ' . AuthPendingBag::returnLocation($pending), true, 302);
     exit;
 }

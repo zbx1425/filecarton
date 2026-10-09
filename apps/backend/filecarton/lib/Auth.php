@@ -122,11 +122,11 @@ class AuthContext {
             return;
         }
         $n = $this->nonce;
-        if ($n === null || $n === '' || empty($_SESSION[Auth::SESSION_PENDING][$n])
-            || !is_array($_SESSION[Auth::SESSION_PENDING][$n])) {
+        if ($n === null || $n === '' || empty($_SESSION[AuthPendingBag::SESSION_KEY][$n])
+            || !is_array($_SESSION[AuthPendingBag::SESSION_KEY][$n])) {
             throw new \RuntimeException('Auth pending row missing', 500);
         }
-        $_SESSION[Auth::SESSION_PENDING][$n]['extra'][$key] = $value;
+        $_SESSION[AuthPendingBag::SESSION_KEY][$n]['extra'][$key] = $value;
     }
 
     public function getExtra($key, $default = null) {
@@ -136,20 +136,207 @@ class AuthContext {
                 : $default;
         }
         $n = $this->nonce;
-        if ($n === null || empty($_SESSION[Auth::SESSION_PENDING][$n]['extra'])
-            || !is_array($_SESSION[Auth::SESSION_PENDING][$n]['extra'])) {
+        if ($n === null || empty($_SESSION[AuthPendingBag::SESSION_KEY][$n]['extra'])
+            || !is_array($_SESSION[AuthPendingBag::SESSION_KEY][$n]['extra'])) {
             return $default;
         }
-        $extra = $_SESSION[Auth::SESSION_PENDING][$n]['extra'];
+        $extra = $_SESSION[AuthPendingBag::SESSION_KEY][$n]['extra'];
         return array_key_exists($key, $extra) ? $extra[$key] : $default;
+    }
+}
+
+/**
+ * Manages redirect-auth pending entries in the session.
+ *
+ * Each pending entry stores the nonce, plugin id, return context, and optional
+ * extra data set by the auth plugin (e.g. PKCE verifiers).
+ */
+class AuthPendingBag {
+    const SESSION_KEY   = 'filecarton_auth_pending';
+    const TTL           = 600;
+    const MAX_ENTRIES   = 10;
+
+    public static function captureReturnContext(): array {
+        $hash = isset($_GET['fc_return_hash']) && is_string($_GET['fc_return_hash'])
+            ? self::sanitizeHash($_GET['fc_return_hash']) : '';
+        return [
+            'path_info'   => self::sanitizePathInfo($_SERVER['PATH_INFO'] ?? ''),
+            'state_query' => self::capturePassthroughQuery(),
+            'hash'        => $hash,
+        ];
+    }
+
+    public static function emptyReturnContext(): array {
+        return [
+            'path_info'   => '',
+            'state_query' => [],
+            'hash'        => '',
+        ];
+    }
+
+    public static function create(string $pluginId): string {
+        Auth::ensureSession();
+        self::gc();
+        $nonce = bin2hex(random_bytes(16));
+        $ctx = self::captureReturnContext();
+        $row = [
+            'nonce'       => $nonce,
+            'plugin'      => $pluginId,
+            'created'     => time(),
+            'path_info'   => $ctx['path_info'],
+            'state_query' => $ctx['state_query'],
+            'hash'        => $ctx['hash'],
+            'extra'       => [],
+        ];
+        if (!isset($_SESSION[self::SESSION_KEY]) || !is_array($_SESSION[self::SESSION_KEY])) {
+            $_SESSION[self::SESSION_KEY] = [];
+        }
+        $_SESSION[self::SESSION_KEY][$nonce] = $row;
+        return $nonce;
+    }
+
+    public static function peek(string $pluginId, $signedOrNonce): ?array {
+        Auth::ensureSession();
+        $nonce = self::extractNonce($pluginId, $signedOrNonce);
+        if ($nonce === null) return null;
+        if (empty($_SESSION[self::SESSION_KEY][$nonce])
+            || !is_array($_SESSION[self::SESSION_KEY][$nonce])) {
+            return null;
+        }
+        $row = $_SESSION[self::SESSION_KEY][$nonce];
+        if (($row['plugin'] ?? '') !== $pluginId) return null;
+        return $row;
+    }
+
+    public static function consume(string $pluginId, $signedOrNonce): ?array {
+        Auth::ensureSession();
+        self::gc();
+        $nonce = self::extractNonce($pluginId, $signedOrNonce);
+        if ($nonce === null) return null;
+        if (empty($_SESSION[self::SESSION_KEY][$nonce])
+            || !is_array($_SESSION[self::SESSION_KEY][$nonce])) {
+            return null;
+        }
+        $row = $_SESSION[self::SESSION_KEY][$nonce];
+        if (($row['plugin'] ?? '') !== $pluginId) {
+            return null;
+        }
+        unset($_SESSION[self::SESSION_KEY][$nonce]);
+        if (!isset($row['extra']) || !is_array($row['extra'])) {
+            $row['extra'] = [];
+        }
+        return $row;
+    }
+
+    /**
+     * Extract nonce from a state string.
+     * Accepts: bare nonce (32-char hex), or "{pluginId}.{nonce}" format.
+     */
+    private static function extractNonce(string $pluginId, $signedOrNonce): ?string {
+        if (!is_string($signedOrNonce) || $signedOrNonce === '') return null;
+        if (preg_match('/^[a-f0-9]{32}$/', $signedOrNonce)) {
+            return $signedOrNonce;
+        }
+        $parts = explode('.', $signedOrNonce, 3);
+        if (count($parts) >= 2 && $parts[0] === $pluginId && preg_match('/^[a-f0-9]{32}$/', $parts[1])) {
+            return $parts[1];
+        }
+        return null;
+    }
+
+    public static function returnLocation(array $pending, $error = null): string {
+        $pathInfo = self::sanitizePathInfo($pending['path_info'] ?? '');
+        $url = script_url() . $pathInfo;
+        $pairs = [];
+        if (!empty($pending['state_query']) && is_array($pending['state_query'])) {
+            foreach ($pending['state_query'] as $pair) {
+                if (!is_array($pair) || count($pair) < 2) continue;
+                $k = (string)$pair[0];
+                $v = (string)$pair[1];
+                if (!self::isPassthroughKey($k)) continue;
+                $pairs[] = rawurlencode($k) . '=' . rawurlencode($v);
+            }
+        }
+        $hash = self::sanitizeHash($pending['hash'] ?? '');
+        if ($hash !== '') {
+            $pairs[] = 'fc_return_hash=' . rawurlencode($hash);
+        }
+        if (is_string($error) && $error !== '') {
+            $pairs[] = 'fc_auth_error=' . rawurlencode($error);
+        }
+        if ($pairs) {
+            $url .= '?' . implode('&', $pairs);
+        }
+        return $url;
+    }
+
+    public static function gc(): void {
+        if (empty($_SESSION[self::SESSION_KEY]) || !is_array($_SESSION[self::SESSION_KEY])) return;
+        $now = time();
+        foreach ($_SESSION[self::SESSION_KEY] as $k => $row) {
+            if (!is_array($row) || ($now - (int)($row['created'] ?? 0)) > self::TTL) {
+                unset($_SESSION[self::SESSION_KEY][$k]);
+            }
+        }
+        if (count($_SESSION[self::SESSION_KEY]) > self::MAX_ENTRIES) {
+            uasort($_SESSION[self::SESSION_KEY], function ($a, $b) {
+                return ((int)($a['created'] ?? 0)) <=> ((int)($b['created'] ?? 0));
+            });
+            while (count($_SESSION[self::SESSION_KEY]) > self::MAX_ENTRIES) {
+                $drop = array_keys($_SESSION[self::SESSION_KEY])[0];
+                unset($_SESSION[self::SESSION_KEY][$drop]);
+            }
+        }
+    }
+
+    private static function isPassthroughKey($k): bool {
+        return $k === 'state' || str_starts_with($k, 'state_') || str_starts_with($k, 'state[');
+    }
+
+    private static function sanitizePathInfo($pathInfo): string {
+        if (!is_string($pathInfo) || $pathInfo === '') return '';
+        if ($pathInfo[0] !== '/') return '';
+        if (strpos($pathInfo, '//') !== false) return '';
+        if (strpbrk($pathInfo, "\r\n\0\\?#") !== false) return '';
+        if (preg_match('#^[a-z][a-z0-9+.-]*:#i', $pathInfo)) return '';
+        foreach (explode('/', $pathInfo) as $seg) {
+            if ($seg === '.' || $seg === '..') return '';
+        }
+        return $pathInfo;
+    }
+
+    private static function sanitizeHash($hash): string {
+        if (!is_string($hash) || $hash === '') return '';
+        if ($hash[0] === '#') $hash = substr($hash, 1);
+        if (strpos($hash, "\n") !== false || strpos($hash, "\r") !== false || strpos($hash, "\0") !== false) return '';
+        if (strpos($hash, '://') !== false) return '';
+        return $hash;
+    }
+
+    private static function capturePassthroughQuery(): array {
+        $qs = isset($_SERVER['QUERY_STRING']) ? (string)$_SERVER['QUERY_STRING'] : '';
+        if ($qs === '') return [];
+        $pairs = [];
+        foreach (explode('&', $qs) as $part) {
+            if ($part === '') continue;
+            $eq = strpos($part, '=');
+            if ($eq === false) {
+                $k = urldecode($part);
+                $v = '';
+            } else {
+                $k = urldecode(substr($part, 0, $eq));
+                $v = urldecode(substr($part, $eq + 1));
+            }
+            if (self::isPassthroughKey($k)) {
+                $pairs[] = [$k, $v];
+            }
+        }
+        return $pairs;
     }
 }
 
 class Auth {
     const SESSION_USER    = 'filecarton_auth';
-    const SESSION_PENDING = 'filecarton_auth_pending';
-    const PENDING_TTL     = 600;
-    const PENDING_MAX     = 10;
     const ID_PATTERN      = '/^[a-z][a-z0-9_]{0,31}$/';
 
     /** @var AuthProvider[] */
@@ -281,7 +468,7 @@ class Auth {
             }
         }
         Grants::boot();
-        self::gcPending();
+        AuthPendingBag::gc();
     }
 
     public static function staticUserList(): array {
@@ -528,99 +715,6 @@ class Auth {
         return $cfg;
     }
 
-    // ── Redirect pending bag ──
-
-    public static function captureReturnContext(): array {
-        $hash = isset($_GET['fc_return_hash']) && is_string($_GET['fc_return_hash'])
-            ? self::sanitizeHash($_GET['fc_return_hash']) : '';
-        return [
-            'path_info'   => self::sanitizePathInfo($_SERVER['PATH_INFO'] ?? ''),
-            'state_query' => self::capturePassthroughQuery(),
-            'hash'        => $hash,
-        ];
-    }
-
-    public static function emptyReturnContext(): array {
-        return [
-            'path_info'   => '',
-            'state_query' => [],
-            'hash'        => '',
-        ];
-    }
-
-    public static function createPending($pluginId): string {
-        self::ensureSession();
-        self::gcPending();
-        $nonce = bin2hex(random_bytes(16));
-        $ctx = self::captureReturnContext();
-        $row = [
-            'nonce'       => $nonce,
-            'plugin'      => $pluginId,
-            'created'     => time(),
-            'path_info'   => $ctx['path_info'],
-            'state_query' => $ctx['state_query'],
-            'hash'        => $ctx['hash'],
-            'extra'       => [],
-        ];
-        if (!isset($_SESSION[self::SESSION_PENDING]) || !is_array($_SESSION[self::SESSION_PENDING])) {
-            $_SESSION[self::SESSION_PENDING] = [];
-        }
-        $_SESSION[self::SESSION_PENDING][$nonce] = $row;
-        return $nonce;
-    }
-
-    /**
-     * Look up a pending row without consuming it (for error-recovery context).
-     */
-    public static function peekPending($pluginId, $signedOrNonce) {
-        self::ensureSession();
-        $nonce = self::extractNonce($pluginId, $signedOrNonce);
-        if ($nonce === null) return null;
-        if (empty($_SESSION[self::SESSION_PENDING][$nonce])
-            || !is_array($_SESSION[self::SESSION_PENDING][$nonce])) {
-            return null;
-        }
-        $row = $_SESSION[self::SESSION_PENDING][$nonce];
-        if (($row['plugin'] ?? '') !== $pluginId) return null;
-        return $row;
-    }
-
-    public static function consumePending($pluginId, $signedOrNonce) {
-        self::ensureSession();
-        self::gcPending();
-        $nonce = self::extractNonce($pluginId, $signedOrNonce);
-        if ($nonce === null) return null;
-        if (empty($_SESSION[self::SESSION_PENDING][$nonce])
-            || !is_array($_SESSION[self::SESSION_PENDING][$nonce])) {
-            return null;
-        }
-        $row = $_SESSION[self::SESSION_PENDING][$nonce];
-        if (($row['plugin'] ?? '') !== $pluginId) {
-            return null;
-        }
-        unset($_SESSION[self::SESSION_PENDING][$nonce]);
-        if (!isset($row['extra']) || !is_array($row['extra'])) {
-            $row['extra'] = [];
-        }
-        return $row;
-    }
-
-    /**
-     * Extract nonce from a state string.
-     * Accepts: bare nonce (32-char hex), or "{pluginId}.{nonce}" format.
-     */
-    private static function extractNonce(string $pluginId, $signedOrNonce): ?string {
-        if (!is_string($signedOrNonce) || $signedOrNonce === '') return null;
-        if (preg_match('/^[a-f0-9]{32}$/', $signedOrNonce)) {
-            return $signedOrNonce;
-        }
-        $parts = explode('.', $signedOrNonce, 3);
-        if (count($parts) >= 2 && $parts[0] === $pluginId && preg_match('/^[a-f0-9]{32}$/', $parts[1])) {
-            return $parts[1];
-        }
-        return null;
-    }
-
     public static function errorToken(\Throwable $e): string {
         if ($e instanceof AuthException && $e->token !== '') {
             return $e->token;
@@ -638,32 +732,6 @@ class Auth {
         if ($code === 403) return 'allowlist';
         if ($code === 401) return 'denied';
         return 'unknown';
-    }
-
-    public static function returnLocation(array $pending, $error = null): string {
-        $pathInfo = self::sanitizePathInfo($pending['path_info'] ?? '');
-        $url = script_url() . $pathInfo;
-        $pairs = [];
-        if (!empty($pending['state_query']) && is_array($pending['state_query'])) {
-            foreach ($pending['state_query'] as $pair) {
-                if (!is_array($pair) || count($pair) < 2) continue;
-                $k = (string)$pair[0];
-                $v = (string)$pair[1];
-                if (!self::isPassthroughKey($k)) continue;
-                $pairs[] = rawurlencode($k) . '=' . rawurlencode($v);
-            }
-        }
-        $hash = self::sanitizeHash($pending['hash'] ?? '');
-        if ($hash !== '') {
-            $pairs[] = 'fc_return_hash=' . rawurlencode($hash);
-        }
-        if (is_string($error) && $error !== '') {
-            $pairs[] = 'fc_auth_error=' . rawurlencode($error);
-        }
-        if ($pairs) {
-            $url .= '?' . implode('&', $pairs);
-        }
-        return $url;
     }
 
     /**
@@ -684,74 +752,8 @@ class Auth {
         return rtrim($origin, '/') . script_url();
     }
 
-    public static function isPassthroughKey($k): bool {
-        return $k === 'state' || str_starts_with($k, 'state_') || str_starts_with($k, 'state[');
-    }
-
-    // ── Internals ──
-
-    private static function sanitizePathInfo($pathInfo): string {
-        if (!is_string($pathInfo) || $pathInfo === '') return '';
-        if ($pathInfo[0] !== '/') return '';
-        if (strpos($pathInfo, '//') !== false) return '';
-        if (strpbrk($pathInfo, "\r\n\0\\?#") !== false) return '';
-        if (preg_match('#^[a-z][a-z0-9+.-]*:#i', $pathInfo)) return '';
-        foreach (explode('/', $pathInfo) as $seg) {
-            if ($seg === '.' || $seg === '..') return '';
-        }
-        return $pathInfo;
-    }
-
-    private static function sanitizeHash($hash): string {
-        if (!is_string($hash) || $hash === '') return '';
-        if ($hash[0] === '#') $hash = substr($hash, 1);
-        if (strpos($hash, "\n") !== false || strpos($hash, "\r") !== false || strpos($hash, "\0") !== false) return '';
-        if (strpos($hash, '://') !== false) return '';
-        return $hash;
-    }
-
     private static function requestIsHttps(): bool {
         return Csrf::isHttps();
-    }
-
-    private static function capturePassthroughQuery(): array {
-        $qs = isset($_SERVER['QUERY_STRING']) ? (string)$_SERVER['QUERY_STRING'] : '';
-        if ($qs === '') return [];
-        $pairs = [];
-        foreach (explode('&', $qs) as $part) {
-            if ($part === '') continue;
-            $eq = strpos($part, '=');
-            if ($eq === false) {
-                $k = urldecode($part);
-                $v = '';
-            } else {
-                $k = urldecode(substr($part, 0, $eq));
-                $v = urldecode(substr($part, $eq + 1));
-            }
-            if (self::isPassthroughKey($k)) {
-                $pairs[] = [$k, $v];
-            }
-        }
-        return $pairs;
-    }
-
-    private static function gcPending() {
-        if (empty($_SESSION[self::SESSION_PENDING]) || !is_array($_SESSION[self::SESSION_PENDING])) return;
-        $now = time();
-        foreach ($_SESSION[self::SESSION_PENDING] as $k => $row) {
-            if (!is_array($row) || ($now - (int)($row['created'] ?? 0)) > self::PENDING_TTL) {
-                unset($_SESSION[self::SESSION_PENDING][$k]);
-            }
-        }
-        if (count($_SESSION[self::SESSION_PENDING]) > self::PENDING_MAX) {
-            uasort($_SESSION[self::SESSION_PENDING], function ($a, $b) {
-                return ((int)($a['created'] ?? 0)) <=> ((int)($b['created'] ?? 0));
-            });
-            while (count($_SESSION[self::SESSION_PENDING]) > self::PENDING_MAX) {
-                $drop = array_keys($_SESSION[self::SESSION_PENDING])[0];
-                unset($_SESSION[self::SESSION_PENDING][$drop]);
-            }
-        }
     }
 
 }
