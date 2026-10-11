@@ -56,7 +56,7 @@ export const useNavigationStore = defineStore('navigation', () => {
       || fileName.toLowerCase() === 'makefile' || fileName.toLowerCase() === 'dockerfile'
     const ui = useUiStore()
     const prefs = usePreferencesStore()
-    const blocked = prefs.isExtensionBlocked(fileName)
+    const blocked = prefs.isFilenameBlocked(fileName)
     viewMode.value = (editable && !ui.readonly && !blocked) ? 'editor' : 'preview'
     editDirty.value = false
   }
@@ -107,7 +107,9 @@ export const useNavigationStore = defineStore('navigation', () => {
     const pathPart = qIndex >= 0 ? raw.slice(0, qIndex) : raw
     const queryPart = qIndex >= 0 ? raw.slice(qIndex + 1) : ''
 
-    const segments = pathPart.split('/').filter(Boolean).map(s => decodeURIComponent(s))
+    const segments = pathPart.split('/').filter(Boolean).map(s => {
+      try { return decodeURIComponent(s) } catch { return s }
+    })
 
     const params = new URLSearchParams(queryPart)
     const view = params.get('view')
@@ -129,7 +131,7 @@ export const useNavigationStore = defineStore('navigation', () => {
       if (view === 'editor') {
         const ui = useUiStore()
         const prefs = usePreferencesStore()
-        viewMode.value = (fileName && !ui.readonly && !prefs.isExtensionBlocked(fileName))
+        viewMode.value = (fileName && !ui.readonly && !prefs.isFilenameBlocked(fileName))
           ? 'editor' : 'preview'
       } else {
         viewMode.value = view

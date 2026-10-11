@@ -105,7 +105,7 @@ export interface ArchiveCreateResponse {
 
 export interface ArchiveExtractFailedEntry {
   path: string
-  reason: 'blocked.extension' | 'blocked.ignored' | 'blocked.invalid' | 'io_error'
+  reason: 'blocked.name' | 'blocked.ignored' | 'blocked.invalid' | 'io_error'
 }
 
 export interface ArchiveExtractResponse {
@@ -168,9 +168,6 @@ export interface FileCartonConfig {
     block: boolean
     forceVisible: boolean
   }
-  extensions?: {
-    allowlist: string[]
-    blocklist: string[]
-  }
+  filenameBlocklist?: string[]
   auth?: FileCartonAuthConfig
 }

@@ -66,8 +66,8 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
 
             $itemBaseName = basename($srcAbs);
 
-            if (is_file($srcAbs) && $pathSec->isExtensionBlocked($itemBaseName)) {
-                $failed[] = ['name' => $name, 'error' => 'extension_blocked'];
+            if (is_file($srcAbs) && $pathSec->isFilenameBlocked($itemBaseName)) {
+                $failed[] = ['name' => $name, 'error' => 'filename_blocked'];
                 continue;
             }
 
@@ -139,8 +139,8 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
 
         $itemBaseName = basename($srcAbs);
 
-        if (is_file($srcAbs) && $pathSec->isExtensionBlocked($itemBaseName)) {
-            $failed[] = ['name' => $name, 'error' => 'extension_blocked'];
+        if (is_file($srcAbs) && $pathSec->isFilenameBlocked($itemBaseName)) {
+            $failed[] = ['name' => $name, 'error' => 'filename_blocked'];
             continue;
         }
 

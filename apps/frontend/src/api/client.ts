@@ -75,20 +75,19 @@ function buildUrl(action: string, params?: Record<string, string>): string {
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    let code = `http_${response.status}`
-    let params: Record<string, string | number> | undefined
+    let code = 'server_error'
+    let params: Record<string, string | number> | undefined = { status: response.status }
     let authError: string | undefined
     try {
       const body = await response.json()
-      if (body?.error) code = body.error
-      if (body?.params) params = body.params
+      if (body?.error) { code = body.error; params = body.params }
       if (body?.authError) authError = body.authError
     } catch { /* non-JSON error body */ }
     throw new ApiError(code, response.status, params, authError)
   }
   const body = await response.json()
   if (!body.ok) {
-    throw new ApiError(body.error ?? 'unknown', response.status, body.params)
+    throw new ApiError(body.error ?? 'server_error', response.status, body.params)
   }
   return body.data as T
 }

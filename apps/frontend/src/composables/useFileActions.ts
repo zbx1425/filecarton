@@ -43,7 +43,7 @@ export async function createItem(type: 'file' | 'dir') {
     toast.error('Dot files (hidden files) are not allowed')
     return
   }
-  if (type === 'file' && prefs.isExtensionBlocked(name)) {
+  if (type === 'file' && prefs.isFilenameBlocked(name)) {
     toast.error('This file type is restricted')
     return
   }
@@ -188,7 +188,7 @@ export async function renameItem(dirPath: string, oldName: string, isDir?: boole
     toast.error('Dot files (hidden files) are not allowed')
     return
   }
-  if (!isDir && prefs.isExtensionBlocked(newName)) {
+  if (!isDir && prefs.isFilenameBlocked(newName)) {
     toast.error('This file type is restricted')
     return
   }

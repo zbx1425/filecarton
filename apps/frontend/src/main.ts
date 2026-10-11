@@ -15,17 +15,26 @@ const startUrl = new URL(window.location.href)
 const fcReturnHash = startUrl.searchParams.get('fc_return_hash')
 const fcAuthError = startUrl.searchParams.get('fc_auth_error')
 const fcAuthErrorId = startUrl.searchParams.get('fc_auth_error_id')
+const KNOWN_AUTH_TOKENS = new Set(['denied', 'expired', 'allowlist', 'exchange', 'config', 'unknown', 'bad_root'])
+const AUTH_ID_PATTERN = /^[a-zA-Z0-9._@-]+$/
+
 if (fcReturnHash || fcAuthError) {
   startUrl.searchParams.delete('fc_return_hash')
   startUrl.searchParams.delete('fc_auth_error')
   startUrl.searchParams.delete('fc_auth_error_id')
-  const hash = fcReturnHash
+  let hash = fcReturnHash
     ? (fcReturnHash.startsWith('#') ? fcReturnHash : '#' + fcReturnHash)
     : window.location.hash
+  try {
+    decodeURIComponent(hash)
+  } catch {
+    hash = '#/'
+  }
   history.replaceState(null, '', startUrl.pathname + startUrl.search + hash)
   if (fcAuthError) {
-    sessionStorage.setItem('filecarton_auth_error', fcAuthError)
-    if (fcAuthErrorId) {
+    const safeToken = KNOWN_AUTH_TOKENS.has(fcAuthError) ? fcAuthError : 'unknown'
+    sessionStorage.setItem('filecarton_auth_error', safeToken)
+    if (fcAuthErrorId && AUTH_ID_PATTERN.test(fcAuthErrorId)) {
       sessionStorage.setItem('filecarton_auth_error_id', fcAuthErrorId)
     }
   }

@@ -3,9 +3,9 @@
 namespace FileCarton;
 
 /**
- * API: archive (create) — Create a ZIP or TAR archive.
- * POST ?fcapi=archive
- * Body: { operation: "create", format: "zip"|"tar", path, items: string[], archiveName? }
+ * API: archive_create — Create a ZIP or TAR archive.
+ * POST ?fcapi=archive_create
+ * Body: { format: "zip"|"tar", path, items: string[], archiveName? }
  */
 
 function api_archive_create(PathSecurity $pathSec, FileOps $fileOps): void {

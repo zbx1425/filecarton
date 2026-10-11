@@ -27,7 +27,7 @@ const fileSize = computed(() => {
   return entry?.size ?? 0
 })
 
-const canEdit = computed(() => isEditable(fileName.value) && !ui.readonly && !preferences.isExtensionBlocked(fileName.value))
+const canEdit = computed(() => isEditable(fileName.value) && !ui.readonly && !preferences.isFilenameBlocked(fileName.value))
 
 const previewType = computed(() => {
   const name = fileName.value

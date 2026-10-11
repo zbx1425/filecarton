@@ -33,8 +33,8 @@ $pathSec->assertNotIgnored($oldAbs, 'not_found.file');
 
 $isFile = is_file($oldAbs);
 
-if ($isFile && $pathSec->isExtensionBlocked($newName)) {
-    Response::error('extension_blocked', 403);
+if ($isFile && $pathSec->isFilenameBlocked($newName)) {
+    Response::error('filename_blocked', 403);
 }
 
 if (!$isFile && $pathSec->hasProtectedDescendants($oldAbs)) {

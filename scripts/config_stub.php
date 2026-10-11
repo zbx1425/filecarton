@@ -24,8 +24,7 @@ define('FILECARTON_MUST_EMBED', false);
 define('FILECARTON_DOTFILES_BLOCK', false);
 define('FILECARTON_DOTFILES_FORCE_VISIBLE', false);
 
-define('FILECARTON_EXTENSIONS_ALLOWLIST', []);
-define('FILECARTON_EXTENSIONS_BLOCKLIST', ['.php']);
+define('FILECARTON_FILENAME_BLOCKLIST', ['*.php', '.htaccess', '.user.ini', 'web.config']);
 
 define('FILECARTON_IGNORE_PATTERN', []);
 define('FILECARTON_IGNORE_REALPATH', [

@@ -184,7 +184,7 @@ export const useUploadStore = defineStore('upload', () => {
       const relPath = (file as any).webkitRelativePath || ''
       if (
         prefs.isDotFileBlocked(file.name) ||
-        prefs.isExtensionBlocked(file.name) ||
+        prefs.isFilenameBlocked(file.name) ||
         hasBlockedPathComponent(relPath)
       ) {
         blocked.push(relPath || file.name)
@@ -264,7 +264,7 @@ export const useUploadStore = defineStore('upload', () => {
     for (const entry of nonJunk) {
       if (
         prefs.isDotFileBlocked(entry.file.name) ||
-        prefs.isExtensionBlocked(entry.file.name) ||
+        prefs.isFilenameBlocked(entry.file.name) ||
         hasBlockedPathComponent(entry.relativePath)
       ) {
         blocked.push(entry.relativePath || entry.file.name)
@@ -389,13 +389,16 @@ export const useUploadStore = defineStore('upload', () => {
       formData.append('chunk', chunk)
 
       let retries = 3
+      let lastError: unknown = null
       while (retries > 0) {
         try {
           await apiUpload<UploadChunkResponse>('upload_chunk', formData)
           break
-        } catch {
+        } catch (e) {
+          lastError = e
+          if (e instanceof ApiError && (e.status === 401 || e.status === 403)) throw e
           retries--
-          if (retries === 0) throw new Error(`Chunk ${i} failed after 3 retries`)
+          if (retries === 0) throw lastError
         }
       }
 

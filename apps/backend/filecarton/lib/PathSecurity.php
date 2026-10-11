@@ -2,27 +2,391 @@
 
 namespace FileCarton;
 
+/**
+ * Precompiled filename blocklist matcher.
+ *
+ * Rules are parsed once at construction; matching is O(1) hash lookup for
+ * exact names, O(k) suffix comparison for wildcard rules (k = rule count).
+ */
+class FilenameBlocklist {
+    /** @var bool */
+    private $blockAll = false;
+    /** @var bool */
+    private $allowAll = false;
+    /** @var string[] Pre-lowercased suffixes, e.g. ['.php', '.tar.gz'] */
+    private $blockSuffixes = [];
+    /** @var string[] */
+    private $allowSuffixes = [];
+    /** @var array<string,true> Pre-lowercased hash map, e.g. ['.htaccess' => true] */
+    private $blockExact = [];
+    /** @var array<string,true> */
+    private $allowExact = [];
+
+    public function __construct(array $rules) {
+        foreach ($rules as $rule) {
+            if (!is_string($rule) || $rule === '') continue;
+            $allow = $rule[0] === '!';
+            $pattern = $allow ? substr($rule, 1) : $rule;
+            if ($pattern === '') continue;
+
+            if ($pattern === '*') {
+                $allow ? ($this->allowAll = true) : ($this->blockAll = true);
+            } elseif ($pattern[0] === '*') {
+                $suffix = strtolower(substr($pattern, 1));
+                $allow
+                    ? ($this->allowSuffixes[] = $suffix)
+                    : ($this->blockSuffixes[] = $suffix);
+            } else {
+                $lower = strtolower($pattern);
+                $allow
+                    ? ($this->allowExact[$lower] = true)
+                    : ($this->blockExact[$lower] = true);
+            }
+        }
+    }
+
+    /**
+     * Check whether a filename is blocked.
+     * Allow (!) rules always win: any matching allow rule permits the file.
+     */
+    public function isBlocked(string $basename): bool {
+        $lower = strtolower($basename);
+        $len = strlen($lower);
+
+        // Phase 1: Allow rules — any match permits the file.
+        if ($this->allowAll) return false;
+        if (isset($this->allowExact[$lower])) return false;
+        foreach ($this->allowSuffixes as $suffix) {
+            $sLen = strlen($suffix);
+            if ($len >= $sLen && substr_compare($lower, $suffix, -$sLen) === 0) return false;
+        }
+
+        // Phase 2: Block rules — any match blocks the file.
+        if ($this->blockAll) return true;
+        if (isset($this->blockExact[$lower])) return true;
+        foreach ($this->blockSuffixes as $suffix) {
+            $sLen = strlen($suffix);
+            if ($len >= $sLen && substr_compare($lower, $suffix, -$sLen) === 0) return true;
+        }
+
+        return false;
+    }
+}
+
+/**
+ * Gitignore-ish path ignore rules, combining absolute-path matches
+ * and compiled regex patterns.
+ */
+class IgnoreRules {
+    /** @var string Root path (normalized, no trailing slash) */
+    private $rootPath;
+    /** @var bool */
+    private $caseInsensitive;
+    /** @var string[] Resolved absolute ignore paths */
+    private $absolutePaths = [];
+    /** @var string[] Compiled regex patterns */
+    private $regexes = [];
+    /** @var array[] Pattern metadata for hasProtectedDescendants optimization */
+    private $patternMeta = [];
+    /** @var bool Whether any pattern requires filesystem scanning */
+    private $hasDeepPatterns = false;
+
+    public function __construct(string $rootPath, bool $caseInsensitive) {
+        $this->rootPath = $rootPath;
+        $this->caseInsensitive = $caseInsensitive;
+    }
+
+    public function addAbsolutePath(string $absPath): void {
+        $this->absolutePaths[] = $absPath;
+    }
+
+    public function addPattern(string $pattern): void {
+        $compiled = $this->patternToRegex($pattern);
+        if ($compiled !== null) {
+            $this->regexes[] = $compiled['regex'];
+            $this->patternMeta[] = $compiled;
+            if ($compiled['needsScan']) {
+                $this->hasDeepPatterns = true;
+            }
+        }
+    }
+
+    /**
+     * Check if an absolute path is ignored by any configured rule.
+     * Matches exact paths and prefixes (directory content is also ignored).
+     */
+    public function isIgnored(string $absPath): bool {
+        $normalized = str_replace('\\', '/', $absPath);
+
+        foreach ($this->absolutePaths as $ignorePath) {
+            if ($this->pathEquals($normalized, $ignorePath) || $this->pathStartsWith($normalized, $ignorePath . '/')) {
+                return true;
+            }
+        }
+
+        if (!empty($this->regexes)) {
+            $relative = $this->getRelativePath($normalized);
+            if ($relative !== null) {
+                $isDir = is_dir($absPath);
+                foreach ($this->regexes as $regex) {
+                    if (preg_match($regex, $relative . ($isDir ? '/' : ''))) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if a path (which may not yet exist on disk) would be ignored.
+     */
+    public function wouldBeIgnored(string $absPath, bool $isDir): bool {
+        $normalized = str_replace('\\', '/', $absPath);
+
+        foreach ($this->absolutePaths as $ignorePath) {
+            if ($this->pathEquals($normalized, $ignorePath) || $this->pathStartsWith($normalized, $ignorePath . '/')) {
+                return true;
+            }
+        }
+
+        if (!empty($this->regexes)) {
+            $relative = $this->getRelativePath($normalized);
+            if ($relative !== null) {
+                foreach ($this->regexes as $regex) {
+                    if (preg_match($regex, $relative . ($isDir ? '/' : ''))) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if a directory contains any protected (ignored) descendants.
+     */
+    public function hasProtectedDescendants(string $dirPath): bool {
+        $normalized = str_replace('\\', '/', $dirPath);
+
+        foreach ($this->absolutePaths as $ip) {
+            if ($this->pathStartsWith($ip, $normalized . '/')) {
+                return true;
+            }
+        }
+
+        $dirRel = $this->getRelativePath($normalized);
+        if ($dirRel === null) return false;
+
+        foreach ($this->patternMeta as $meta) {
+            if ($meta['needsScan']) continue;
+            if ($this->patternCouldMatchInside($meta['segments'], $dirRel)) {
+                return true;
+            }
+        }
+
+        if (!$this->hasDeepPatterns) {
+            return false;
+        }
+
+        return $this->scanForProtectedDescendant($dirPath);
+    }
+
+    // ── Private: pattern compilation ──
+
+    /**
+     * Convert a simplified gitignore pattern to a regex.
+     * Supports: * (non-slash wildcard), ** (zero or more directories),
+     * ? (single non-slash char), leading / (root anchor),
+     * trailing / (directory-only match).
+     */
+    private function patternToRegex(string $pattern): ?array {
+        $pattern = trim($pattern);
+        if ($pattern === '' || $pattern[0] === '#') return null;
+
+        $anchored = str_starts_with($pattern, '/');
+        if ($anchored) $pattern = substr($pattern, 1);
+
+        $dirOnly = str_ends_with($pattern, '/');
+        if ($dirOnly) $pattern = rtrim($pattern, '/');
+
+        if ($pattern === '') return null;
+
+        $segments = explode('/', $pattern);
+        $hasGlobstar = in_array('**', $segments, true);
+
+        $inner = '';
+        $prevWasGlobstar = false;
+        $emittedAnything = false;
+
+        foreach ($segments as $seg) {
+            if ($seg === '**') {
+                $prevWasGlobstar = true;
+                continue;
+            }
+
+            $escaped = preg_quote($seg, '#');
+            $escaped = str_replace('\\*', '[^/]*', $escaped);
+            $escaped = str_replace('\\?', '[^/]', $escaped);
+
+            if ($prevWasGlobstar) {
+                if ($emittedAnything) {
+                    $inner .= '(?:/[^/]+)*/';
+                } else {
+                    $inner .= '(?:[^/]+/)*';
+                }
+                $prevWasGlobstar = false;
+            } elseif ($emittedAnything) {
+                $inner .= '/';
+            }
+
+            $inner .= $escaped;
+            $emittedAnything = true;
+        }
+
+        if ($prevWasGlobstar) {
+            if ($emittedAnything) {
+                $inner .= '(?:/.*)?';
+            } else {
+                $inner = '.*';
+            }
+        }
+
+        if ($anchored) {
+            $regex = '^' . $inner;
+        } else {
+            $regex = '(?:^|/)' . $inner;
+        }
+
+        $regex .= $dirOnly ? '/' : '(?:$|/)';
+
+        $needsScan = !$anchored || $hasGlobstar;
+        $flags = $this->caseInsensitive ? 'i' : '';
+
+        return [
+            'regex'     => '#' . $regex . '#' . $flags,
+            'needsScan' => $needsScan,
+            'segments'  => $needsScan ? null : $segments,
+        ];
+    }
+
+    // ── Private: descendant protection helpers ──
+
+    private function patternCouldMatchInside(array $patternSegments, string $dirRelPath): bool {
+        if ($dirRelPath === '') {
+            return $this->matchRemainingSegments($this->rootPath, $patternSegments);
+        }
+
+        $dirSegments = explode('/', trim($dirRelPath, '/'));
+
+        for ($i = 0; $i < count($dirSegments); $i++) {
+            if ($i >= count($patternSegments)) return false;
+            if (!$this->segmentMatches($dirSegments[$i], $patternSegments[$i])) return false;
+        }
+
+        if (count($patternSegments) > count($dirSegments)) {
+            $remaining = array_slice($patternSegments, count($dirSegments));
+            $basePath = $this->rootPath . '/' . implode('/', $dirSegments);
+            return $this->matchRemainingSegments($basePath, $remaining);
+        }
+
+        return true;
+    }
+
+    private function matchRemainingSegments(string $basePath, array $segments): bool {
+        if (empty($segments)) return true;
+
+        $segment = $segments[0];
+        $rest = array_slice($segments, 1);
+        $hasWild = strpos($segment, '*') !== false || strpos($segment, '?') !== false;
+
+        if (!$hasWild) {
+            $child = $basePath . '/' . $segment;
+            if (!file_exists($child)) return false;
+            return empty($rest) || $this->matchRemainingSegments($child, $rest);
+        }
+
+        $entries = @scandir($basePath);
+        if ($entries === false) return true;
+
+        foreach ($entries as $entry) {
+            if ($entry === '.' || $entry === '..') continue;
+            if (!$this->segmentMatches($entry, $segment)) continue;
+            if (empty($rest)) return true;
+            $child = $basePath . '/' . $entry;
+            if (is_dir($child) && $this->matchRemainingSegments($child, $rest)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function segmentMatches(string $actual, string $pattern): bool {
+        if ($this->caseInsensitive ? strcasecmp($pattern, $actual) === 0 : $pattern === $actual) return true;
+        $escaped = preg_quote($pattern, '#');
+        $escaped = str_replace('\\*', '[^/]*', $escaped);
+        $escaped = str_replace('\\?', '[^/]', $escaped);
+        $flags = $this->caseInsensitive ? 'i' : '';
+        return preg_match('#^' . $escaped . '$#' . $flags, $actual) === 1;
+    }
+
+    private function scanForProtectedDescendant(string $dirPath): bool {
+        $entries = @scandir($dirPath);
+        if ($entries === false) return true;
+
+        foreach ($entries as $entry) {
+            if ($entry === '.' || $entry === '..') continue;
+            $full = str_replace('\\', '/', $dirPath . '/' . $entry);
+
+            if ($this->isIgnored($full)) return true;
+
+            if (is_dir($full) && !is_link($full)) {
+                if ($this->scanForProtectedDescendant($full)) return true;
+            }
+        }
+
+        return false;
+    }
+
+    // ── Private: path helpers ──
+
+    private function getRelativePath(string $absPath): ?string {
+        if ($absPath === $this->rootPath) return '';
+        if (str_starts_with($absPath, $this->rootPath . '/')) {
+            return substr($absPath, strlen($this->rootPath) + 1);
+        }
+        return null;
+    }
+
+    private function pathEquals(string $a, string $b): bool {
+        return $this->caseInsensitive ? strcasecmp($a, $b) === 0 : $a === $b;
+    }
+
+    private function pathStartsWith(string $haystack, string $prefix): bool {
+        if ($this->caseInsensitive) {
+            return strncasecmp($haystack, $prefix, strlen($prefix)) === 0;
+        }
+        return str_starts_with($haystack, $prefix);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 class PathSecurity {
     /** @var string */
     private $rootPath;
 
-    /** @var string[] Resolved absolute ignore paths */
-    private $ignorePaths = [];
-
-    /** @var string[] Compiled regex patterns from IGNORE_PATTERN */
-    private $ignoreRegexes = [];
-
-    /** @var array[] Pattern metadata for hasProtectedDescendants optimization */
-    private $ignorePatternMeta = [];
-
-    /** @var bool Whether any pattern requires filesystem scanning */
-    private $hasDeepPatterns = false;
-
     /** @var bool Whether the filesystem is case-insensitive (Windows) */
     private $caseInsensitive = false;
 
-    /** @var bool Whether any extension allow/block list is configured */
-    private $hasExtensionRules = false;
+    /** @var FilenameBlocklist */
+    private $blocklist;
+
+    /** @var IgnoreRules */
+    private $ignore;
 
     public function __construct(string $rootPath) {
         $real = realpath($rootPath);
@@ -32,20 +396,22 @@ class PathSecurity {
         $this->rootPath = rtrim(str_replace('\\', '/', $real), '/');
         $this->caseInsensitive = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
 
-        $this->hasExtensionRules = (defined('FILECARTON_EXTENSIONS_ALLOWLIST') && !empty(FILECARTON_EXTENSIONS_ALLOWLIST))
-            || (defined('FILECARTON_EXTENSIONS_BLOCKLIST') && !empty(FILECARTON_EXTENSIONS_BLOCKLIST));
+        $blocklistRules = defined('FILECARTON_FILENAME_BLOCKLIST') ? FILECARTON_FILENAME_BLOCKLIST : [];
+        $this->blocklist = new FilenameBlocklist(is_array($blocklistRules) ? $blocklistRules : []);
+
+        $this->ignore = new IgnoreRules($this->rootPath, $this->caseInsensitive);
 
         if (defined('FILECARTON_IGNORE_REALPATH') && is_array(FILECARTON_IGNORE_REALPATH)) {
             foreach (FILECARTON_IGNORE_REALPATH as $path) {
                 $resolved = realpath($path);
                 if ($resolved !== false) {
-                    $this->ignorePaths[] = str_replace('\\', '/', $resolved);
+                    $this->ignore->addAbsolutePath(str_replace('\\', '/', $resolved));
                 } else {
                     $parent = realpath(dirname($path));
                     if ($parent !== false) {
-                        $this->ignorePaths[] = str_replace('\\', '/', $parent) . '/' . basename($path);
+                        $this->ignore->addAbsolutePath(str_replace('\\', '/', $parent) . '/' . basename($path));
                     } else {
-                        $this->ignorePaths[] = rtrim(str_replace('\\', '/', $path), '/');
+                        $this->ignore->addAbsolutePath(rtrim(str_replace('\\', '/', $path), '/'));
                     }
                 }
             }
@@ -53,35 +419,28 @@ class PathSecurity {
 
         if (class_exists(__NAMESPACE__ . '\\Auth', false)) {
             foreach (Auth::pluginIgnorePaths() as $pluginPath) {
-                $this->ignorePaths[] = $pluginPath;
+                $this->ignore->addAbsolutePath($pluginPath);
             }
         }
 
         if (defined('FILECARTON_IGNORE_PATTERN') && is_array(FILECARTON_IGNORE_PATTERN)) {
             foreach (FILECARTON_IGNORE_PATTERN as $pattern) {
-                $this->addIgnorePattern($pattern);
+                $this->ignore->addPattern($pattern);
             }
         }
 
         if (FILECARTON_DOTFILES_BLOCK) {
-            $this->addIgnorePattern('.*');
-        }
-    }
-
-    private function addIgnorePattern(string $pattern): void {
-        $compiled = $this->patternToRegex($pattern);
-        if ($compiled !== null) {
-            $this->ignoreRegexes[] = $compiled['regex'];
-            $this->ignorePatternMeta[] = $compiled;
-            if ($compiled['needsScan']) {
-                $this->hasDeepPatterns = true;
-            }
+            $this->ignore->addPattern('.*');
         }
     }
 
     public function getRootPath(): string {
         return $this->rootPath;
     }
+
+    // ------------------------------------------------------------------
+    // Path resolution
+    // ------------------------------------------------------------------
 
     /**
      * Resolve a user-supplied relative path to a safe absolute path.
@@ -213,6 +572,10 @@ class PathSecurity {
         }
     }
 
+    // ------------------------------------------------------------------
+    // Filename validation
+    // ------------------------------------------------------------------
+
     /**
      * Remove dangerous characters from a filename, keeping it usable.
      */
@@ -243,8 +606,6 @@ class PathSecurity {
      * Unlike sanitizeFileName, this does NOT strip characters — it validates
      * that the name is a single path segment (no traversal), then returns the
      * canonical absolute path if the item exists, or the logical path if not.
-     *
-     * Use this for referencing existing files by user-supplied name.
      */
     public function resolveItemIn(string $baseAbs, string $itemName): string {
         if ($itemName === '' || $itemName === '.' || $itemName === '..') {
@@ -302,97 +663,31 @@ class PathSecurity {
     }
 
     // ------------------------------------------------------------------
-    // Extension checks
+    // Filename blocklist (delegates to FilenameBlocklist)
     // ------------------------------------------------------------------
 
     /**
-     * Get the normalized extension key for a filename.
-     *   'file.PHP'   => '.php'
-     *   'Makefile'   => ''
-     *   'file.'      => '.'
+     * Check whether a filename is blocked by the configured blocklist rules.
+     * Directories are never blocked by name rules.
      */
-    public function getExtensionKey(string $basename): string {
-        if (str_ends_with($basename, '.')) return '.';
-        $ext = pathinfo($basename, PATHINFO_EXTENSION);
-        return $ext !== '' ? '.' . strtolower($ext) : '';
-    }
-
-    /**
-     * Check whether a file extension is blocked by the configured allow/block lists.
-     * Directories are never blocked by extension.
-     */
-    public function isExtensionBlocked(string $basename): bool {
-        $allowList = defined('FILECARTON_EXTENSIONS_ALLOWLIST') ? FILECARTON_EXTENSIONS_ALLOWLIST : [];
-        $blockList = defined('FILECARTON_EXTENSIONS_BLOCKLIST') ? FILECARTON_EXTENSIONS_BLOCKLIST : [];
-
-        if (empty($allowList) && empty($blockList)) return false;
-
-        $key = $this->getExtensionKey($basename);
-
-        if (!empty($allowList)) {
-            return !in_array(strtolower($key), array_map('strtolower', $allowList), true);
-        }
-        return in_array(strtolower($key), array_map('strtolower', $blockList), true);
+    public function isFilenameBlocked(string $basename): bool {
+        return $this->blocklist->isBlocked($basename);
     }
 
     // ------------------------------------------------------------------
-    // Ignore checks
+    // Ignore checks (delegates to IgnoreRules)
     // ------------------------------------------------------------------
 
-    /**
-     * Check if an absolute path is ignored by any configured rule.
-     * Matches exact paths and prefixes (directory content is also ignored).
-     */
     public function isIgnored(string $absPath): bool {
-        $normalized = str_replace('\\', '/', $absPath);
-
-        foreach ($this->ignorePaths as $ignorePath) {
-            if ($this->pathEquals($normalized, $ignorePath) || $this->pathStartsWith($normalized, $ignorePath . '/')) {
-                return true;
-            }
-        }
-
-        if (!empty($this->ignoreRegexes)) {
-            $relative = $this->getRelativePath($normalized);
-            if ($relative !== null) {
-                $isDir = is_dir($absPath);
-                foreach ($this->ignoreRegexes as $regex) {
-                    if (preg_match($regex, $relative . ($isDir ? '/' : ''))) {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
+        return $this->ignore->isIgnored($absPath);
     }
 
-    /**
-     * Check if a relative path (which may not yet exist on disk) would be
-     * ignored, treating it as the given type. Used for creation and
-     * extraction checks where the target does not exist yet.
-     */
     public function wouldBeIgnored(string $absPath, bool $isDir): bool {
-        $normalized = str_replace('\\', '/', $absPath);
+        return $this->ignore->wouldBeIgnored($absPath, $isDir);
+    }
 
-        foreach ($this->ignorePaths as $ignorePath) {
-            if ($this->pathEquals($normalized, $ignorePath) || $this->pathStartsWith($normalized, $ignorePath . '/')) {
-                return true;
-            }
-        }
-
-        if (!empty($this->ignoreRegexes)) {
-            $relative = $this->getRelativePath($normalized);
-            if ($relative !== null) {
-                foreach ($this->ignoreRegexes as $regex) {
-                    if (preg_match($regex, $relative . ($isDir ? '/' : ''))) {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
+    public function hasProtectedDescendants(string $dirPath): bool {
+        return $this->ignore->hasProtectedDescendants($dirPath);
     }
 
     /**
@@ -407,98 +702,12 @@ class PathSecurity {
         return null;
     }
 
-    /**
-     * Convert a simplified gitignore pattern to a regex.
-     * Supports: * (non-slash wildcard), ** (zero or more directories),
-     * ? (single non-slash char), leading / (root anchor),
-     * trailing / (directory-only match).
-     *
-     * Returns null for empty/comment patterns, or an array:
-     *   'regex'    => compiled regex string
-     *   'needsScan' => bool, whether hasProtectedDescendants needs filesystem scan
-     *   'segments' => array of original segments (only when needsScan=false)
-     */
-    private function patternToRegex(string $pattern): ?array {
-        $pattern = trim($pattern);
-        if ($pattern === '' || $pattern[0] === '#') return null;
-
-        $anchored = str_starts_with($pattern, '/');
-        if ($anchored) $pattern = substr($pattern, 1);
-
-        $dirOnly = str_ends_with($pattern, '/');
-        if ($dirOnly) $pattern = rtrim($pattern, '/');
-
-        if ($pattern === '') return null;
-
-        $segments = explode('/', $pattern);
-        $hasGlobstar = in_array('**', $segments, true);
-
-        $inner = '';
-        $prevWasGlobstar = false;
-        $emittedAnything = false;
-
-        foreach ($segments as $seg) {
-            if ($seg === '**') {
-                $prevWasGlobstar = true;
-                continue;
-            }
-
-            $escaped = preg_quote($seg, '#');
-            $escaped = str_replace('\\*', '[^/]*', $escaped);
-            $escaped = str_replace('\\?', '[^/]', $escaped);
-
-            if ($prevWasGlobstar) {
-                if ($emittedAnything) {
-                    $inner .= '(?:/[^/]+)*/';
-                } else {
-                    $inner .= '(?:[^/]+/)*';
-                }
-                $prevWasGlobstar = false;
-            } elseif ($emittedAnything) {
-                $inner .= '/';
-            }
-
-            $inner .= $escaped;
-            $emittedAnything = true;
-        }
-
-        if ($prevWasGlobstar) {
-            if ($emittedAnything) {
-                $inner .= '(?:/.*)?';
-            } else {
-                $inner = '.*';
-            }
-        }
-
-        if ($anchored) {
-            $regex = '^' . $inner;
-        } else {
-            $regex = '(?:^|/)' . $inner;
-        }
-
-        if ($dirOnly) {
-            $regex .= '/';
-        } else {
-            $regex .= '(?:$|/)';
-        }
-
-        $needsScan = !$anchored || $hasGlobstar;
-        $flags = $this->caseInsensitive ? 'i' : '';
-
-        return [
-            'regex'     => '#' . $regex . '#' . $flags,
-            'needsScan' => $needsScan,
-            'segments'  => $needsScan ? null : $segments,
-        ];
-    }
-
     // ------------------------------------------------------------------
     // Composite validation helpers
     // ------------------------------------------------------------------
 
     /**
      * Reject an ignored path with the same code a missing path would use.
-     * Rename passes not_found.file; everyone else matches resolve()'s not_found.path.
      */
     public function assertNotIgnored(string $absPath, string $missingCode = 'not_found.path'): void {
         if ($this->isIgnored($absPath)) {
@@ -507,21 +716,18 @@ class PathSecurity {
     }
 
     /**
-     * Validate that a file can be modified (not ignored, extension not blocked).
-     * For write/edit operations on existing files.
+     * Validate that a file can be modified (not ignored, name not blocked).
      */
     public function assertCanModify(string $absPath): void {
         $this->assertNotIgnored($absPath);
         $basename = basename($absPath);
-        if (is_file($absPath) && $this->isExtensionBlocked($basename)) {
-            throw new ApiException('extension_blocked', 403);
+        if (is_file($absPath) && $this->isFilenameBlocked($basename)) {
+            throw new ApiException('filename_blocked', 403);
         }
     }
 
     /**
      * Resolve a relative path to an existing directory.
-     * Combines resolve() + assertNotIgnored() + is_dir check.
-     * Throws ApiException with appropriate error codes.
      */
     public function resolveExistingDir(string $relativePath): string {
         $absPath = $this->resolve($relativePath);
@@ -537,8 +743,6 @@ class PathSecurity {
 
     /**
      * Resolve a relative path to an existing file.
-     * Combines resolve() + assertNotIgnored() + is_file check.
-     * Throws ApiException with appropriate error codes.
      */
     public function resolveExistingFile(string $relativePath): string {
         $absPath = $this->resolve($relativePath);
@@ -554,22 +758,19 @@ class PathSecurity {
 
     /**
      * Assert that a path that is about to be created is allowed.
-     * Combines wouldBeIgnored() + isExtensionBlocked() (for files).
-     * Throws ApiException on violation.
+     * Combines wouldBeIgnored() + isFilenameBlocked() (for files).
      */
     public function assertCanCreateAt(string $absPath, bool $isDir): void {
         if ($this->wouldBeIgnored($absPath, $isDir)) {
             throw new ApiException('access_denied', 403);
         }
-        if (!$isDir && $this->isExtensionBlocked(basename($absPath))) {
-            throw new ApiException('extension_blocked', 403);
+        if (!$isDir && $this->isFilenameBlocked(basename($absPath))) {
+            throw new ApiException('filename_blocked', 403);
         }
     }
 
     /**
      * Filter a list of directory entries, removing ignored entries.
-     * When DOTFILES_BLOCK is enabled, dotfiles are caught by the implicit
-     * '.*' ignore pattern. Each entry must have a 'name' key.
      */
     public function filterEntries(array $entries, string $parentAbsPath): array {
         return array_values(array_filter($entries, function ($entry) use ($parentAbsPath) {
@@ -585,146 +786,6 @@ class PathSecurity {
             }
             return true;
         }));
-    }
-
-    // ------------------------------------------------------------------
-    // Directory descendant protection
-    // ------------------------------------------------------------------
-
-    /**
-     * Check if a directory contains any protected (ignored) descendants.
-     * Uses a tiered approach: quick prefix checks first, filesystem scan only when needed.
-     */
-    public function hasProtectedDescendants(string $dirPath): bool {
-        $normalized = str_replace('\\', '/', $dirPath);
-
-        foreach ($this->ignorePaths as $ip) {
-            if ($this->pathStartsWith($ip, $normalized . '/')) {
-                return true;
-            }
-        }
-
-        $dirRel = $this->getRelativePath($normalized);
-        if ($dirRel === null) return false;
-
-        foreach ($this->ignorePatternMeta as $meta) {
-            if ($meta['needsScan']) {
-                continue;
-            }
-            if ($this->patternCouldMatchInside($meta['segments'], $dirRel)) {
-                return true;
-            }
-        }
-
-        if (!$this->hasDeepPatterns) {
-            return false;
-        }
-
-        return $this->scanForProtectedDescendant($dirPath);
-    }
-
-    /**
-     * Check whether a root-anchored pattern (without **) could match
-     * items inside the given directory. Verifies that matching files
-     * actually exist via file_exists or narrow scandir for wildcard segments.
-     */
-    private function patternCouldMatchInside(array $patternSegments, string $dirRelPath): bool {
-        if ($dirRelPath === '') {
-            return $this->matchRemainingSegments($this->rootPath, $patternSegments);
-        }
-
-        $dirSegments = explode('/', trim($dirRelPath, '/'));
-
-        for ($i = 0; $i < count($dirSegments); $i++) {
-            if ($i >= count($patternSegments)) {
-                return false;
-            }
-            if (!$this->segmentMatches($dirSegments[$i], $patternSegments[$i])) {
-                return false;
-            }
-        }
-
-        if (count($patternSegments) > count($dirSegments)) {
-            $remaining = array_slice($patternSegments, count($dirSegments));
-            $basePath = $this->rootPath . '/' . implode('/', $dirSegments);
-            return $this->matchRemainingSegments($basePath, $remaining);
-        }
-
-        return true;
-    }
-
-    /**
-     * Recursively verify that at least one filesystem entry matches the
-     * remaining pattern segments beneath basePath. For literal segments
-     * uses file_exists; for wildcard segments does a narrow scandir.
-     * Fails closed (returns true) on scandir errors.
-     */
-    private function matchRemainingSegments(string $basePath, array $segments): bool {
-        if (empty($segments)) return true;
-
-        $segment = $segments[0];
-        $rest = array_slice($segments, 1);
-        $hasWild = strpos($segment, '*') !== false || strpos($segment, '?') !== false;
-
-        if (!$hasWild) {
-            $child = $basePath . '/' . $segment;
-            if (!file_exists($child)) return false;
-            return empty($rest) || $this->matchRemainingSegments($child, $rest);
-        }
-
-        $entries = @scandir($basePath);
-        if ($entries === false) return true;
-
-        foreach ($entries as $entry) {
-            if ($entry === '.' || $entry === '..') continue;
-            if (!$this->segmentMatches($entry, $segment)) continue;
-            if (empty($rest)) return true;
-            $child = $basePath . '/' . $entry;
-            if (is_dir($child) && $this->matchRemainingSegments($child, $rest)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Check if a concrete path segment matches a pattern segment
-     * (supports * and ? wildcards).
-     */
-    private function segmentMatches(string $actual, string $pattern): bool {
-        if ($this->caseInsensitive ? strcasecmp($pattern, $actual) === 0 : $pattern === $actual) return true;
-        $escaped = preg_quote($pattern, '#');
-        $escaped = str_replace('\\*', '[^/]*', $escaped);
-        $escaped = str_replace('\\?', '[^/]', $escaped);
-        $flags = $this->caseInsensitive ? 'i' : '';
-        return preg_match('#^' . $escaped . '$#' . $flags, $actual) === 1;
-    }
-
-    /**
-     * Scan a directory tree for any ignored descendant.
-     * Returns true at the first match (early exit). Fails closed on scandir error.
-     */
-    private function scanForProtectedDescendant(string $dirPath): bool {
-        $entries = @scandir($dirPath);
-        if ($entries === false) return true;
-
-        foreach ($entries as $entry) {
-            if ($entry === '.' || $entry === '..') continue;
-            $full = str_replace('\\', '/', $dirPath . '/' . $entry);
-
-            if ($this->isIgnored($full)) {
-                return true;
-            }
-
-            if (is_dir($full) && !is_link($full)) {
-                if ($this->scanForProtectedDescendant($full)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 
     // ------------------------------------------------------------------
@@ -753,24 +814,5 @@ class PathSecurity {
         if (str_contains($path, "\0")) {
             throw new ApiException('invalid_input', 400, ['field' => 'path']);
         }
-    }
-
-    /**
-     * Case-aware path equality comparison.
-     * Uses case-insensitive comparison on Windows.
-     */
-    private function pathEquals(string $a, string $b): bool {
-        return $this->caseInsensitive ? strcasecmp($a, $b) === 0 : $a === $b;
-    }
-
-    /**
-     * Case-aware str_starts_with for paths.
-     * Uses case-insensitive comparison on Windows.
-     */
-    private function pathStartsWith(string $haystack, string $prefix): bool {
-        if ($this->caseInsensitive) {
-            return strncasecmp($haystack, $prefix, strlen($prefix)) === 0;
-        }
-        return str_starts_with($haystack, $prefix);
     }
 }

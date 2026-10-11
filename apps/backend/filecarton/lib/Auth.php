@@ -737,14 +737,7 @@ class Auth {
 
     /**
      * Absolute URL of the entry script, for OAuth callback URLs.
-     *
-     * When FILECARTON_PUBLIC_ORIGIN is empty, the origin is taken from this
-     * request (HTTPS, port 443, X-Forwarded-Proto, and HTTP_HOST). A wrong
-     * Host or forwarded proto makes redirect_uri disagree with the IdP
-     * allowlist, so that login fails closed. It is not an open redirect of
-     * the FileCarton session. PHP header() rejects CR/LF, so the Location
-     * value cannot inject headers. Set FILECARTON_PUBLIC_ORIGIN when the
-     * process is not reached at its public origin.
+     * Set FILECARTON_PUBLIC_ORIGIN when auto-detected origin doesn't match the IdP allowlist.
      */
     public static function absoluteScriptUrl(): string {
         $origin = defined('FILECARTON_PUBLIC_ORIGIN') ? FILECARTON_PUBLIC_ORIGIN : '';

@@ -98,22 +98,28 @@ define_default('FILECARTON_SEARCH_MAX_SCAN', 100000);
 
 // ─── Security ────────────────────────────────────────────────────────────────
 
-// If non-empty, ONLY these extensions are allowed for file creation/modification.
-// Each entry includes the leading dot, e.g. ['.txt', '.md'].
-// '' matches files with no extension; '.' matches trailing-dot names.
-define_default('FILECARTON_EXTENSIONS_ALLOWLIST', []);
-
-// Extensions blocked from file creation/modification (ignored when ALLOWLIST is non-empty).
-// Same format as ALLOWLIST. Case-insensitive.
-// Note: These restrict file creation, upload, rename-to, and save operations.
-// Existing files with blocked extensions remain readable and downloadable.
-// Folder-level operations (copy, move, delete, rename) do NOT enforce extension rules.
-define_default('FILECARTON_EXTENSIONS_BLOCKLIST', [
-    '.php'
+// File name rules that restrict creation, upload, rename-to, and save operations.
+// Existing files with blocked names remain readable and downloadable.
+// Folder-level operations do NOT enforce these rules for files inside them.
+// Supported patterns (all case-insensitive):
+//   '*'          Block ALL file names.
+//   '*.php'      Block files ending with '.php'.
+//   '*.tar.gz'   Block files ending with '.tar.gz'.
+//   '.htaccess'  Block files whose name is exactly '.htaccess'.
+//   '!*.txt'     Allow files ending with '.txt' (Overriding any block rule).
+//   '!readme'    Allow files named exactly 'readme' (Overriding any block rule).
+// Allow (!) rules have priority. If ANY allow rule matches, the file is permitted
+// regardless of block rules. This lets you write e.g. ['*', '!*.txt', '!*.md']
+// to allow only .txt and .md files.
+define_default('FILECARTON_FILENAME_BLOCKLIST', [
+    '*.php',
+    '.htaccess',
+    '.user.ini',
+    'web.config',
 ]);
 
-// Gitignore-ish patterns matched against paths relative to FILECARTON_REPO_SETTING rootPath.
-// But it's not really gitignore.
+// Patterns matched against paths relative to FILECARTON_REPO_SETTING rootPath.
+// Folders and files matching any pattern are hidden and immutable.
 // Supports * (single-level wildcard), ** (multi-level), leading / (anchor to root),
 // trailing / (directories only).
 // Note: Patterns containing ** or unanchored patterns (without a leading /) require
@@ -131,7 +137,7 @@ define_default('FILECARTON_IGNORE_REALPATH', [
     __DIR__ . '/filecarton',
 ]);
 
-// When true, the API never returns dotfiles and users cannot create them.
+// When true, users cannot see or create dotfiles (hidden files).
 define_default('FILECARTON_DOTFILES_BLOCK', false);
 
 // When true, the frontend does not let users hide dotfiles.

@@ -78,7 +78,28 @@ export const usePreferencesStore = defineStore('preferences', () => {
 
   const config = window.__FILECARTON__
   const dotfilesConfig = config.dotfiles ?? { block: false, forceVisible: false }
-  const extensionsConfig = config.extensions ?? { allowlist: [], blocklist: [] }
+
+  // ── Filename blocklist (precompiled) ──
+  const rules = config.filenameBlocklist ?? []
+  let _blockAll = false
+  let _allowAll = false
+  const _blockSuffixes: string[] = []
+  const _allowSuffixes: string[] = []
+  const _blockExact = new Set<string>()
+  const _allowExact = new Set<string>()
+  for (const rule of rules) {
+    if (typeof rule !== 'string' || rule === '') continue
+    const allow = rule[0] === '!'
+    const pattern = allow ? rule.slice(1) : rule
+    if (pattern === '') continue
+    if (pattern === '*') {
+      allow ? (_allowAll = true) : (_blockAll = true)
+    } else if (pattern[0] === '*') {
+      ;(allow ? _allowSuffixes : _blockSuffixes).push(pattern.slice(1).toLowerCase())
+    } else {
+      ;(allow ? _allowExact : _blockExact).add(pattern.toLowerCase())
+    }
+  }
 
   const _showDotFiles = ref(saved.showDotFiles)
 
@@ -134,21 +155,22 @@ export const usePreferencesStore = defineStore('preferences', () => {
     })
   }
 
-  function getSecurityExtensionKey(filename: string): string {
-    if (filename.endsWith('.')) return '.'
-    const dot = filename.lastIndexOf('.')
-    if (dot < 0) return ''
-    return '.' + filename.slice(dot + 1).toLowerCase()
-  }
-
-  function isExtensionBlocked(filename: string): boolean {
-    const { allowlist, blocklist } = extensionsConfig
-    if (allowlist.length === 0 && blocklist.length === 0) return false
-    const key = getSecurityExtensionKey(filename)
-    if (allowlist.length > 0) {
-      return !allowlist.map(s => s.toLowerCase()).includes(key.toLowerCase())
+  function isFilenameBlocked(filename: string): boolean {
+    const lower = filename.toLowerCase()
+    const len = lower.length
+    // Phase 1: Allow rules — any match permits the file
+    if (_allowAll) return false
+    if (_allowExact.has(lower)) return false
+    for (const s of _allowSuffixes) {
+      if (len >= s.length && lower.endsWith(s)) return false
     }
-    return blocklist.map(s => s.toLowerCase()).includes(key.toLowerCase())
+    // Phase 2: Block rules — any match blocks the file
+    if (_blockAll) return true
+    if (_blockExact.has(lower)) return true
+    for (const s of _blockSuffixes) {
+      if (len >= s.length && lower.endsWith(s)) return true
+    }
+    return false
   }
 
   function isDotFileBlocked(filename: string): boolean {
@@ -235,7 +257,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
     dotFilesLockedReason,
     dotfilesConfig,
     resolvedTheme,
-    isExtensionBlocked,
+    isFilenameBlocked,
     isDotFileBlocked,
     setTableMaxWidth,
     init,

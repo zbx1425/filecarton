@@ -82,10 +82,8 @@ $configData['dotfiles'] = [
     'block'        => (bool)FILECARTON_DOTFILES_BLOCK,
     'forceVisible' => (bool)FILECARTON_DOTFILES_FORCE_VISIBLE,
 ];
-$configData['extensions'] = [
-    'allowlist' => FILECARTON_EXTENSIONS_ALLOWLIST,
-    'blocklist' => FILECARTON_EXTENSIONS_BLOCKLIST,
-];
+$configData['filenameBlocklist'] = defined('FILECARTON_FILENAME_BLOCKLIST')
+    ? FILECARTON_FILENAME_BLOCKLIST : [];
 $configData['auth'] = ['enabled' => false];
 if (!RepoSetting::embed()) {
     $configData['auth'] = Auth::frontendConfig();

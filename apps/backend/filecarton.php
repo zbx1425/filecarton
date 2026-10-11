@@ -68,6 +68,14 @@ function dispatch(): void {
         return;
     }
 
+    // Catch auth config errors before calling identity() — prevents
+    // uncaught exceptions from e.g. misconfigured NoLoginAuth.
+    if (!RepoSetting::embed() && Auth::configProblems() !== []) {
+        require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
+        render_error_page('FileCarton Self-Check Failed', Auth::configProblems(), 500);
+        return;
+    }
+
     // Standalone without identity → serve HTML shell (login page).
     if (!RepoSetting::embed() && Auth::identity() === null) {
         require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';

@@ -3,9 +3,9 @@
 namespace FileCarton;
 
 /**
- * API: archive (extract) — Extract a ZIP or TAR archive.
- * POST ?fcapi=archive
- * Body: { operation: "extract", path (archive file), targetPath, createSubdir?, dryRun? }
+ * API: archive_extract — Extract a ZIP or TAR archive.
+ * POST ?fcapi=archive_extract
+ * Body: { path (archive file), targetPath, createSubdir?, dryRun? }
  */
 
 function api_archive_extract(PathSecurity $pathSec, FileOps $fileOps): void {
@@ -98,6 +98,9 @@ function api_archive_extract(PathSecurity $pathSec, FileOps $fileOps): void {
 function check_extract_entry(string $normalized, string $finalTarget, PathSecurity $pathSec, bool $isDir): ?string {
     $segments = explode('/', $normalized);
     foreach ($segments as $seg) {
+        if (strpos($seg, "\0") !== false) {
+            return 'blocked.invalid';
+        }
         if (preg_match('#[:*?"<>|]#', $seg)) {
             return 'blocked.invalid';
         }
@@ -105,8 +108,8 @@ function check_extract_entry(string $normalized, string $finalTarget, PathSecuri
 
     if (!$isDir) {
         $basename = basename($normalized);
-        if ($pathSec->isExtensionBlocked($basename)) {
-            return 'blocked.extension';
+        if ($pathSec->isFilenameBlocked($basename)) {
+            return 'blocked.name';
         }
     }
 

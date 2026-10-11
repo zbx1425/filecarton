@@ -6,7 +6,7 @@
   "err.already_exists": "Name already exists",
   "err.access_denied": "Access denied",
   "err.invalid_filename": "Invalid filename",
-  "err.extension_blocked": "This file type is restricted",
+  "err.filename_blocked": "This file name is restricted",
   "err.protected_items": "Directory contains protected items",
   "err.readonly": "Read-only mode",
   "err.method_not_allowed": "Method not allowed",
@@ -37,7 +37,7 @@
   "err.archive.cannot_open": "Cannot open archive",
   "err.archive.size_exceeded": "Extracted data exceeds size limit ({limitGB} GB)",
 
-  "err.blocked.extension": "Blocked file extension",
+  "err.blocked.name": "Blocked by file name rules",
   "err.blocked.ignored": "Path is ignored by server rules",
   "err.blocked.invalid": "Invalid characters in path",
   "err.io_error": "I/O error",

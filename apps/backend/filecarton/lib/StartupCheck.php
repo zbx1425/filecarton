@@ -187,13 +187,6 @@ class StartupCheck {
             $p[] = 'FILECARTON_SESSION_NAME must start with a letter and contain only letters and digits.';
         }
 
-        // Auth configuration (standalone only)
-        if (class_exists(__NAMESPACE__ . '\\Auth', false) && !RepoSetting::embed()) {
-            foreach (Auth::configProblems() as $authProblem) {
-                $p[] = $authProblem;
-            }
-        }
-
         return $p;
     }
 
