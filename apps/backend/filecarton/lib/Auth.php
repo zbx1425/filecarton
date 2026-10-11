@@ -6,8 +6,17 @@ interface AuthProvider {
     /** Stable id used in URLs and session. ^[a-z][a-z0-9_]{0,31}$ */
     public function id(): string;
 
-    /** Button caption / form heading fragment. Not HTML. */
-    public function label(): string;
+    /**
+     * Button caption / form heading.
+     *
+     * Can return:
+     *   string                                    — literal text
+     *   ['key' => '...', 'params' => [...]]       — i18n key (params optional)
+     *   ['langs' => ['en' => '...'], 'params' => [...]] — per-locale (params optional)
+     *
+     * @return string|array
+     */
+    public function label();
 
     /** 'password' | 'redirect' | 'implicit' */
     public function kind(): string;
@@ -623,6 +632,61 @@ class Auth {
     }
 
     /**
+     * Sanitize a structured label from a provider.
+     *
+     * Accepts:
+     *   string               — literal text, returned as-is
+     *   ['key' => '...']     — i18n key, optionally with 'params'
+     *   ['langs' => [...]]   — per-locale messages, optionally with 'params'
+     *
+     * Returns the sanitized value (string or array), or '' on invalid input.
+     *
+     * @param mixed $label
+     * @return string|array
+     */
+    public static function sanitizeLabel($label) {
+        if (is_string($label)) return $label;
+        if (!is_array($label)) return '';
+
+        if (isset($label['key']) && is_string($label['key']) && $label['key'] !== '') {
+            $out = ['key' => $label['key']];
+            if (isset($label['params']) && is_array($label['params'])) {
+                $params = [];
+                foreach ($label['params'] as $k => $v) {
+                    if (is_string($k) && (is_string($v) || is_numeric($v))) {
+                        $params[$k] = (string)$v;
+                    }
+                }
+                if ($params) $out['params'] = $params;
+            }
+            return $out;
+        }
+
+        if (isset($label['langs']) && is_array($label['langs'])) {
+            $langs = [];
+            foreach ($label['langs'] as $locale => $msg) {
+                if (is_string($locale) && is_string($msg) && $locale !== '') {
+                    $langs[$locale] = $msg;
+                }
+            }
+            if (!$langs) return '';
+            $out = ['langs' => $langs];
+            if (isset($label['params']) && is_array($label['params'])) {
+                $params = [];
+                foreach ($label['params'] as $k => $v) {
+                    if (is_string($k) && (is_string($v) || is_numeric($v))) {
+                        $params[$k] = (string)$v;
+                    }
+                }
+                if ($params) $out['params'] = $params;
+            }
+            return $out;
+        }
+
+        return '';
+    }
+
+    /**
      * Try each PasswordAuth in boot order.
      * @return AuthIdentity|null
      */
@@ -691,9 +755,11 @@ class Auth {
         $out = [];
         foreach (self::$providers as $p) {
             if ($p instanceof NoLoginAuth) continue;
+            $label = self::sanitizeLabel($p->label());
+            if ($label === '' || $label === []) $label = $p->id();
             $row = [
                 'id'    => $p->id(),
-                'label' => $p->label(),
+                'label' => $label,
                 'kind'  => $p->kind(),
             ];
             if ($p instanceof RedirectAuth) {

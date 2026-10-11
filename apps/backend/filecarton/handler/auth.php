@@ -77,6 +77,10 @@ function auth_callback($pluginId): void {
     if ($pending === null) {
         throw new AuthException('expired', 401, 'Pending login missing');
     }
+    if ($plugin->isLinkOnly()) {
+        header('Location: ' . AuthPendingBag::returnLocation($pending), true, 302);
+        exit;
+    }
     $ctx = AuthContext::forComplete($plugin, $pending);
     $identity = $plugin->complete($ctx);
     Auth::establish($identity);

@@ -131,9 +131,14 @@ export interface FileCartonAuthPluginIcon {
   dark_tint?: string
 }
 
+export type PluginLabel =
+  | string
+  | { key: string; params?: Record<string, string> }
+  | { langs: Record<string, string>; params?: Record<string, string> }
+
 export interface FileCartonAuthPlugin {
   id: string
-  label: string
+  label: PluginLabel
   kind: 'password' | 'redirect'
   icon?: string | FileCartonAuthPluginIcon
 }

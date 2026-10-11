@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { usePreferencesStore } from '@/stores/preferences'
@@ -9,11 +10,31 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { LogIn } from '@lucide/vue'
-import type { FileCartonAuthPluginIcon } from '@/api/types'
+import type { FileCartonAuthPluginIcon, PluginLabel } from '@/api/types'
 
+const { t, locale, fallbackLocale } = useI18n()
 const auth = useAuthStore()
 const ui = useUiStore()
 const prefs = usePreferencesStore()
+
+function resolvePluginLabel(label: PluginLabel): string {
+  if (typeof label === 'string') return label
+  if ('key' in label && typeof label.key === 'string') {
+    return t(label.key, label.params ?? {})
+  }
+  if ('langs' in label && typeof label.langs === 'object' && label.langs !== null) {
+    const loc = typeof locale.value === 'string' ? locale.value : String(locale.value)
+    const fb = typeof fallbackLocale.value === 'string' ? fallbackLocale.value : 'en'
+    let msg = label.langs[loc] ?? label.langs[fb] ?? Object.values(label.langs)[0] ?? ''
+    if (label.params) {
+      for (const [k, v] of Object.entries(label.params)) {
+        msg = msg.replaceAll(`{${k}}`, v)
+      }
+    }
+    return msg
+  }
+  return String(label)
+}
 
 function iconMaskStyle(icon: FileCartonAuthPluginIcon) {
   const url = JSON.stringify(icon.mono_url)
@@ -157,10 +178,10 @@ function handleRedirect(pluginId: string) {
             <img
               v-else-if="plugin.icon && typeof plugin.icon === 'string'"
               :src="plugin.icon"
-              :alt="plugin.label"
+              alt=""
               class="w-5 h-5 shrink-0"
             />
-            <span>Continue with {{ plugin.label }}</span>
+            <span>{{ resolvePluginLabel(plugin.label) }}</span>
           </button>
         </div>
       </div>

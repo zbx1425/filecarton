@@ -14,9 +14,8 @@ define_default('FILECARTON_GRANT_RESOLVERS', [
 ]);
 
 define_default('FILECARTON_STATIC_USER_LIST', [
-    // TODO: CHANGE THIS! The default credentials are: admin -> pleasechange
-    // To generate a hash: php -r "echo password_hash('your-password', PASSWORD_DEFAULT), PHP_EOL;"
-    ['id' => 'admin', 'passwordHash' => '$2y$10$LMZ7KyE/x04sCii7K4pna.rLGqhnCTowBxUq/QKGvDa/K4XY9GLue']
+    // TODO: Set an admin password here
+    ['id' => 'admin', 'passwordHash' => '']
 ]);
 
 // If set, FileCarton will refuse to start if it is not embedded in another application.

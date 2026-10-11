@@ -1,8 +1,9 @@
 # Writing custom auth providers and grant resolvers
 
-This page is for developers who need authentication other than the built-in providers, or who need to look up user permissions from somewhere other than `STATIC_USER_LIST`.
+> For built-in password/OAuth configuration, see [config_auth.md](config_auth.md).
+> For embedding FileCarton in your own app, see [embedding.md](embedding.md).
 
-If you just want to configure passwords login, please see [config_auth.md](config_auth.md).
+This page is for developers who need authentication other than the built-in providers, or who need to look up user permissions from somewhere other than `STATIC_USER_LIST`.
 
 ## File layout
 
@@ -154,7 +155,7 @@ class GitLabOAuth extends OAuth2Auth {
     }
 
     public function id(): string { return 'gitlab'; }
-    public function label(): string { return 'GitLab'; }
+    public function label(): string { return ['key' => 'auth.oauth_continue', 'params' => ['service' => 'GitLab']]; }
 
     protected function authorizeEndpoint(): string { return $this->baseUrl . '/oauth/authorize'; }
     protected function tokenEndpoint(): string     { return $this->baseUrl . '/oauth/token'; }
@@ -199,7 +200,11 @@ define_default('FILECARTON_AUTH_PROVIDERS', [
 
 ## Custom redirect provider (non-OAuth)
 
-If your SSO does not speak OAuth 2.0, extend `FileCarton\RedirectAuth` directly. Or you can use this feature simply as a customizable button that leads somewhere on the login page (e.g. your own registration page). You can get an `AuthContext` that handles nonce generation, session storage, and callback URLs:
+If your SSO does not speak OAuth 2.0, extend `FileCarton\RedirectAuth` directly.
+
+> If you just need a link button on the login page (e.g. a "Register" button that opens an external URL and returns), use the built-in `LinkAuth` instead of writing a custom provider. See [config_auth.md](config_auth.md#link-buttons-eg-registration).
+
+For a custom non-OAuth SSO, you can get an `AuthContext` that handles nonce generation, session storage, and callback URLs:
 
 ```php
 <?php
@@ -259,7 +264,7 @@ class TicketSsoAuth extends RedirectAuth {
   | `config` | Server authentication configuration error |
   | `unknown` | An unexpected error occurred during authentication |
   | `invalid_credentials` | Invalid username or password |
-- YOu are advised against logging tokens, passwords, or response bodies.
+- You are advised against logging tokens, passwords, or response bodies.
 - Callbacks must be **GET** requests. POST callbacks are not supported.
 
 ## Provider icons
@@ -289,3 +294,9 @@ return [
 ```
 
 For monochrome SVGs, the SVG path should use an opaque fill (e.g. `fill="white"`) and a transparent background, so the CSS mask renders only the shape.
+
+## See also
+
+- [getting_started.md](getting_started.md): Quick setup for standalone or embedded deployment.
+- [config_auth.md](config_auth.md): Configuring built-in password/OAuth auth and link buttons.
+- [embedding.md](embedding.md): Embedding FileCarton in your existing PHP application.

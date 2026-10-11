@@ -48,6 +48,14 @@ abstract class RedirectAuth implements AuthProvider {
         );
     }
 
+    /**
+     * Whether this provider doesn't actually authenticate the user.
+     * When true, the callback handler skips complete() and Auth::establish().
+     */
+    public function isLinkOnly(): bool {
+        return false;
+    }
+
     /** Return an absolute URL to redirect the browser to. */
     abstract public function start(AuthContext $ctx): string;
 
@@ -121,7 +129,7 @@ class GitHubOAuth extends OAuth2Auth {
     }
 
     public function id(): string { return 'github'; }
-    public function label(): string { return 'GitHub'; }
+    public function label() { return ['key' => 'auth.oauth_continue', 'params' => ['service' => 'GitHub']]; }
 
     public function validateConfig(): array {
         $p = [];
@@ -176,7 +184,7 @@ class MicrosoftOAuth extends OAuth2Auth {
     }
 
     public function id(): string { return 'microsoft'; }
-    public function label(): string { return 'Microsoft'; }
+    public function label() { return ['key' => 'auth.oauth_continue', 'params' => ['service' => 'Microsoft']]; }
 
     public function validateConfig(): array {
         $p = [];
@@ -228,7 +236,7 @@ class GoogleOAuth extends OAuth2Auth {
     }
 
     public function id(): string { return 'google'; }
-    public function label(): string { return 'Google'; }
+    public function label() { return ['key' => 'auth.oauth_continue', 'params' => ['service' => 'Google']]; }
 
     public function validateConfig(): array {
         $p = [];
@@ -277,7 +285,7 @@ class DiscordOAuth extends OAuth2Auth {
     }
 
     public function id(): string { return 'discord'; }
-    public function label(): string { return 'Discord'; }
+    public function label() { return ['key' => 'auth.oauth_continue', 'params' => ['service' => 'Discord']]; }
 
     public function validateConfig(): array {
         $p = [];
@@ -315,5 +323,81 @@ class DiscordOAuth extends OAuth2Auth {
             throw new AuthException('exchange', 401, 'Discord user lookup failed');
         }
         return $this->makeIdentity((string)$user['id'], $displayName);
+    }
+}
+
+/**
+ * A built-in redirect provider that acts as a link button on the login page.
+ *
+ * It redirects to a configured URL (e.g. a registration page) and passes a
+ * return URL so the external site can send the user back. No authentication
+ * is performed on callback — the user simply returns to the login page.
+ *
+ * Config example:
+ *   ['class' => \FileCarton\LinkAuth::class,
+ *    'id' => 'register', 'url' => 'https://example.com/register',
+ *    'label' => ['key' => 'auth.register'], 'returnParam' => 'redirect_uri']
+ */
+class LinkAuth extends RedirectAuth {
+    /** @var string */
+    private $pluginId;
+    /** @var string */
+    private $url;
+    /** @var string|array */
+    private $pluginLabel;
+    /** @var string|array */
+    private $pluginIcon;
+    /** @var string */
+    private $returnParam;
+
+    public function __construct(array $opts = []) {
+        $this->pluginId    = isset($opts['id'])    ? (string)$opts['id']    : '';
+        $this->url         = isset($opts['url'])   ? (string)$opts['url']  : '';
+        $this->returnParam = isset($opts['returnParam']) ? (string)$opts['returnParam'] : 'redirect_uri';
+
+        $this->pluginLabel = isset($opts['label']) ? $opts['label'] : '';
+        if (!is_string($this->pluginLabel) && !is_array($this->pluginLabel)) {
+            $this->pluginLabel = '';
+        }
+
+        $this->pluginIcon = isset($opts['icon']) ? $opts['icon'] : '';
+        if (!is_string($this->pluginIcon) && !is_array($this->pluginIcon)) {
+            $this->pluginIcon = '';
+        }
+    }
+
+    public function id(): string { return $this->pluginId; }
+
+    /** @return string|array */
+    public function label() { return $this->pluginLabel; }
+
+    public function icon() { return $this->pluginIcon; }
+
+    public function isLinkOnly(): bool { return true; }
+
+    public function validateConfig(): array {
+        $p = [];
+        if (!preg_match(Auth::ID_PATTERN, $this->pluginId)) {
+            $p[] = 'LinkAuth id is missing or invalid (must match ' . Auth::ID_PATTERN . ').';
+        }
+        if ($this->url === '') {
+            $p[] = 'LinkAuth url is empty.';
+        } elseif (str_starts_with($this->url, 'https://') || str_starts_with($this->url, 'http://')) {
+            $p[] = 'LinkAuth url must start with https:// or http://.';
+        }
+        if ($this->returnParam === '') {
+            $p[] = 'LinkAuth returnParam is empty.';
+        }
+        return $p;
+    }
+
+    public function start(AuthContext $ctx): string {
+        $callbackUrl = $ctx->callbackUrl(true);
+        $sep = (strpos($this->url, '?') === false) ? '?' : '&';
+        return $this->url . $sep . rawurlencode($this->returnParam) . '=' . rawurlencode($callbackUrl);
+    }
+
+    public function complete(AuthContext $ctx): AuthIdentity {
+        throw new \RuntimeException('LinkAuth::complete() should never be called');
     }
 }

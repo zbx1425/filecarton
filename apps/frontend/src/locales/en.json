@@ -59,5 +59,8 @@
 
   "err.unknown_action": "Unknown action",
   "err.not_configured": "File manager is not configured",
-  "err.network_error": "Network error"
+  "err.network_error": "Network error",
+
+  "auth.oauth_continue": "Continue with {service}",
+  "auth.register": "Register"
 }

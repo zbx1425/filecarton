@@ -1,5 +1,7 @@
 # Embedding FileCarton
 
+> For standalone deployment, see [getting_started.md](getting_started.md) and [config_auth.md](config_auth.md) instead.
+
 FileCarton can be embedded into your PHP application, with its configuration dynamically provided by your own business logic.
 
 ## Basic setup
@@ -152,3 +154,9 @@ location ~ [^/]\.php(/|$) {
     fastcgi_pass unix:/var/run/php/php8.3-fpm.sock; 
 }
 ```
+
+## See also
+
+- [getting_started.md](getting_started.md): Quick setup, including a minimal embedded example.
+- [config_auth.md](config_auth.md): Built-in password/OAuth auth (for standalone deployments).
+- [auth_provider.md](auth_provider.md): Writing custom auth providers and grant resolvers.
