@@ -54,6 +54,7 @@
   "err.auth.config": "Server authentication configuration error",
   "err.auth.unknown": "An unexpected error occurred during authentication",
   "err.auth.invalid_credentials": "Invalid username or password",
+  "err.auth.not_set_up": "This user is not set up for login",
   "err.auth.disabled": "Built-in auth is disabled",
   "err.auth.csrf": "Session expired or CSRF token invalid, please reload",
 

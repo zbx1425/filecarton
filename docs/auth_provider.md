@@ -264,6 +264,7 @@ class TicketSsoAuth extends RedirectAuth {
   | `config` | Server authentication configuration error |
   | `unknown` | An unexpected error occurred during authentication |
   | `invalid_credentials` | Invalid username or password |
+  | `not_set_up` | This user is not set up for login |
 - You are advised against logging tokens, passwords, or response bodies.
 - Callbacks must be **GET** requests. POST callbacks are not supported.
 

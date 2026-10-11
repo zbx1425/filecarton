@@ -33,7 +33,7 @@ class StaticPasswordAuth extends PasswordAuth {
             $this->users = [];
             foreach (Auth::staticUserList() as $row) {
                 if (!is_array($row) || !isset($row['id']) || !is_string($row['id'])) continue;
-                if (isset($row['passwordHash']) && is_string($row['passwordHash']) && $row['passwordHash'] !== '') {
+                if (isset($row['passwordHash']) && is_string($row['passwordHash'])) {
                     $this->users[$row['id']] = $row['passwordHash'];
                 }
             }
@@ -63,6 +63,9 @@ class StaticPasswordAuth extends PasswordAuth {
             // Prevent timing-based attack
             password_verify($password, self::DUMMY);
             return null;
+        }
+        if ($this->users[$username] === '') {
+            throw new AuthException('not_set_up', 403, 'Password not set');
         }
         if (!password_verify($password, $this->users[$username])) {
             return null;

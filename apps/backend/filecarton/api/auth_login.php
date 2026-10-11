@@ -12,6 +12,8 @@ function api_auth_login($pathSec = null, $fileOps = null) {
     } catch (AuthException $e) {
         if ($e->token === 'allowlist') {
             Response::error('auth.allowlist', 403, ['id' => $e->identityId ?? ''], 'allowlist');
+        } else if ($e->token === 'not_set_up') {
+            Response::error('auth.not_set_up', 403);
         }
         throw $e;
     }

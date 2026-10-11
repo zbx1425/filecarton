@@ -52,7 +52,7 @@ class AuthIdentity {
 }
 
 class AuthException extends \RuntimeException {
-    /** @var string SPA token: denied|expired|allowlist|exchange|config|unknown */
+    /** @var string SPA token: denied|expired|allowlist|exchange|config|unknown|not_set_up */
     public $token;
     /** @var string|null Identity id when relevant (e.g. allowlist) */
     public $identityId;
@@ -701,6 +701,12 @@ class Auth {
             if (!$p instanceof PasswordAuth) continue;
             try {
                 $identity = $p->verify($username, $password);
+            } catch (AuthException $e) {
+                if ($e->token === 'not_set_up') {
+                    throw $e;
+                }
+                error_log('FileCarton auth: provider ' . $p->id() . ' verify failed: ' . $e->getMessage());
+                continue;
             } catch (\Throwable $e) {
                 error_log('FileCarton auth: provider ' . $p->id() . ' verify failed: ' . $e->getMessage());
                 continue;
