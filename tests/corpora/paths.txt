@@ -1,0 +1,21 @@
+# One path per line. Blank lines and # comments are ignored.
+../bob/secret.txt
+..\bob\secret.txt
+/../bob/secret.txt
+....//../bob/secret.txt
+..%2Fbob/secret.txt
+%2e%2e/bob/secret.txt
+..\\..\\outside\\secret.txt
+C:/Windows/win.ini
+hello.txt
+./hello.txt
+hello.txt/../../bob/secret.txt
+.hidden
+shell.php
+hidden.txt
+file.php::$DATA
+hello.txt.
+hello.txt 
+SHELL.PHP
+//bob/secret.txt
+foo/../../../bob/secret.txt

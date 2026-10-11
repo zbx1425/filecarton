@@ -1,0 +1,11 @@
+{
+    "name": "filecarton/backend-tests",
+    "description": "In-process tests for FileCarton security helpers. The application itself stays dependency-free.",
+    "require-dev": {
+        "phpunit/phpunit": "^10.5",
+        "nikic/php-fuzzer": "^0.0.11"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

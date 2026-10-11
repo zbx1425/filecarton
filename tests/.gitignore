@@ -1,0 +1,12 @@
+/.tools/
+
+/php/fuzz-crashes/
+
+.hypothesis/
+.pytest_cache/
+
+__pycache__
+.venv/
+
+vendor/
+.phpunit.cache/

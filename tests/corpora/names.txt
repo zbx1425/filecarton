@@ -1,0 +1,22 @@
+# Names passed to create/rename/upload. Expect rejection, or an existing file left in place.
+shell.php
+SHELL.PHP
+.htaccess
+.user.ini
+web.config
+.htaccess.txt.php
+a.php
+foo.php.
+..
+.
+a<b
+a>b
+a:b
+a|b
+a?b
+a*b
+a"b
+trailing.
+trailing 
+..\\..\\outside.txt
+foo/bar

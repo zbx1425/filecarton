@@ -580,7 +580,7 @@ class PathSecurity {
      * Remove dangerous characters from a filename, keeping it usable.
      */
     public function sanitizeFileName(string $name): string {
-        $name = str_replace("\0", '', $name);
+        $name = preg_replace('/[\x00-\x1F\x7F]/', '', $name);
         $name = str_replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], '', $name);
         $name = rtrim($name, '. ');
         if ($name === '' || $name === '.' || $name === '..') {
@@ -594,7 +594,7 @@ class PathSecurity {
      */
     public function isValidFileName(string $name): bool {
         if ($name === '' || $name === '.' || $name === '..') return false;
-        if (str_contains($name, "\0")) return false;
+        if (preg_match('/[\x00-\x1F\x7F]/', $name)) return false;
         if (preg_match('#[/\\\\:*?"<>|]#', $name)) return false;
         if (trim($name, '. ') === '') return false;
         if (str_ends_with($name, '.') || str_ends_with($name, ' ')) return false;
