@@ -4,12 +4,9 @@ namespace FileCarton;
 
 function handle_auth(): void {
     $action = $_GET['fcauth'] ?? '';
-    $pluginId = isset($_GET['plugin']) && is_string($_GET['plugin']) ? $_GET['plugin'] : '';
     if ($action === 'callback') {
-        $token = $_GET['state'] ?? $_GET['fc_nonce'] ?? '';
-        $token = is_string($token) ? $token : '';
-        $peeked = ($pluginId !== '' && $token !== '')
-            ? AuthPendingBag::peek($pluginId, $token) : null;
+        $state = isset($_GET['state']) && is_string($_GET['state']) ? $_GET['state'] : '';
+        $peeked = ($state !== '') ? AuthPendingBag::peek($state) : null;
         $pendingForCatch = $peeked !== null
             ? $peeked : AuthPendingBag::emptyReturnContext();
     } else {
@@ -21,6 +18,7 @@ function handle_auth(): void {
             throw new AuthException('config', 500, 'Auth misconfigured');
         }
         if ($action === 'start') {
+            $pluginId = isset($_GET['plugin']) && is_string($_GET['plugin']) ? $_GET['plugin'] : '';
             auth_start($pluginId);
             return;
         }
@@ -28,7 +26,7 @@ function handle_auth(): void {
             if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
                 throw new AuthException('unknown', 405, 'Callback must be GET');
             }
-            auth_callback($pluginId);
+            auth_callback();
             return;
         }
         throw new AuthException('unknown', 400, 'Unknown auth action');
@@ -62,20 +60,16 @@ function auth_start($pluginId): void {
     exit;
 }
 
-function auth_callback($pluginId): void {
+function auth_callback(): void {
+    $state = isset($_GET['state']) && is_string($_GET['state']) ? $_GET['state'] : '';
+    $pending = AuthPendingBag::consume($state);
+    if ($pending === null) {
+        throw new AuthException('expired', 401, 'Pending login missing');
+    }
+    $pluginId = $pending['plugin'] ?? '';
     $plugin = Auth::pluginById($pluginId);
     if (!$plugin instanceof RedirectAuth) {
         throw new AuthException('config', 400, 'Unknown redirect plugin');
-    }
-    $token = '';
-    if (isset($_GET['state']) && is_string($_GET['state']) && $_GET['state'] !== '') {
-        $token = $_GET['state'];
-    } elseif (isset($_GET['fc_nonce']) && is_string($_GET['fc_nonce']) && $_GET['fc_nonce'] !== '') {
-        $token = $_GET['fc_nonce'];
-    }
-    $pending = AuthPendingBag::consume($plugin->id(), $token);
-    if ($pending === null) {
-        throw new AuthException('expired', 401, 'Pending login missing');
     }
     if ($plugin->isLinkOnly()) {
         header('Location: ' . AuthPendingBag::returnLocation($pending), true, 302);

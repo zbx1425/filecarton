@@ -90,13 +90,11 @@ The following OAuth providers are built in:
 | `GoogleOAuth` | `google:<sub>` | The `sub` is a stable numeric string from Google's OpenID Connect. Find it at the OAuth consent screen or via the userinfo endpoint. |
 | `DiscordOAuth` | `discord:<snowflake id>` | The snowflake is the user's numeric ID visible in Discord developer mode. |
 
-All providers accept `clientId` and `clientSecret` in the config array.
-
-You'll need to create an OAuth app on the provider's website and get the client ID and client secret.
-
-You'll need to whitelist users by adding them to `FILECARTON_STATIC_USER_LIST` with the provider-prefixed ID (see the table above).
-
-If the user's ID does not match any row in `FILECARTON_STATIC_USER_LIST`, the user will see "This account is not allowed to log in" along with their account ID (e.g. `github:583231`), which they can forward to the administrator for whitelisting.
+- All providers accept `clientId` and `clientSecret` in the config array.
+- You'll need to create an OAuth app on the provider's website and get the client ID and client secret.  
+  **NOTE:** The redirect URL should be set as `http(s)://.../...php`**`?fcauth=callback`**!
+- You'll need to whitelist users by adding them to `FILECARTON_STATIC_USER_LIST` with the provider-prefixed ID (see the table above).
+  If the user's ID does not match any row in `FILECARTON_STATIC_USER_LIST`, the user will see "This account is not allowed to log in" along with their account ID (e.g. `github:583231`), which they can forward to the administrator for whitelisting.
 
 If you want to automatically allow all users from a certain OAuth provider to be granted access, you should write your custom `GrantResolver`. By doing so you can also do fancy things like automatically assigning users their own folder.
 

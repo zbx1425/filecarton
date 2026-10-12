@@ -104,20 +104,24 @@ class AuthContext {
     }
 
     /**
-     * Absolute callback URL. Pass true to append fc_nonce= (non-OAuth IdPs).
+     * Absolute callback URL.
+     *
+     * Pass true to embed the state (nonce) in the URL itself — used by
+     * non-OAuth redirect providers whose external site round-trips the
+     * full URL.  OAuth providers leave this false; the IdP appends
+     * &state= on its own.
      */
-    public function callbackUrl($includeNonce = false): string {
-        $url = Auth::absoluteScriptUrl() . '?fcauth=callback&plugin='
-            . rawurlencode($this->plugin->id());
-        if ($includeNonce) {
-            $url .= '&fc_nonce=' . rawurlencode($this->nonce());
+    public function callbackUrl($includeState = false): string {
+        $url = Auth::absoluteScriptUrl() . '?fcauth=callback';
+        if ($includeState) {
+            $url .= '&state=' . rawurlencode($this->nonce());
         }
         return $url;
     }
 
-    /** OAuth state `{pluginId}.{nonce}`. */
+    /** Opaque state value (nonce) for the OAuth state parameter. */
     public function stateKey(): string {
-        return $this->plugin->id() . '.' . $this->nonce();
+        return $this->nonce();
     }
 
     public function param($key) {
@@ -206,32 +210,38 @@ class AuthPendingBag {
         return $nonce;
     }
 
-    public static function peek(string $pluginId, $signedOrNonce): ?array {
+    /**
+     * Look up a pending entry by its state (nonce) without consuming it.
+     *
+     * @param string $state The opaque state value (32-char hex nonce).
+     */
+    public static function peek($state): ?array {
         Auth::ensureSession();
-        $nonce = self::extractNonce($pluginId, $signedOrNonce);
+        $nonce = self::extractNonce($state);
         if ($nonce === null) return null;
         if (empty($_SESSION[self::SESSION_KEY][$nonce])
             || !is_array($_SESSION[self::SESSION_KEY][$nonce])) {
             return null;
         }
-        $row = $_SESSION[self::SESSION_KEY][$nonce];
-        if (($row['plugin'] ?? '') !== $pluginId) return null;
-        return $row;
+        return $_SESSION[self::SESSION_KEY][$nonce];
     }
 
-    public static function consume(string $pluginId, $signedOrNonce): ?array {
+    /**
+     * Consume (look up + delete) a pending entry by its state (nonce).
+     *
+     * @param string $state The opaque state value (32-char hex nonce).
+     * @return array|null The pending row including 'plugin', or null.
+     */
+    public static function consume($state): ?array {
         Auth::ensureSession();
         self::gc();
-        $nonce = self::extractNonce($pluginId, $signedOrNonce);
+        $nonce = self::extractNonce($state);
         if ($nonce === null) return null;
         if (empty($_SESSION[self::SESSION_KEY][$nonce])
             || !is_array($_SESSION[self::SESSION_KEY][$nonce])) {
             return null;
         }
         $row = $_SESSION[self::SESSION_KEY][$nonce];
-        if (($row['plugin'] ?? '') !== $pluginId) {
-            return null;
-        }
         unset($_SESSION[self::SESSION_KEY][$nonce]);
         if (!isset($row['extra']) || !is_array($row['extra'])) {
             $row['extra'] = [];
@@ -240,17 +250,12 @@ class AuthPendingBag {
     }
 
     /**
-     * Extract nonce from a state string.
-     * Accepts: bare nonce (32-char hex), or "{pluginId}.{nonce}" format.
+     * Validate and extract a 32-char hex nonce from the state value.
      */
-    private static function extractNonce(string $pluginId, $signedOrNonce): ?string {
-        if (!is_string($signedOrNonce) || $signedOrNonce === '') return null;
-        if (preg_match('/^[a-f0-9]{32}$/', $signedOrNonce)) {
-            return $signedOrNonce;
-        }
-        $parts = explode('.', $signedOrNonce, 3);
-        if (count($parts) >= 2 && $parts[0] === $pluginId && preg_match('/^[a-f0-9]{32}$/', $parts[1])) {
-            return $parts[1];
+    private static function extractNonce($state): ?string {
+        if (!is_string($state) || $state === '') return null;
+        if (preg_match('/^[a-f0-9]{32}$/', $state)) {
+            return $state;
         }
         return null;
     }

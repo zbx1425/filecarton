@@ -227,8 +227,7 @@ class TicketSsoAuth extends RedirectAuth {
     public function label(): string { return 'Company SSO'; }
 
     public function start(AuthContext $ctx): string {
-        // $ctx->callbackUrl(true) appends ?fc_nonce=... so you can
-        // round-trip the nonce without using OAuth's state parameter.
+        // $ctx->callbackUrl(true) appends &state=... so you can round-trip the context.
         return $this->ssoLogin . '?return=' . rawurlencode($ctx->callbackUrl(true));
     }
 
