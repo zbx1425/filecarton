@@ -23,7 +23,61 @@ If the plugin file sits inside a directory managed by FileCarton, FileCarton wil
 
 ## Custom grant resolver
 
-Implement `FileCarton\GrantResolver`:
+Implement the `resolve(AuthIdentity $identity) : ?RepoSetting` method in your custom `GrantResolver` class.  
+It should return a `RepoSetting` override object if the user is allowed to access files, or `null` to deny access and pass it to the next resolver configured in `FILECARTON_GRANT_RESOLVERS`.
+
+You can expect those fields from the `AuthIdentity` object:
+- `pluginId` - The ID of the `AuthProvider` that authenticated this user.
+- `id` - The user's ID.
+- `displayName` - The user's display name.
+- `extra` - An array for extra data an `AuthProvider` might want to pass to the grant resolver.
+
+An example that whitelists everybody coming from e.g. your internal SSO OAuth:
+
+```php
+<?php
+namespace MyApp;
+
+use FileCarton\GrantResolver;
+use FileCarton\AuthIdentity;
+use FileCarton\RepoSetting;
+
+class SsoWhitelistGrantResolver implements GrantResolver {
+
+    public function __construct(array $opts = []) {
+        
+    }
+
+    public function resolve(AuthIdentity $identity) {
+        if ($identity->pluginId !== 'internalsso') {
+            return null;
+        }
+        return new RepoSetting();
+    }
+}
+```
+
+To wire that into the config:
+
+```php
+define_default('FILECARTON_GRANT_RESOLVERS', [
+    ['file' => __DIR__ . '/sso_whitelist_grant.php', 'class' => \MyApp\SsoWhitelistGrantResolver::class,],
+    ['class' => \FileCarton\StaticGrantResolver::class],
+]);
+```
+
+`GRANT_RESOLVERS` are evaluated in a chained fashion. Each resolver either returns a `RepoSetting` or returns `null` to pass. The first non-null result is combined with the default `FILECARTON_REPO_SETTING` from the config file. If every resolver returns null, the user is denied access (files are closed for that user).
+
+`RepoSetting` fields (when used as a grant override, `null` means inherit the default):
+
+| Field | Effect of `null` | Effect of a value |
+|---|---|---|
+| `rootPath` | Inherit `FILECARTON_REPO_SETTING['rootPath']` | Use this directory instead. Resolved via `realpath()`; if the directory does not exist, the user gets "not configured." |
+| `readonly` | Inherit `FILECARTON_REPO_SETTING['readonly']` | `true` forces read-only; `false` forces writable. Neither can override `FILECARTON_MUST_READONLY` (when it is `true`, the instance is always read-only). |
+| `branding` | Inherit `FILECARTON_REPO_SETTING['branding']` | String (including `''`) overrides. |
+| `repoName` | Inherit `FILECARTON_REPO_SETTING['repoName']` | String (including `''`) overrides. |
+
+An example that looks up the user's directory from a database:
 
 ```php
 <?php
@@ -60,7 +114,7 @@ class DbGrantResolver implements GrantResolver {
 }
 ```
 
-Wire it into the config:
+To wire that into the config:
 
 ```php
 define_default('FILECARTON_GRANT_RESOLVERS', [
@@ -68,17 +122,6 @@ define_default('FILECARTON_GRANT_RESOLVERS', [
     ['class' => \FileCarton\StaticGrantResolver::class],
 ]);
 ```
-
-`GRANT_RESOLVERS` are evaluated in a chained fashion. Each resolver either returns a `RepoSetting` or returns `null` to pass. The first non-null result is combined with the default `FILECARTON_REPO_SETTING` from the config file. If every resolver returns null, the user is denied access (files are closed for that user).
-
-`RepoSetting` fields (when used as a grant override, `null` means inherit the default):
-
-| Field | Effect of `null` | Effect of a value |
-|---|---|---|
-| `rootPath` | Inherit `FILECARTON_REPO_SETTING['rootPath']` | Use this directory instead. Resolved via `realpath()`; if the directory does not exist, the user gets "not configured." |
-| `readonly` | Inherit `FILECARTON_REPO_SETTING['readonly']` | `true` forces read-only; `false` forces writable. Neither can override `FILECARTON_MUST_READONLY` (when it is `true`, the instance is always read-only). |
-| `branding` | Inherit `FILECARTON_REPO_SETTING['branding']` | String (including `''`) overrides. |
-| `repoName` | Inherit `FILECARTON_REPO_SETTING['repoName']` | String (including `''`) overrides. |
 
 
 ## Custom password auth provider

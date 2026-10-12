@@ -52,8 +52,8 @@ function auth_start($pluginId): void {
     $nonce = AuthPendingBag::create($plugin->id());
     $ctx = AuthContext::forStart($plugin, $nonce);
     $url = $plugin->start($ctx);
-    if (!is_string($url) || strpbrk($url, "\r\n\0") !== false
-        || !preg_match('#^https?://#i', $url)) {
+    if (!is_string($url) || strpbrk($url, "\r\n\0") !== false) {
+        // NOTE: URL does not have to be full, e.g. LinkAuth can provide a path on the same domain
         throw new AuthException('config', 500, 'Plugin start URL rejected');
     }
     header('Location: ' . $url, true, 302);

@@ -96,7 +96,7 @@ The following OAuth providers are built in:
 - You'll need to whitelist users by adding them to `FILECARTON_STATIC_USER_LIST` with the provider-prefixed ID (see the table above).
   If the user's ID does not match any row in `FILECARTON_STATIC_USER_LIST`, the user will see "This account is not allowed to log in" along with their account ID (e.g. `github:583231`), which they can forward to the administrator for whitelisting.
 
-If you want to automatically allow all users from a certain OAuth provider to be granted access, you should write your custom `GrantResolver`. By doing so you can also do fancy things like automatically assigning users their own folder.
+If you want to automatically allow all users from a certain OAuth provider to be granted access, you should write your custom `GrantResolver`. (See [auth_provider.md](auth_provider.md)) By doing so you can also do fancy things like automatically assigning users their own folder.
 
 If your server is behind a reverse proxy, set `FILECARTON_PUBLIC_ORIGIN` so the OAuth redirect URL is correct:
 
@@ -183,6 +183,8 @@ define_default('FILECARTON_STATIC_USER_LIST', [
     ['id' => 'github:583231', 'displayName' => 'octocat', 'root' => '/srv/files/shared'], 
 ]);
 ```
+
+If you are not using either `StaticPasswordAuth` nor `StaticGrantResolver` (i.e. you have written a custom `GrantResolver`), then you don't need to add any users to the user list.
 
 ## Grant resolvers
 
