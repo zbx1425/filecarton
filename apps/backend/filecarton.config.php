@@ -171,6 +171,9 @@ define_default('FILECARTON_SENDFILE', false);
 // When empty, assets are served by the PHP script via '?fcres=assets/main-xxxxxxxx.css'.
 define_default('FILECARTON_ASSET_URL', '');
 
+// Proxy URL for HTTP client (for e.g. OAuth identity fetching)
+define_default('FILECARTON_HTTP_CLIENT_PROXY', '');
+
 
 
 // ─── Misc ────────────────────────────────────────────────────────────────────

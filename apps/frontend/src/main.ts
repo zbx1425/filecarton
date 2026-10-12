@@ -16,7 +16,7 @@ const fcReturnHash = startUrl.searchParams.get('fc_return_hash')
 const fcAuthError = startUrl.searchParams.get('fc_auth_error')
 const fcAuthErrorId = startUrl.searchParams.get('fc_auth_error_id')
 const KNOWN_AUTH_TOKENS = new Set(['denied', 'expired', 'allowlist', 'exchange', 'config', 'unknown', 'bad_root', 'not_set_up'])
-const AUTH_ID_PATTERN = /^[a-zA-Z0-9._@-]+$/
+const AUTH_ID_PATTERN = /^[a-zA-Z0-9:._@-]+$/
 
 if (fcReturnHash || fcAuthError) {
   startUrl.searchParams.delete('fc_return_hash')
