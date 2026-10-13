@@ -21,7 +21,9 @@ Copy `filecarton.php` and `filecarton.config.php` to somewhere your web server c
 
 ### 2. Set a password
 
-Open `filecarton.config.php`. Find `FILECARTON_STATIC_USER_LIST` and replace the default hash:
+Open `filecarton.config.php`. Find `FILECARTON_STATIC_USER_LIST` and replace the default hash.
+
+Run this command in terminal to compute a password hash:
 
 ```bash
 php -r "echo password_hash('<your-password>', PASSWORD_DEFAULT), PHP_EOL;"

@@ -10,6 +10,7 @@
 <p>
 <img src="images/fc-demo-1.png" width="640" alt="FileCarton Demo 1 showing the folder view" />
 <img src="images/fc-demo-2.png" width="640" alt="FileCarton Demo 2 showing the editor" />
+<img src="images/fc-demo-3.png" width="640" alt="FileCarton Demo 2 showing the login page" />
 </p>
 
 
