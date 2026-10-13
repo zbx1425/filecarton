@@ -710,10 +710,10 @@ class Auth {
                 if ($e->token === 'not_set_up') {
                     throw $e;
                 }
-                error_log('FileCarton auth: provider ' . $p->id() . ' verify failed: ' . $e->getMessage());
+                error_log('FC(auth)(' . $p->id() . '): ' . $e->getMessage());
                 continue;
             } catch (\Throwable $e) {
-                error_log('FileCarton auth: provider ' . $p->id() . ' verify failed: ' . $e->getMessage());
+                error_log('FC(auth)(' . $p->id() . '): ' . $e->getMessage());
                 continue;
             }
             if ($identity instanceof AuthIdentity) {

@@ -143,7 +143,7 @@ class Grants {
             try {
                 $g = $r->resolve($identity);
             } catch (\Throwable $e) {
-                error_log('FileCarton auth: grant resolver threw: ' . $e->getMessage());
+                error_log('FC(auth): ' . $e->getMessage());
                 continue;
             }
             if ($g instanceof RepoSetting) return $g;

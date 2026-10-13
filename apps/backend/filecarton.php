@@ -39,7 +39,7 @@ function dispatch(): void {
     if (defined('FILECARTON_MUST_EMBED') && FILECARTON_MUST_EMBED 
         && !RepoSetting::embed()) {
         require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
-        render_error_page('FileCarton Self-Check Failed', [
+        render_error_page([
             'FileCarton is configured to require embedding.',
         ], 403);
         return;
@@ -72,7 +72,7 @@ function dispatch(): void {
     // uncaught exceptions from e.g. misconfigured NoLoginAuth.
     if (!RepoSetting::embed() && Auth::configProblems() !== []) {
         require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
-        render_error_page('FileCarton Self-Check Failed', Auth::configProblems(), 500);
+        render_error_page(Auth::configProblems(), 500);
         return;
     }
 
@@ -91,7 +91,7 @@ function dispatch(): void {
             $msg = $token === 'bad_root'
                 ? 'The root directory for this account is not a valid directory.'
                 : 'No grant found for the current identity.';
-            render_error_page('FileCarton Self-Check Failed', [$msg], 403);
+            render_error_page([$msg], 403);
             return;
         }
         // Interactive login: clear session once, show login page with error.
@@ -110,7 +110,7 @@ function dispatch(): void {
 
     if (!RepoSetting::filesOpen()) {
         require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
-        render_error_page('FileCarton Self-Check Failed', ['rootPath is invalid.'], 403);
+        render_error_page(['rootPath is invalid.'], 403);
         exit;
     }
 

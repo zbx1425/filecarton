@@ -29,7 +29,7 @@ class HttpClient {
      */
     public static function assertSuccess(array $resp, string $context = 'HTTP request'): void {
         if ($resp['status'] >= 200 && $resp['status'] < 300) return;
-        error_log('FileCarton auth: ' . $context . ' HTTP ' . $resp['status']);
+        error_log('FC(http): ' . $context . ': ' . $resp['status']);
         throw new AuthException('exchange', 401, $context . ' HTTP ' . $resp['status']);
     }
 
@@ -46,7 +46,6 @@ class HttpClient {
         }
 
         $ch = curl_init($url);
-        error_log($url);
         if ($ch === false) {
             throw new \RuntimeException('HTTP request failed', 502);
         }
@@ -70,7 +69,7 @@ class HttpClient {
         curl_setopt_array($ch, $opts);
         $raw = curl_exec($ch);
         if ($raw === false) {
-            error_log('FileCarton: HTTP transport failed: ' . curl_error($ch));
+            error_log('FC(http): ' . curl_error($ch));
             curl_close($ch);
             throw new \RuntimeException('HTTP request failed', 502);
         }

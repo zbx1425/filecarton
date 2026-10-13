@@ -34,7 +34,7 @@ function handle_auth(): void {
         $code = (int)$e->getCode();
         if ($code < 400 || $code >= 600) $code = 500;
         if ($code >= 500) {
-            error_log('FileCarton auth: ' . $e->getMessage());
+            error_log('FC(auth): ' . $e->getMessage());
         }
         $token = Auth::errorToken($e);
         $errorId = ($e instanceof AuthException) ? $e->identityId : null;

@@ -136,4 +136,5 @@ FileCarton's built-in auth is disabled and your logic controls its configuration
 - PHP's default `upload_max_filesize` and `post_max_size` are small (often 2 MB).
   You should raise them to at least match `FILECARTON_UPLOAD_CHUNK_SIZE` (default 4 MB). Nginx has its own `client_max_body_size` that you may also need to increase.
   *(While reducing `FILECARTON_UPLOAD_CHUNK_SIZE` can also get it working, it's generally not a good idea.)*
+- If you're using IIS, it's a good idea to set `fastcgi.logging = 0` in `php.ini`.
 - FileCarton is configured by default to hide its own files (`filecarton.php`, `filecarton.config.php`) from the file listing automatically.

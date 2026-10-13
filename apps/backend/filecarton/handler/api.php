@@ -78,7 +78,7 @@ try {
     $code = $e->getCode();
     Response::error('server_error', ($code >= 400 && $code < 600) ? $code : 500);
 } catch (\Throwable $e) {
-    error_log('FileCarton error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+    error_log('FC(api): ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
     Response::error('server_error', 500);
 }
 }

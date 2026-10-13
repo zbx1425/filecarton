@@ -12,11 +12,10 @@ namespace FileCarton;
 /**
  * Render a simple error page for configuration/access errors.
  *
- * @param string   $title      Page heading
  * @param string[] $messages   One or more error messages (rendered as <ul> list)
  * @param int      $httpStatus HTTP status code
  */
-function render_error_page(string $title, array $messages, int $httpStatus = 403): void {
+function render_error_page(array $messages, int $httpStatus = 403): void {
     http_response_code($httpStatus);
     $items = '';
     foreach ($messages as $msg) {
@@ -26,7 +25,7 @@ function render_error_page(string $title, array $messages, int $httpStatus = 403
         . '<meta name="viewport" content="width=device-width, initial-scale=1">'
         . '<title>FileCarton</title></head><body>'
         . '<div style="margin:4em auto;max-width:60em;font-family:Arial,sans-serif">'
-        . '<h1>' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</h1>'
+        . '<h2>FileCarton Startup Issues</h2>'
         . '<ul>' . $items . '</ul>'
         . '</div></body></html>';
 }
@@ -37,7 +36,7 @@ require_once FILECARTON_SCRIPT_DIR . '/lib/StartupCheck.php';
 $startupProblems = StartupCheck::problems();
 
 if (!empty($startupProblems)) {
-    render_error_page('FileCarton Self-Check Failed', $startupProblems, 500);
+    render_error_page($startupProblems, 500);
     return;
 }
 

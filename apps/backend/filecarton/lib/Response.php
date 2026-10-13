@@ -8,7 +8,7 @@ class Response {
         if (ob_get_level()) {
             $buffered = ob_get_clean();
             if ($buffered !== '' && $buffered !== false) {
-                error_log('FileCarton: suppressed output: ' . substr($buffered, 0, 500));
+                error_log('FC(response): dirty OB: ' . substr($buffered, 0, 500));
             }
         }
     }
