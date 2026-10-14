@@ -1,6 +1,6 @@
 import pytest
 
-from rig.archives import write_tar, write_zip
+from rig.archives import write_tar, write_targz, write_zip
 from rig.client import CartonClient, error_code, json_body, page_config
 from rig.oracle import assert_inside, assert_no_secrets, assert_unchanged, snapshot
 from rig.scenario import OUTSIDE_SENTINEL, PASSWORD, Scenario, _base_defines, _plant, _write_defines, fwd, password_hash, two_users
@@ -146,6 +146,55 @@ def test_extract_subdir_and_conflict(world):
     assert error_code(conflict_res) == "already_exists"
 
 
+def test_archive_list_and_inner_file_access(world):
+    scenario, client = world
+    entries = {
+        "docs/readme.md": b"# Hello Archive\n",
+        "img/icon.svg": b"<svg xmlns='http://www.w3.org/2000/svg'></svg>",
+        "bin/data.bin": b"\x00\x01\x02\x03",
+    }
+    write_zip(scenario.alice_root / "explore.zip", entries)
+    write_tar(scenario.alice_root / "explore.tar", entries)
+    write_targz(scenario.alice_root / "explore.tar.gz", entries)
+
+    for archive_name in ("explore.zip", "explore.tar", "explore.tar.gz"):
+        res_list = client.api("archive_list", query={"path": archive_name}, csrf=False)
+        assert res_list.status_code == 200, res_list.text
+        data = json_body(res_list)["data"]
+        assert data["totalFiles"] == 3
+        assert data["truncated"] is False
+        assert data["randomAccess"] is True
+        paths = {e["path"] for e in data["entries"]}
+        assert "docs/readme.md" in paths
+        assert "img/icon.svg" in paths
+
+        res_read = client.api("archive_read", query={"path": archive_name, "entry": "docs/readme.md"}, csrf=False)
+        assert res_read.status_code == 200, res_read.text
+        read_data = json_body(res_read)["data"]
+        assert read_data["content"] == "# Hello Archive\n"
+        assert read_data["encoding"] == "utf-8"
+
+        res_svg = client.api("archive_raw", query={"path": archive_name, "entry": "img/icon.svg"}, csrf=False)
+        assert res_svg.status_code == 200
+        assert res_svg.headers.get("content-security-policy") == "sandbox"
+        assert res_svg.headers.get("x-content-type-options") == "nosniff"
+        etag = res_svg.headers.get("etag")
+        assert etag
+
+        res_304 = client.api(
+            "archive_raw",
+            query={"path": archive_name, "entry": "img/icon.svg"},
+            headers={"If-None-Match": etag},
+            csrf=False,
+        )
+        assert res_304.status_code == 304
+
+        res_dl = client.api("archive_download", query={"path": archive_name, "entry": "bin/data.bin"}, csrf=False)
+        assert res_dl.status_code == 200
+        assert "attachment" in (res_dl.headers.get("content-disposition") or "")
+        assert res_dl.content == b"\x00\x01\x02\x03"
+
+
 def test_feature_archive_disabled(stack, tmp_path_factory, tools):
     work = tmp_path_factory.mktemp("no-archive")
     alice = work / "alice"
@@ -192,6 +241,76 @@ def test_feature_archive_disabled(stack, tmp_path_factory, tools):
         )
         assert r_extract.status_code == 403
         assert error_code(r_extract) == "archive.disabled"
+
+        for act in ("archive_read", "archive_raw", "archive_download"):
+            r_act = client.api(act, query={"path": "sample.zip", "entry": "a.txt"}, csrf=False)
+            assert r_act.status_code == 403
+            assert error_code(r_act) == "archive.disabled"
+    finally:
+        client.close()
+
+
+def test_archive_limits_and_tar_restrictions(stack, tmp_path_factory, tools):
+    work = tmp_path_factory.mktemp("archive-limits")
+    alice = work / "alice"
+    alice.mkdir(parents=True, exist_ok=True)
+    many_entries = {f"dir/file_{i}.txt": f"content-{i}".encode() for i in range(6)}
+    write_zip(alice / "many.zip", many_entries)
+    write_tar(alice / "many.tar", many_entries)
+    write_targz(alice / "big.tar.gz", {"payload.txt": b"x" * 2048})
+
+    digest = password_hash(tools.php_exe)
+    defines = _base_defines({
+        "FILECARTON_ARCHIVE_LIST_MAX_FILES": 3,
+        "FILECARTON_ARCHIVE_TAR_MAX_ACCESS_FILES": 4,
+        "FILECARTON_ARCHIVE_TARGZ_MAX_ACCESS_SIZE": 64,
+        "FILECARTON_STATIC_USER_LIST": [
+            {"id": "alice", "passwordHash": digest, "root": fwd(alice)},
+        ],
+        "FILECARTON_AUTH_PROVIDERS": [
+            {"class": r"\FileCarton\StaticPasswordAuth"},
+        ],
+    })
+    php_file = work / "scenario.php"
+    _write_defines(php_file, defines)
+    scenario = Scenario(work=work, php_file=php_file, alice_root=alice)
+
+    url = stack.activate(scenario)
+    client = CartonClient(url)
+    try:
+        assert client.login("alice", PASSWORD).status_code == 200
+
+        # ZIP list is truncated at 3 entries, but randomAccess remains True
+        r_zip = client.api("archive_list", query={"path": "many.zip"}, csrf=False)
+        assert r_zip.status_code == 200
+        d_zip = json_body(r_zip)["data"]
+        assert d_zip["truncated"] is True
+        assert d_zip["entryLimit"] == 3
+        assert len(d_zip["entries"]) == 3
+        assert d_zip["totalFiles"] == 6
+        assert d_zip["randomAccess"] is True
+
+        # ZIP still allows reading the 6th entry
+        r_zip_read = client.api("archive_read", query={"path": "many.zip", "entry": "dir/file_5.txt"}, csrf=False)
+        assert r_zip_read.status_code == 200
+        assert json_body(r_zip_read)["data"]["content"] == "content-5"
+
+        # TAR list is truncated at 3 entries AND randomAccess is False (6 > 4)
+        r_tar = client.api("archive_list", query={"path": "many.tar"}, csrf=False)
+        assert r_tar.status_code == 200
+        d_tar = json_body(r_tar)["data"]
+        assert d_tar["truncated"] is True
+        assert d_tar["randomAccess"] is False
+
+        # TAR single-entry access is rejected when file count exceeds FILECARTON_ARCHIVE_TAR_MAX_ACCESS_FILES
+        r_tar_read = client.api("archive_read", query={"path": "many.tar", "entry": "dir/file_0.txt"}, csrf=False)
+        assert r_tar_read.status_code == 403
+        assert error_code(r_tar_read) == "archive.random_access_disabled"
+
+        # TAR.GZ exceeding FILECARTON_ARCHIVE_TARGZ_MAX_ACCESS_SIZE is rejected
+        r_tgz = client.api("archive_list", query={"path": "big.tar.gz"}, csrf=False)
+        assert r_tgz.status_code == 413
+        assert error_code(r_tgz) == "archive.too_large_to_open"
     finally:
         client.close()
 

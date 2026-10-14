@@ -6,9 +6,10 @@ import { Music } from '@lucide/vue'
 const props = defineProps<{
   path: string
   name: string
+  rawUrl?: string
 }>()
 
-const audioSrc = computed(() => buildRawUrl(props.path))
+const audioSrc = computed(() => props.rawUrl ?? buildRawUrl(props.path))
 </script>
 
 <template>

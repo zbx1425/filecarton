@@ -8,67 +8,9 @@ namespace FileCarton;
  */
 
 function api_archive_list(PathSecurity $pathSec, FileOps $fileOps): void {
-$path = $_GET['path'] ?? '';
-$absPath = $pathSec->resolveExistingFile($path);
+    $path = $_GET['path'] ?? '';
+    $absPath = $pathSec->resolveExistingFile($path);
 
-$ext = strtolower(pathinfo($absPath, PATHINFO_EXTENSION));
-$entries = [];
-$totalFiles = 0;
-$totalSize = 0;
-$compressedSize = filesize($absPath);
-
-if ($ext === 'zip') {
-    $zip = new \ZipArchive();
-    if ($zip->open($absPath) !== true) {
-        Response::error('archive.cannot_open', 400);
-    }
-    for ($i = 0; $i < $zip->numFiles; $i++) {
-        $stat = $zip->statIndex($i);
-        $entryPath = $stat['name'];
-        $isDir = str_ends_with($entryPath, '/');
-        $size = $stat['size'];
-        $entries[] = [
-            'path'  => $entryPath,
-            'size'  => $size,
-            'isDir' => $isDir,
-        ];
-        if (!$isDir) {
-            $totalFiles++;
-            $totalSize += $size;
-        }
-    }
-    $zip->close();
-} elseif ($ext === 'tar' || $ext === 'gz' || $ext === 'tgz') {
-    try {
-        $phar = new \PharData($absPath);
-        $iter = new \RecursiveIteratorIterator($phar, \RecursiveIteratorIterator::SELF_FIRST);
-        foreach ($iter as $item) {
-            $entryPath = $item->getPathname();
-            $entryPath = preg_replace('#^phar://.*?\.tar(?:\.gz)?/#', '', $entryPath);
-            $entryPath = str_replace('\\', '/', $entryPath);
-            $isDir = $item->isDir();
-            $size = $isDir ? 0 : $item->getSize();
-            $entries[] = [
-                'path'  => $entryPath,
-                'size'  => $size,
-                'isDir' => $isDir,
-            ];
-            if (!$isDir) {
-                $totalFiles++;
-                $totalSize += $size;
-            }
-        }
-    } catch (\Throwable $e) {
-        Response::error('archive.cannot_open', 400);
-    }
-} else {
-    Response::error('archive.unsupported_format', 400);
-}
-
-Response::ok([
-    'entries'        => $entries,
-    'totalFiles'     => $totalFiles,
-    'totalSize'      => $totalSize,
-    'compressedSize' => $compressedSize,
-]);
+    $result = ArchiveReader::listArchive($absPath);
+    Response::ok($result);
 }

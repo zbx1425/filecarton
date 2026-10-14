@@ -48,6 +48,7 @@ export interface SearchResponse {
 export interface ArchiveEntry {
   path: string
   size: number
+  mtime: number
   isDir: boolean
 }
 
@@ -56,6 +57,9 @@ export interface ArchiveListResponse {
   totalFiles: number
   totalSize: number
   compressedSize: number
+  truncated: boolean
+  entryLimit: number
+  randomAccess: boolean
 }
 
 export interface CreateResponse {

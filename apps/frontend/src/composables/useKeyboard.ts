@@ -50,17 +50,17 @@ export function useKeyboard() {
 
     if (navigation.viewMode === 'editor') return
 
-    if (navigation.viewMode !== 'list') {
-      if (e.key === 'Escape' || e.key === 'Backspace') {
-        navigation.backToList()
+    if (isInputFocused()) {
+      if (e.key === 'Escape') {
+        (document.activeElement as HTMLElement).blur()
         e.preventDefault()
       }
       return
     }
 
-    if (isInputFocused()) {
-      if (e.key === 'Escape') {
-        (document.activeElement as HTMLElement).blur()
+    if (navigation.viewMode !== 'list') {
+      if (e.key === 'Escape' || e.key === 'Backspace') {
+        navigation.backToList()
         e.preventDefault()
       }
       return

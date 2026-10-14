@@ -188,6 +188,110 @@ class Response {
     }
 
     /**
+     * Serve an open stream resource inline with ETag revalidation and Content-Type.
+     * Used by `archive_raw` for previewing files inside archives.
+     *
+     * @param resource $stream
+     */
+    public static function streamFromResource($stream, int $size, string $mime, string $etagSeed, ?callable $cleanup = null) {
+        self::discardOutputBuffer();
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+
+        $etag = '"' . substr(hash('md5', $etagSeed), 0, 32) . '"';
+
+        header('ETag: ' . $etag);
+        header('Cache-Control: private, no-cache, must-revalidate');
+        header('Vary: Cookie');
+        header('X-Content-Type-Options: nosniff');
+
+        if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']) === $etag) {
+            if ($cleanup) $cleanup();
+            http_response_code(304);
+            exit;
+        }
+
+        header('Content-Type: ' . $mime);
+        http_response_code(200);
+        if ($size >= 0) {
+            header('Content-Length: ' . $size);
+        }
+
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        @ini_set('zlib.output_compression', 'Off');
+
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'HEAD' || $size === 0) {
+            if ($cleanup) $cleanup();
+            exit;
+        }
+
+        @set_time_limit(0);
+        $maxBytes = defined('FILECARTON_ARCHIVE_MAX_SIZE') ? (int)FILECARTON_ARCHIVE_MAX_SIZE : (1024 * 1024 * 1024);
+        $limit = $size > 0 ? min($size, $maxBytes) : $maxBytes;
+        $remaining = $limit;
+        $chunkSize = 65536;
+        while ($remaining > 0 && !feof($stream) && !connection_aborted()) {
+            $buffer = fread($stream, min($chunkSize, $remaining));
+            if ($buffer === false || $buffer === '') {
+                break;
+            }
+            echo $buffer;
+            flush();
+            $remaining -= strlen($buffer);
+        }
+        if ($cleanup) $cleanup();
+        exit;
+    }
+
+    /**
+     * Force-download from an open stream resource (Content-Disposition: attachment).
+     * Used by `archive_download` for downloading a single file from an archive.
+     *
+     * @param resource $stream
+     */
+    public static function fileFromResource($stream, int $size, string $filename, ?callable $cleanup = null) {
+        self::discardOutputBuffer();
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+
+        $ascii = preg_replace('/[^\x20-\x7E]/', '_', $filename);
+        $encoded = rawurlencode($filename);
+        header('Content-Type: application/octet-stream');
+        header("Content-Disposition: attachment; filename=\"" . addcslashes($ascii, '"\\') . "\"; filename*=UTF-8''" . $encoded);
+        if ($size >= 0) {
+            header('Content-Length: ' . $size);
+        }
+        header('Cache-Control: private, no-store');
+        header('X-Content-Type-Options: nosniff');
+
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        @ini_set('zlib.output_compression', 'Off');
+
+        @set_time_limit(0);
+        $maxBytes = defined('FILECARTON_ARCHIVE_MAX_SIZE') ? (int)FILECARTON_ARCHIVE_MAX_SIZE : (1024 * 1024 * 1024);
+        $limit = $size > 0 ? min($size, $maxBytes) : $maxBytes;
+        $remaining = $limit;
+        $chunkSize = 65536;
+        while ($remaining > 0 && !feof($stream) && !connection_aborted()) {
+            $buffer = fread($stream, min($chunkSize, $remaining));
+            if ($buffer === false || $buffer === '') {
+                break;
+            }
+            echo $buffer;
+            flush();
+            $remaining -= strlen($buffer);
+        }
+        if ($cleanup) $cleanup();
+        exit;
+    }
+
+    /**
      * Offload file serving to the web server via X-Sendfile or X-Accel-Redirect.
      * Returns true if the header was sent (caller should exit without body).
      *

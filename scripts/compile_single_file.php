@@ -44,6 +44,7 @@ $libFiles = [
     $fcDir . '/lib/Csrf.php',
     $fcDir . '/lib/Response.php',
     $fcDir . '/lib/ApiException.php',
+    $fcDir . '/lib/ArchiveReader.php',
     $fcDir . '/lib/StartupCheck.php',
     $fcDir . '/lib/RepoSetting.php',
     $fcDir . '/lib/Auth.php',

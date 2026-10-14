@@ -194,6 +194,14 @@ export function buildDownloadUrl(filePath: string): string {
   return buildUrl('download', { path: filePath })
 }
 
+export function buildArchiveRawUrl(archivePath: string, entryPath: string): string {
+  return buildUrl('archive_raw', { path: archivePath, entry: entryPath })
+}
+
+export function buildArchiveDownloadUrl(archivePath: string, entryPath: string): string {
+  return buildUrl('archive_download', { path: archivePath, entry: entryPath })
+}
+
 export function buildAuthStartUrl(pluginId: string): string {
   const { apiBase } = getConfig()
   const url = new URL(apiBase, window.location.href)

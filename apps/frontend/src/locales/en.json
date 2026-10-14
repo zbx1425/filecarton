@@ -37,6 +37,8 @@
   "err.archive.cannot_open": "Cannot open archive",
   "err.archive.size_exceeded": "Extracted data exceeds size limit ({limitGB} GB)",
   "err.archive.disabled": "Archive feature is disabled",
+  "err.archive.too_large_to_open": "Archive is too large to open online ({maxMB} MB limit for .tar.gz). Please download or extract instead.",
+  "err.archive.random_access_disabled": "Single-file access is disabled for TAR archives with more than {limit} files. Please download or extract the archive.",
 
   "err.blocked.name": "Blocked by file name rules",
   "err.blocked.ignored": "Path is ignored by server rules",

@@ -68,11 +68,11 @@ function handleDownload() {
       </Button>
     </div>
 
-    <div class="flex-1 min-h-0 overflow-auto">
+    <div class="flex-1 min-h-0" :class="previewType === 'archive' ? 'overflow-hidden' : 'overflow-auto'">
       <ImagePreview v-if="previewType === 'image'" :path="filePath" :name="fileName" :size="fileSize" />
       <AudioPreview v-else-if="previewType === 'audio'" :path="filePath" :name="fileName" />
       <VideoPreview v-else-if="previewType === 'video'" :path="filePath" :name="fileName" :size="fileSize" />
-      <ArchivePreview v-else-if="previewType === 'archive'" :path="filePath" />
+      <ArchivePreview v-else-if="previewType === 'archive'" :path="filePath" :name="fileName" :size="fileSize" />
       <CodePreview v-else-if="previewType === 'code'" :path="filePath" :name="fileName" />
       <FallbackPreview v-else :name="fileName" :size="fileSize" :path="filePath" />
     </div>

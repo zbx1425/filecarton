@@ -17,12 +17,13 @@ require_once FILECARTON_SCRIPT_DIR . '/lib/MimeType.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/Csrf.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/Response.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/ApiException.php';
+require_once FILECARTON_SCRIPT_DIR . '/lib/ArchiveReader.php';
 
 $action = $_GET['fcapi'] ?? '';
 $authPublic = ['auth_login', 'auth_logout'];
 $isAuthAction = in_array($action, $authPublic, true);
 
-$binaryActions = ['raw', 'download'];
+$binaryActions = ['raw', 'download', 'archive_raw', 'archive_download'];
 if (!in_array($action, $binaryActions, true)) {
     header('Content-Type: application/json; charset=utf-8');
 }
@@ -33,7 +34,8 @@ $validActions = [
     'list', 'tree_node', 'read', 'write', 'raw', 'download',
     'search', 'create', 'delete', 'rename', 'paste', 'upload',
     'upload_chunk', 'upload_complete', 'archive_create', 'archive_extract',
-    'archive_list', 'check_upload_conflicts',
+    'archive_list', 'archive_read', 'archive_raw', 'archive_download',
+    'check_upload_conflicts',
     'auth_login', 'auth_logout',
 ];
 
@@ -62,7 +64,10 @@ try {
         }
     }
 
-    $archiveActions = ['archive_create', 'archive_extract', 'archive_list'];
+    $archiveActions = [
+        'archive_create', 'archive_extract', 'archive_list',
+        'archive_read', 'archive_raw', 'archive_download',
+    ];
     if (in_array($action, $archiveActions, true) && !RepoSetting::current()->featureArchive) {
         Response::error('archive.disabled', 403);
     }

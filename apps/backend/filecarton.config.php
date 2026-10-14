@@ -87,6 +87,15 @@ define_default('FILECARTON_ARCHIVE_MAX_FILES', 10000);
 // Maximum total (uncompressed) size for archive creation (bytes).
 define_default('FILECARTON_ARCHIVE_MAX_SIZE', 1 * 1024 * 1024 * 1024);
 
+// Maximum number of entries returned by archive_list before truncating.
+define_default('FILECARTON_ARCHIVE_LIST_MAX_FILES', 10000);
+
+// Maximum number of entries in a TAR / TAR.GZ archive that still allows single-entry random access (preview/download).
+define_default('FILECARTON_ARCHIVE_TAR_MAX_ACCESS_FILES', 1000);
+
+// Maximum file size (bytes) of a TAR.GZ / TGZ archive allowed for online listing and random access.
+define_default('FILECARTON_ARCHIVE_TARGZ_MAX_ACCESS_SIZE', 64 * 1024 * 1024);
+
 // Default maximum number of search results returned.
 define_default('FILECARTON_SEARCH_DEFAULT_LIMIT', 200);
 

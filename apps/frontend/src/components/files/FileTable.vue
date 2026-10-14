@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { ArrowUp, ArrowDown, CornerLeftUp, Loader2, ClipboardPaste, File, Folder, CheckSquare, Square } from '@lucide/vue'
+import { ArrowUp, ArrowDown, CornerLeftUp, Loader2, ClipboardPaste, File, Folder, CheckSquare, Square, RefreshCw } from '@lucide/vue'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/context-menu'
 import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
+import { useTreeStore } from '@/stores/tree'
 import { useClipboardStore } from '@/stores/clipboard'
 import { useUiStore } from '@/stores/ui'
 import { usePreferencesStore } from '@/stores/preferences'
@@ -21,9 +22,19 @@ import BatchActionBar from './BatchActionBar.vue'
 
 const fileList = useFileListStore()
 const navigation = useNavigationStore()
+const tree = useTreeStore()
 const clipboard = useClipboardStore()
 const ui = useUiStore()
 const preferences = usePreferencesStore()
+
+function handleRefresh() {
+  const dir = navigation.currentPathStr
+  fileList.fetchDir(dir)
+  tree.invalidate(dir)
+  if (dir === '' || tree.isExpanded(dir)) {
+    tree.loadChildren(dir)
+  }
+}
 
 const isRoot = computed(() => navigation.currentPath.length === 0)
 
@@ -197,6 +208,11 @@ function startResize(e: MouseEvent) {
       </ContextMenuTrigger>
 
       <ContextMenuContent class="w-52">
+        <ContextMenuItem @select="handleRefresh">
+          <RefreshCw class="size-4" />
+          Refresh
+        </ContextMenuItem>
+        <ContextMenuSeparator />
         <template v-if="!ui.readonly">
           <ContextMenuItem v-if="clipboard.hasContent" @select="pasteItems(navigation.currentPathStr)">
             <ClipboardPaste class="size-4" />

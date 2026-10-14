@@ -9,10 +9,12 @@ const props = defineProps<{
   path: string
   name: string
   size: number
+  rawUrl?: string
+  downloadUrl?: string
 }>()
 
-const videoSrc = computed(() => buildRawUrl(props.path))
-const downloadUrl = computed(() => buildDownloadUrl(props.path))
+const videoSrc = computed(() => props.rawUrl ?? buildRawUrl(props.path))
+const downloadUrl = computed(() => props.downloadUrl ?? buildDownloadUrl(props.path))
 
 const videoWidth = ref(0)
 const videoHeight = ref(0)
@@ -20,7 +22,7 @@ const duration = ref(0)
 const playbackError = ref(false)
 
 watch(
-  () => props.path,
+  [() => props.path, () => props.rawUrl],
   () => {
     videoWidth.value = 0
     videoHeight.value = 0

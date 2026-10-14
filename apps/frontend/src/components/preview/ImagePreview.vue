@@ -10,10 +10,11 @@ const props = defineProps<{
   path: string
   name: string
   size: number
+  rawUrl?: string
 }>()
 
 const canPreview = computed(() => canPreviewImage(props.name, props.size))
-const imgSrc = computed(() => buildRawUrl(props.path))
+const imgSrc = computed(() => props.rawUrl ?? buildRawUrl(props.path))
 
 const naturalWidth = ref(0)
 const naturalHeight = ref(0)

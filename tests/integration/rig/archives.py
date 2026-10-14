@@ -21,3 +21,11 @@ def write_tar(path: Path, entries: dict[str, bytes]) -> None:
             info = tarfile.TarInfo(name=name)
             info.size = len(payload)
             archive.addfile(info, io.BytesIO(payload))
+
+
+def write_targz(path: Path, entries: dict[str, bytes]) -> None:
+    with tarfile.open(path, "w:gz") as archive:
+        for name, payload in entries.items():
+            info = tarfile.TarInfo(name=name)
+            info.size = len(payload)
+            archive.addfile(info, io.BytesIO(payload))

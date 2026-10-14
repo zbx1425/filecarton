@@ -12,6 +12,8 @@ import { usePreferencesStore } from '@/stores/preferences'
 const props = defineProps<{
   path: string
   name: string
+  apiAction?: string
+  apiParams?: Record<string, string>
 }>()
 
 const prefs = usePreferencesStore()
@@ -26,7 +28,7 @@ onMounted(async () => {
   try {
     const [monaco, fileData] = await Promise.all([
       loadMonaco(),
-      apiGet<ReadResponse>('read', { path: props.path }),
+      apiGet<ReadResponse>(props.apiAction ?? 'read', props.apiParams ?? { path: props.path }),
     ])
 
     if (!containerRef.value) return
