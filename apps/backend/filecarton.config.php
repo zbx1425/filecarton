@@ -43,7 +43,10 @@ define_default('FILECARTON_REPO_SETTING', [
     'branding' => 'FileCarton',
 
     // An informative label describing what directory the user is managing, shown in the top bar.
-    'repoName' => ''
+    'repoName' => '',
+
+    // Enable archive creation, listing (preview), and extraction.
+    'featureArchive' => true,
 ]);
 
 // If set, FileCarton is forced in read-only mode, and neither FILECARTON_REPO_SETTING

@@ -18,7 +18,7 @@ import { useNavigationStore } from '@/stores/navigation'
 import { useClipboardStore } from '@/stores/clipboard'
 import { useUiStore } from '@/stores/ui'
 import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
-import { joinPath, parentPath, validateFileName } from '@/utils/path'
+import { joinPath, parentPath, validateFileName, archiveSubdirName } from '@/utils/path'
 import {
   deleteItems, renameItem, pasteItems,
 } from '@/composables/useFileActions'
@@ -168,8 +168,8 @@ async function handleCreateArchive(format: 'zip' | 'tar') {
   await createArchive(format, dirPath.value, [props.name])
 }
 
-async function handleExtract() {
-  await extractArchive(props.path, dirPath.value)
+async function handleExtract(createSubdir = false) {
+  await extractArchive(props.path, dirPath.value, createSubdir)
 }
 
 async function handleNewFolder() {
@@ -252,29 +252,39 @@ async function handleNewFolder() {
           @delete="handleDelete"
           @download="handleDownload"
         >
-          <template v-if="!ui.readonly">
+          <template v-if="!ui.readonly && (ui.features.archive || isDir)">
             <ContextMenuSeparator />
-            <template v-if="!isDir && isArchive(name)">
-              <ContextMenuItem @select="handleExtract">
-                <PackageOpen class="size-4" />
-                Extract Here
-              </ContextMenuItem>
+            <template v-if="ui.features.archive">
+              <template v-if="!isDir && isArchive(name)">
+                <ContextMenuSub>
+                  <ContextMenuSubTrigger class="gap-2">
+                    <PackageOpen class="size-4" />
+                    Extract
+                  </ContextMenuSubTrigger>
+                  <ContextMenuSubContent>
+                    <ContextMenuItem @select="handleExtract(false)">
+                      Here
+                    </ContextMenuItem>
+                    <ContextMenuItem @select="handleExtract(true)">
+                      To "{{ archiveSubdirName(name) }}/"
+                    </ContextMenuItem>
+                  </ContextMenuSubContent>
+                </ContextMenuSub>
+              </template>
+              <template v-else>
+                <ContextMenuSub>
+                  <ContextMenuSubTrigger class="gap-2">
+                    <FileArchive class="size-4" />
+                    Archive
+                  </ContextMenuSubTrigger>
+                  <ContextMenuSubContent>
+                    <ContextMenuItem @select="handleCreateArchive('zip')">Create .zip</ContextMenuItem>
+                    <ContextMenuItem @select="handleCreateArchive('tar')">Create .tar</ContextMenuItem>
+                  </ContextMenuSubContent>
+                </ContextMenuSub>
+              </template>
             </template>
-            <template v-else>
-              <ContextMenuSub>
-                <ContextMenuSubTrigger class="gap-2">
-                  <FileArchive class="size-4" />
-                  Archive
-                </ContextMenuSubTrigger>
-                <ContextMenuSubContent>
-                  <ContextMenuItem @select="handleCreateArchive('zip')">Create .zip</ContextMenuItem>
-                  <ContextMenuItem @select="handleCreateArchive('tar')">Create .tar</ContextMenuItem>
-                </ContextMenuSubContent>
-              </ContextMenuSub>
-            </template>
-          </template>
-          <template v-if="isDir && !ui.readonly">
-            <ContextMenuItem @select="handleNewFolder">
+            <ContextMenuItem v-if="isDir" @select="handleNewFolder">
               <FolderPlus class="size-4" />
               New Folder
             </ContextMenuItem>

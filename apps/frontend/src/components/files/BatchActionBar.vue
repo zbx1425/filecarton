@@ -58,7 +58,7 @@ function handleSelectAll(checked: boolean | "indeterminate") {
         Delete
       </Button>
 
-      <DropdownMenu>
+      <DropdownMenu v-if="ui.features.archive">
         <DropdownMenuTrigger as-child>
           <Button variant="ghost" size="xs">
             <FileArchive class="size-3.5" />

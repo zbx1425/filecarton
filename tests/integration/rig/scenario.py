@@ -88,6 +88,7 @@ def _base_defines(extra: dict | None = None) -> dict:
             "readonly": False,
             "branding": "FileCarton",
             "repoName": "test",
+            "featureArchive": True,
         },
         "FILECARTON_GRANT_RESOLVERS": [
             {"class": r"\FileCarton\StaticGrantResolver"},
@@ -171,6 +172,7 @@ def nologin(work: Path) -> Scenario:
             "readonly": False,
             "branding": "FileCarton",
             "repoName": "open",
+            "featureArchive": True,
         },
         "FILECARTON_STATIC_USER_LIST": [
             {"id": "local", "root": fwd(root)},
@@ -212,6 +214,7 @@ def must_embed(work: Path) -> Scenario:
             "readonly": False,
             "branding": "FileCarton",
             "repoName": "x",
+            "featureArchive": True,
         },
         "FILECARTON_STATIC_USER_LIST": [{"id": "local"}],
         "FILECARTON_AUTH_PROVIDERS": [{"class": r"\FileCarton\NoLoginAuth"}],
@@ -233,6 +236,7 @@ def embed_direct(work: Path) -> Scenario:
             "readonly": False,
             "branding": "FileCarton",
             "repoName": "embedded",
+            "featureArchive": True,
         },
     })
     php_file = work / "scenario.php"

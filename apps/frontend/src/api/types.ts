@@ -159,12 +159,17 @@ export interface FileCartonAuthConfig {
   errorParams?: Record<string, string>
 }
 
+export interface FileCartonFeatures {
+  archive: boolean
+}
+
 export interface FileCartonConfig {
   apiBase: string
   csrfToken: string
   readonly: boolean
   repoName?: string
   branding?: string
+  features?: FileCartonFeatures
   upload?: {
     maxFileSize: number
     chunkSize: number

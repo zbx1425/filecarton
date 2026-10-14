@@ -62,6 +62,11 @@ try {
         }
     }
 
+    $archiveActions = ['archive_create', 'archive_extract', 'archive_list'];
+    if (in_array($action, $archiveActions, true) && !RepoSetting::current()->featureArchive) {
+        Response::error('archive.disabled', 403);
+    }
+
     $pathSec = null;
     $fileOps = null;
     if (!$isAuthAction) {

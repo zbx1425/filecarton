@@ -173,6 +173,7 @@ Each row in `FILECARTON_STATIC_USER_LIST` is an array with these fields:
 | `readonly` | no | `true` forces read-only for this user; `false` forces writable even if the default is read-only. Though when `FILECARTON_MUST_READONLY` is `true` the instance is always read-only. |
 | `branding` | no | Overrides the default `branding` in `FILECARTON_REPO_SETTING` for this user. An empty string `''` hides the branding. |
 | `repoName` | no | Overrides the default `repoName` in `FILECARTON_REPO_SETTING` for this user. |
+| `featureArchive` | no | `true` enables archive creation, preview, and extraction for this user; `false` disables them. |
 
 Example with per-user directories:
 

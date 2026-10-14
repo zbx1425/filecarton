@@ -5,11 +5,12 @@ import { useNavigationStore } from '@/stores/navigation'
 import { useFileListStore } from '@/stores/fileList'
 import { useUiStore } from '@/stores/ui'
 import { usePreferencesStore } from '@/stores/preferences'
-import { isEditable, isImage, isAudio, isArchive } from '@/composables/useFileType'
+import { isEditable, isImage, isAudio, isVideo, isArchive } from '@/composables/useFileType'
 import { buildDownloadUrl } from '@/api/client'
 import { ArrowLeft, Pencil, Download } from '@lucide/vue'
 import ImagePreview from './ImagePreview.vue'
 import AudioPreview from './AudioPreview.vue'
+import VideoPreview from './VideoPreview.vue'
 import ArchivePreview from './ArchivePreview.vue'
 import CodePreview from './CodePreview.vue'
 import FallbackPreview from './FallbackPreview.vue'
@@ -33,7 +34,8 @@ const previewType = computed(() => {
   const name = fileName.value
   if (isImage(name)) return 'image'
   if (isAudio(name)) return 'audio'
-  if (isArchive(name)) return 'archive'
+  if (isVideo(name)) return 'video'
+  if (isArchive(name) && ui.features.archive) return 'archive'
   if (isEditable(name)) return 'code'
   return 'fallback'
 })
@@ -69,6 +71,7 @@ function handleDownload() {
     <div class="flex-1 min-h-0 overflow-auto">
       <ImagePreview v-if="previewType === 'image'" :path="filePath" :name="fileName" :size="fileSize" />
       <AudioPreview v-else-if="previewType === 'audio'" :path="filePath" :name="fileName" />
+      <VideoPreview v-else-if="previewType === 'video'" :path="filePath" :name="fileName" :size="fileSize" />
       <ArchivePreview v-else-if="previewType === 'archive'" :path="filePath" />
       <CodePreview v-else-if="previewType === 'code'" :path="filePath" :name="fileName" />
       <FallbackPreview v-else :name="fileName" :size="fileSize" :path="filePath" />

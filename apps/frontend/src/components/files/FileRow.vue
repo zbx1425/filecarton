@@ -18,7 +18,7 @@ import {
   copySelected, cutSelected, deleteItems, renameItem, pasteItems,
 } from '@/composables/useFileActions'
 import { buildDownloadUrl, buildRawUrl } from '@/api/client'
-import { joinPath } from '@/utils/path'
+import { joinPath, archiveSubdirName } from '@/utils/path'
 import { PackageOpen, FileArchive } from '@lucide/vue'
 import {
   ContextMenuSub,
@@ -259,13 +259,23 @@ const thumbnailUrl = computed(() => {
         @delete="handleDelete"
         @download="handleDownload"
       >
-        <template v-if="!ui.readonly">
+        <template v-if="!ui.readonly && ui.features.archive">
           <ContextMenuSeparator />
           <template v-if="fileList.selectedCount <= 1 && !isDir && isArchive(name)">
-            <ContextMenuItem @select="extractArchive(joinPath(navigation.currentPathStr, name), navigation.currentPathStr)">
-              <PackageOpen class="size-4" />
-              Extract Here
-            </ContextMenuItem>
+            <ContextMenuSub>
+              <ContextMenuSubTrigger class="gap-2">
+                <PackageOpen class="size-4" />
+                Extract
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                <ContextMenuItem @select="extractArchive(joinPath(navigation.currentPathStr, name), navigation.currentPathStr, false)">
+                  Here
+                </ContextMenuItem>
+                <ContextMenuItem @select="extractArchive(joinPath(navigation.currentPathStr, name), navigation.currentPathStr, true)">
+                  To "{{ archiveSubdirName(name) }}/"
+                </ContextMenuItem>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
           </template>
           <template v-else>
             <ContextMenuSub>

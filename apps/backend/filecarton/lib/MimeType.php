@@ -38,6 +38,17 @@ class MimeType {
         'ogg'        => 'audio/ogg',
         'mp3'        => 'audio/mpeg',
         'wav'        => 'audio/wav',
+        'flac'       => 'audio/flac',
+        'aac'        => 'audio/aac',
+        'm4a'        => 'audio/mp4',
+        'mp4'        => 'video/mp4',
+        'm4v'        => 'video/mp4',
+        'webm'       => 'video/webm',
+        'ogv'        => 'video/ogg',
+        'mov'        => 'video/quicktime',
+        'mkv'        => 'video/x-matroska',
+        'avi'        => 'video/x-msvideo',
+        'flv'        => 'video/x-flv',
         'zip'        => 'application/zip',
         'tar'        => 'application/x-tar',
         'gz'         => 'application/gzip',
@@ -48,36 +59,6 @@ class MimeType {
         'pdf'        => 'application/pdf',
     ];
 
-    private const EDITABLE_EXTENSIONS = [
-        'json', 'txt', 'cfg', 'xml', 'mcmeta', 'js', 'mjs', 'css', 'ini',
-        'properties', 'lang', 'md', 'html', 'htm', 'csv', 'yml', 'yaml',
-        'toml', 'svg', 'htaccess', 'gitignore', 'env',
-    ];
-
-    private const EDITABLE_MIMES = [
-        'application/json',
-        'application/xml',
-        'application/javascript',
-    ];
-
-    private const MONACO_LANGUAGE_MAP = [
-        'json'       => 'json',
-        'mcmeta'     => 'json',
-        'xml'        => 'xml',
-        'svg'        => 'xml',
-        'js'         => 'javascript',
-        'mjs'        => 'javascript',
-        'css'        => 'css',
-        'html'       => 'html',
-        'htm'        => 'html',
-        'md'         => 'markdown',
-        'yml'        => 'yaml',
-        'yaml'       => 'yaml',
-        'ini'        => 'ini',
-        'cfg'        => 'ini',
-        'properties' => 'ini',
-    ];
-
     public static function detect(string $absPath): string {
         $ext = strtolower(pathinfo($absPath, PATHINFO_EXTENSION));
         return self::fromExtension($ext);
@@ -86,22 +67,6 @@ class MimeType {
     public static function fromExtension(string $ext): string {
         $ext = strtolower($ext);
         return self::EXTENSION_MAP[$ext] ?? 'application/octet-stream';
-    }
-
-    public static function isEditable(string $path): bool {
-        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        if (in_array($ext, self::EDITABLE_EXTENSIONS, true)) return true;
-
-        $mime = self::fromExtension($ext);
-        if (str_starts_with($mime, 'text/')) return true;
-        if (in_array($mime, self::EDITABLE_MIMES, true)) return true;
-
-        return false;
-    }
-
-    public static function monacoLanguage(string $ext): string {
-        $ext = strtolower($ext);
-        return self::MONACO_LANGUAGE_MAP[$ext] ?? 'plaintext';
     }
 
     /**

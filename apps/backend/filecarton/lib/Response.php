@@ -35,15 +35,28 @@ class Response {
     }
 
     /**
-     * Serve a file inline with correct Content-Type and ETag caching.
-     * Used by the `raw` endpoint for image/audio preview.
+     * Serve a file inline with correct Content-Type, ETag revalidation, and HTTP Range (206) support.
+     * Used by the `raw` endpoint for image/audio/video preview.
      * Supports X-Sendfile / X-Accel-Redirect offload via FILECARTON_SENDFILE.
      */
     public static function stream(string $absPath, string $mime) {
         self::discardOutputBuffer();
-        $mtime = filemtime($absPath);
-        $size = filesize($absPath);
-        $etag = '"' . dechex($mtime) . '-' . dechex($size) . '"';
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+
+        $real = realpath($absPath);
+        $canonicalPath = str_replace('\\', '/', $real !== false ? $real : $absPath);
+        $mtime = (int)filemtime($absPath);
+        $size = (int)filesize($absPath);
+        // Use MD5 here because this is not very security critical.
+        $etag = '"' . substr(hash('md5', $canonicalPath . "\0" . $mtime . "\0" . $size), 0, 32) . '"';
+
+        header('ETag: ' . $etag);
+        header('Cache-Control: private, no-cache, must-revalidate');
+        header('Vary: Cookie');
+        header('Accept-Ranges: bytes');
+        header('X-Content-Type-Options: nosniff');
 
         if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']) === $etag) {
             http_response_code(304);
@@ -51,16 +64,98 @@ class Response {
         }
 
         header('Content-Type: ' . $mime);
-        header('Content-Length: ' . $size);
-        header('ETag: ' . $etag);
-        header('Cache-Control: private, no-store');
-        header('X-Content-Type-Options: nosniff');
 
         if (self::trySendfile($absPath)) {
             exit;
         }
 
-        readfile($absPath);
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        @ini_set('zlib.output_compression', 'Off');
+
+        $rangeHeader = $_SERVER['HTTP_RANGE'] ?? null;
+        if ($rangeHeader !== null && isset($_SERVER['HTTP_IF_RANGE'])) {
+            $ifRange = trim($_SERVER['HTTP_IF_RANGE']);
+            if ($ifRange !== $etag && ($mtime <= 0 || @strtotime($ifRange) !== $mtime)) {
+                $rangeHeader = null;
+            }
+        }
+
+        $start = 0;
+        $end = $size - 1;
+        $length = $size;
+        $isPartial = false;
+
+        if ($rangeHeader !== null && str_starts_with(trim($rangeHeader), 'bytes=')) {
+            if ($size === 0 || !preg_match('/^bytes=(\d*)-(\d*)$/', trim($rangeHeader), $matches)) {
+                http_response_code(416);
+                header("Content-Range: bytes */{$size}");
+                exit;
+            }
+
+            $startStr = $matches[1];
+            $endStr = $matches[2];
+
+            if ($startStr === '' && $endStr === '') {
+                http_response_code(416);
+                header("Content-Range: bytes */{$size}");
+                exit;
+            } elseif ($startStr === '') {
+                $suffixLen = (int)$endStr;
+                if ($suffixLen <= 0) {
+                    http_response_code(416);
+                    header("Content-Range: bytes */{$size}");
+                    exit;
+                }
+                $start = max(0, $size - $suffixLen);
+                $end = $size - 1;
+            } else {
+                $start = (int)$startStr;
+                $end = ($endStr === '') ? ($size - 1) : min((int)$endStr, $size - 1);
+                if ($start >= $size || ($endStr !== '' && (int)$endStr < $start)) {
+                    http_response_code(416);
+                    header("Content-Range: bytes */{$size}");
+                    exit;
+                }
+            }
+
+            $length = $end - $start + 1;
+            $isPartial = true;
+        }
+
+        if ($isPartial) {
+            http_response_code(206);
+            header("Content-Range: bytes {$start}-{$end}/{$size}");
+        } else {
+            http_response_code(200);
+        }
+        header('Content-Length: ' . $length);
+
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'HEAD' || $length <= 0) {
+            exit;
+        }
+
+        @set_time_limit(0);
+        $fp = fopen($absPath, 'rb');
+        if ($fp === false) {
+            exit;
+        }
+        if ($start > 0) {
+            fseek($fp, $start);
+        }
+        $remaining = $length;
+        $chunkSize = 65536;
+        while ($remaining > 0 && !feof($fp) && !connection_aborted()) {
+            $buffer = fread($fp, min($chunkSize, $remaining));
+            if ($buffer === false || $buffer === '') {
+                break;
+            }
+            echo $buffer;
+            flush();
+            $remaining -= strlen($buffer);
+        }
+        fclose($fp);
         exit;
     }
 
@@ -70,6 +165,9 @@ class Response {
      */
     public static function file(string $absPath, ?string $filename = null) {
         self::discardOutputBuffer();
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
         $filename = $filename ?? basename($absPath);
         $size = filesize($absPath);
 

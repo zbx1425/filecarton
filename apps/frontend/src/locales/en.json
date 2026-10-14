@@ -36,6 +36,7 @@
   "err.archive.unsupported_format": "Unsupported archive format",
   "err.archive.cannot_open": "Cannot open archive",
   "err.archive.size_exceeded": "Extracted data exceeds size limit ({limitGB} GB)",
+  "err.archive.disabled": "Archive feature is disabled",
 
   "err.blocked.name": "Blocked by file name rules",
   "err.blocked.ignored": "Path is ignored by server rules",

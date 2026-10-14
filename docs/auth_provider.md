@@ -76,6 +76,7 @@ define_default('FILECARTON_GRANT_RESOLVERS', [
 | `readonly` | Inherit `FILECARTON_REPO_SETTING['readonly']` | `true` forces read-only; `false` forces writable. Neither can override `FILECARTON_MUST_READONLY` (when it is `true`, the instance is always read-only). |
 | `branding` | Inherit `FILECARTON_REPO_SETTING['branding']` | String (including `''`) overrides. |
 | `repoName` | Inherit `FILECARTON_REPO_SETTING['repoName']` | String (including `''`) overrides. |
+| `featureArchive` | Inherit `FILECARTON_REPO_SETTING['featureArchive']` | `true` enables archive operations; `false` disables them. |
 
 An example that looks up the user's directory from a database:
 

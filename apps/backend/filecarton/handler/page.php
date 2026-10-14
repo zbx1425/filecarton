@@ -64,6 +64,7 @@ $configData = [
     'apiBase'   => $apiBase,
     'csrfToken' => $csrfToken,
     'readonly'  => $readonly,
+    'features'  => $current->featuresConfig(),
 ];
 if ($repoName !== '') {
     $configData['repoName'] = $repoName;

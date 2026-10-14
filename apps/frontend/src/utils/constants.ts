@@ -6,6 +6,10 @@ export const AUDIO_EXTENSIONS = new Set([
   'ogg', 'mp3', 'wav', 'flac', 'aac', 'm4a',
 ])
 
+export const VIDEO_EXTENSIONS = new Set([
+  'mp4', 'webm', 'ogv', 'mov', 'm4v', 'mkv', 'avi', 'flv',
+])
+
 export const ARCHIVE_EXTENSIONS = new Set([
   'zip', 'tar', 'gz', 'tgz', 'rar', '7z', 'bz2', 'xz',
 ])

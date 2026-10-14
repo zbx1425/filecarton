@@ -15,20 +15,32 @@ function api_archive_extract(PathSecurity $pathSec, FileOps $fileOps): void {
     }
 
     $archiveAbs = $pathSec->resolveExistingFile($input['path']);
-    $targetAbs = $pathSec->resolveExistingDir($input['targetPath']);
+    $baseTargetAbs = $pathSec->resolveExistingDir($input['targetPath']);
+    $targetAbs = $baseTargetAbs;
 
     $dryRun = !empty($input['dryRun']);
     $createSubdir = !empty($input['createSubdir']);
 
     if ($createSubdir) {
-        $baseName = $pathSec->sanitizeFileName(pathinfo($archiveAbs, PATHINFO_FILENAME));
-        $targetAbs .= '/' . $baseName;
-        $pathSec->assertWithinRoot($targetAbs);
-        if ($pathSec->wouldBeIgnored($targetAbs, true)) {
+        $baseName = $pathSec->sanitizeFileName(archive_base_name($archiveAbs));
+        $candidate = $baseTargetAbs . '/' . $baseName;
+        $pathSec->assertWithinRoot($candidate);
+        if ($pathSec->wouldBeIgnored($candidate, true)) {
             Response::error('access_denied', 403);
         }
-        if (!$dryRun && !is_dir($targetAbs)) {
-            mkdir($targetAbs, 0755, true);
+        if (is_link($candidate) || (file_exists($candidate) && !is_dir($candidate))) {
+            Response::error('already_exists', 409);
+        }
+        if (is_dir($candidate)) {
+            $realCandidate = realpath($candidate);
+            if ($realCandidate === false) {
+                Response::error('not_found.dir', 404);
+            }
+            $targetAbs = str_replace('\\', '/', $realCandidate);
+            $pathSec->assertWithinRoot($targetAbs);
+            $pathSec->assertNotIgnored($targetAbs);
+        } else {
+            $targetAbs = $candidate;
         }
     }
 
@@ -54,7 +66,7 @@ function api_archive_extract(PathSecurity $pathSec, FileOps $fileOps): void {
         ]);
     }
 
-    $tempExtractDir = $targetAbs . '/__fc_extract_' . bin2hex(random_bytes(4));
+    $tempExtractDir = $baseTargetAbs . '/__fc_extract_' . bin2hex(random_bytes(4));
     if (!mkdir($tempExtractDir, 0755, true)) {
         Response::error('server_error', 500);
     }
@@ -74,6 +86,10 @@ function api_archive_extract(PathSecurity $pathSec, FileOps $fileOps): void {
             throw new ApiException('archive.unsupported_format', 400);
         }
 
+        if (!is_dir($targetAbs) && !mkdir($targetAbs, 0755, true) && !is_dir($targetAbs)) {
+            throw new ApiException('server_error', 500);
+        }
+
         $mergeSkipped = merge_extracted_to_target($tempExtractDir, $targetAbs, $pathSec);
         foreach ($mergeSkipped as $skippedEntry) {
             $failed[] = ['path' => $skippedEntry, 'reason' => 'blocked.ignored'];
@@ -89,6 +105,14 @@ function api_archive_extract(PathSecurity $pathSec, FileOps $fileOps): void {
         'failed'     => $failed,
         'targetPath' => $relTarget ?: '',
     ]);
+}
+
+function archive_base_name(string $absPath): string {
+    $filename = basename($absPath);
+    if (preg_match('/^(.+)\.tar\.(?:gz|bz2|xz)$/i', $filename, $m)) {
+        return $m[1];
+    }
+    return pathinfo($filename, PATHINFO_FILENAME);
 }
 
 /**

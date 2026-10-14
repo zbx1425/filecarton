@@ -31,6 +31,12 @@ export function pathWithoutExtension(name: string): string {
   return name.slice(0, dot)
 }
 
+export function archiveSubdirName(name: string): string {
+  const m = /^(.+)\.tar\.(?:gz|bz2|xz)$/i.exec(name)
+  if (m) return m[1]
+  return pathWithoutExtension(name)
+}
+
 export function isAppleJunkName(name: string): boolean {
   if (name.startsWith('._')) return true
   const lower = name.toLowerCase()

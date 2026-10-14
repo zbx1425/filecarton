@@ -20,6 +20,7 @@ import { pathExtension } from '@/utils/path'
 import {
   IMAGE_EXTENSIONS,
   AUDIO_EXTENSIONS,
+  VIDEO_EXTENSIONS,
   ARCHIVE_EXTENSIONS,
   EDITABLE_EXTENSIONS,
   EXTENSION_MONACO_LANGUAGE,
@@ -50,7 +51,7 @@ const ICON_MAP: Record<string, Component> = {
   png: Image, jpg: Image, jpeg: Image, gif: Image,
   webp: Image, avif: Image, bmp: Image, ico: Image,
   ogg: Music, mp3: Music, wav: Music, flac: Music, aac: Music, m4a: Music,
-  mp4: Video, webm: Video, mov: Video, avi: Video, mkv: Video, flv: Video,
+  mp4: Video, webm: Video, ogv: Video, mov: Video, m4v: Video, avi: Video, mkv: Video, flv: Video,
   obj: Box, mtl: Box, fbx: Box, glb: Box, gltf: Box, bbmodel: Box,
   dat: Database, nbt: Database, db: Database, sqlite: Database, bin: Database,
   zip: FileArchive, tar: FileArchive, gz: FileArchive, tgz: FileArchive,
@@ -107,6 +108,10 @@ export function isImage(name: string): boolean {
 
 export function isAudio(name: string): boolean {
   return AUDIO_EXTENSIONS.has(pathExtension(name))
+}
+
+export function isVideo(name: string): boolean {
+  return VIDEO_EXTENSIONS.has(pathExtension(name))
 }
 
 export function isArchive(name: string): boolean {

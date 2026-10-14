@@ -25,3 +25,14 @@ export function formatTime(timestamp: number): string {
   if (year === now.getFullYear()) return `${month}-${day}`
   return `${year}-${month}-${day}`
 }
+
+export function formatDuration(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return ''
+  const total = Math.floor(seconds)
+  const hrs = Math.floor(total / 3600)
+  const mins = Math.floor((total % 3600) / 60)
+  const secs = total % 60
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return hrs > 0 ? `${hrs}:${pad(mins)}:${pad(secs)}` : `${pad(mins)}:${pad(secs)}`
+}
+

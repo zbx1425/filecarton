@@ -11,12 +11,15 @@ class RepoSetting {
     public $branding;
     /** @var string|null */
     public $repoName;
+    /** @var bool|null */
+    public $featureArchive;
 
     public function __construct() {
         $this->rootPath = null;
         $this->readonly = null;
         $this->branding = null;
         $this->repoName = null;
+        $this->featureArchive = null;
     }
 
     /**
@@ -36,6 +39,9 @@ class RepoSetting {
         }
         if (array_key_exists('repoName', $arr) && is_string($arr['repoName'])) {
             $s->repoName = $arr['repoName'];
+        }
+        if (array_key_exists('featureArchive', $arr) && is_bool($arr['featureArchive'])) {
+            $s->featureArchive = $arr['featureArchive'];
         }
         return $s;
     }
@@ -58,27 +64,26 @@ class RepoSetting {
         if (array_key_exists('repoName', $row) && is_string($row['repoName'])) {
             $s->repoName = $row['repoName'];
         }
+        if (array_key_exists('featureArchive', $row) && is_bool($row['featureArchive'])) {
+            $s->featureArchive = $row['featureArchive'];
+        }
         return $s;
     }
 
     /**
-     * Structural validation: all 4 fields must be present with correct types.
+     * Structural validation: all 5 fields must be present with correct types.
      * rootPath='' is valid (means "must be overridden by a per-user grant").
      * @return string[] problem descriptions; empty array if valid
      */
     public function verifyAllSet(): array {
         $p = [];
-        if ($this->rootPath === null) {
-            $p[] = 'FILECARTON_REPO_SETTING is missing or has invalid rootPath (expected string).';
-        }
-        if ($this->readonly === null) {
-            $p[] = 'FILECARTON_REPO_SETTING is missing or has invalid readonly (expected bool).';
-        }
-        if ($this->branding === null) {
-            $p[] = 'FILECARTON_REPO_SETTING is missing or has invalid branding (expected string).';
-        }
-        if ($this->repoName === null) {
-            $p[] = 'FILECARTON_REPO_SETTING is missing or has invalid repoName (expected string).';
+        if ($this->rootPath === null
+            || $this->readonly === null
+            || $this->branding === null
+            || $this->repoName === null
+            || $this->featureArchive === null
+        ) {
+            $p[] = 'FILECARTON_REPO_SETTING is not containing all fields.';
         }
         return $p;
     }
@@ -93,7 +98,18 @@ class RepoSetting {
         if ($override->readonly !== null) $result->readonly = $override->readonly;
         if ($override->branding !== null) $result->branding = $override->branding;
         if ($override->repoName !== null) $result->repoName = $override->repoName;
+        if ($override->featureArchive !== null) $result->featureArchive = $override->featureArchive;
         return $result;
+    }
+
+    /**
+     * Build the features dictionary exposed to the frontend.
+     * @return array<string, bool>
+     */
+    public function featuresConfig(): array {
+        return [
+            'archive' => (bool)($this->featureArchive ?? true),
+        ];
     }
 
     // ─── Global resolution ─────────────────────────────────────────────

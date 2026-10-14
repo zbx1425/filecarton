@@ -46,11 +46,14 @@ class StartupCheck {
                 $p[] = 'Required PHP extension missing: ' . $ext;
             }
         }
-        if (!extension_loaded('zip') || !class_exists('ZipArchive')) {
-            $p[] = 'Required PHP extension missing: zip (ZipArchive)';
-        }
-        if (!extension_loaded('phar') || !class_exists('PharData')) {
-            $p[] = 'Required PHP extension missing: phar (PharData)';
+        $archiveEnabled = RepoSetting::current()->featureArchive !== false;
+        if ($archiveEnabled) {
+            if (!extension_loaded('zip') || !class_exists('ZipArchive')) {
+                $p[] = 'Required PHP extension missing: zip (ZipArchive)';
+            }
+            if (!extension_loaded('phar') || !class_exists('PharData')) {
+                $p[] = 'Required PHP extension missing: phar (PharData)';
+            }
         }
         if (!extension_loaded('zlib') || !function_exists('gzdecode')) {
             $p[] = 'Required PHP extension missing: zlib (gzdecode)';

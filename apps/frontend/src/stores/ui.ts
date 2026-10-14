@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
+import type { FileCartonFeatures } from '@/api/types'
 
 export const useUiStore = defineStore('ui', () => {
   const config = window.__FILECARTON__
@@ -8,6 +9,9 @@ export const useUiStore = defineStore('ui', () => {
   const readonly = ref(config.readonly)
   const repoName = ref(config.repoName ?? '')
   const branding = ref(config.branding ?? '')
+  const features = ref<FileCartonFeatures>({
+    archive: config.features?.archive ?? true,
+  })
 
   const searchQuery = ref('')
   const searchRecursive = ref(false)
@@ -38,6 +42,7 @@ export const useUiStore = defineStore('ui', () => {
     readonly,
     repoName,
     branding,
+    features,
     searchQuery,
     searchRecursive,
     settingsOpen,

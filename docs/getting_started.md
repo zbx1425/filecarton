@@ -57,6 +57,7 @@ define_default('FILECARTON_REPO_SETTING', [
     'readonly' => false,
     'branding' => 'FileCarton',
     'repoName' => '',
+    'featureArchive' => true,
 ]);
 ```
 
@@ -107,6 +108,7 @@ define('FILECARTON_REPO_SETTING', [
     'readonly' => false,
     'branding' => 'My App',
     'repoName' => '',
+    'featureArchive' => true,
 ]);
 
 require __DIR__ . '/filecarton.php';

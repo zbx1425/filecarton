@@ -45,6 +45,7 @@ define('FILECARTON_REPO_SETTING', [
     'readonly' => false,
     'branding' => 'FileCarton',
     'repoName' => $repo,
+    'featureArchive' => true,
 ]);
 
 require $backend . '/filecarton.php';

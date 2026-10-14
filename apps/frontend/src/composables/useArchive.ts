@@ -4,6 +4,7 @@ import type { ArchiveCreateResponse, ArchiveExtractResponse, ArchiveExtractDryRu
 import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
 import { useTreeStore } from '@/stores/tree'
+import { useUiStore } from '@/stores/ui'
 import { confirm, showPasteConflict, showOperationReport } from '@/composables/useDialogs'
 import { errorMessage } from '@/utils/errorMessage'
 
@@ -12,6 +13,9 @@ export async function createArchive(
   dirPath?: string,
   items?: string[],
 ) {
+  const ui = useUiStore()
+  if (ui.readonly || !ui.features.archive) return
+
   const fileList = useFileListStore()
   const navigation = useNavigationStore()
   const tree = useTreeStore()
@@ -44,7 +48,14 @@ export async function createArchive(
   }
 }
 
-export async function extractArchive(archivePath: string, targetDir: string) {
+export async function extractArchive(
+  archivePath: string,
+  targetDir: string,
+  createSubdir = false,
+) {
+  const ui = useUiStore()
+  if (ui.readonly || !ui.features.archive) return
+
   const navigation = useNavigationStore()
   const fileList = useFileListStore()
   const tree = useTreeStore()
@@ -53,7 +64,7 @@ export async function extractArchive(archivePath: string, targetDir: string) {
     const dryRun = await apiPost<ArchiveExtractDryRunResponse>('archive_extract', {
       path: archivePath,
       targetPath: targetDir,
-      createSubdir: false,
+      createSubdir,
       dryRun: true,
     })
 
@@ -74,6 +85,7 @@ export async function extractArchive(archivePath: string, targetDir: string) {
       if (!overwrite) return
     }
 
+    const displayTarget = dryRun.targetPath || targetDir
     if (hasFailed) {
       const proceed = await showOperationReport({
         title: 'Entries Restricted',
@@ -85,7 +97,7 @@ export async function extractArchive(archivePath: string, targetDir: string) {
     } else if (!hasConflicts) {
       const confirmed = await confirm(
         'Extract Archive',
-        `Extract ${dryRun.wouldExtract} file(s) to /${targetDir || '(root)'}?`,
+        `Extract ${dryRun.wouldExtract} file(s) to /${displayTarget || '(root)'}?`,
         { actionLabel: 'Extract' },
       )
       if (!confirmed) return
@@ -94,7 +106,7 @@ export async function extractArchive(archivePath: string, targetDir: string) {
     const result = await apiPost<ArchiveExtractResponse>('archive_extract', {
       path: archivePath,
       targetPath: targetDir,
-      createSubdir: false,
+      createSubdir,
     })
     if (result.failed && result.failed.length > 0) {
       await showOperationReport({

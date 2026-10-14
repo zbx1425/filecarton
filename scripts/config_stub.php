@@ -17,6 +17,7 @@ define('FILECARTON_REPO_SETTING', [
     'readonly' => false,
     'branding' => '',
     'repoName' => '',
+    'featureArchive' => true,
 ]);
 define('FILECARTON_MUST_READONLY', false);
 define('FILECARTON_MUST_EMBED', false);
