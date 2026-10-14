@@ -12,6 +12,7 @@ import ImagePreview from './ImagePreview.vue'
 import AudioPreview from './AudioPreview.vue'
 import VideoPreview from './VideoPreview.vue'
 import ArchivePreview from './ArchivePreview.vue'
+import ArchiveExtractButton from './archive/ArchiveExtractButton.vue'
 import CodePreview from './CodePreview.vue'
 import FallbackPreview from './FallbackPreview.vue'
 
@@ -61,6 +62,12 @@ function handleDownload() {
         <Pencil class="size-4" />
         Edit
       </Button>
+
+      <ArchiveExtractButton
+        v-if="previewType === 'archive'"
+        :path="filePath"
+        :name="fileName"
+      />
 
       <Button variant="outline" size="sm" @click="handleDownload">
         <Download class="size-4" />

@@ -2,14 +2,12 @@ import { ref, computed, watch, onMounted, type Ref } from 'vue'
 import {
   apiGet,
   toErrorInfo,
-  buildDownloadUrl,
   buildArchiveDownloadUrl,
 } from '@/api/client'
 import type { ErrorInfo } from '@/api/client'
 import type { ArchiveListResponse, ArchiveEntry } from '@/api/types'
 import { usePreferencesStore } from '@/stores/preferences'
 import { splitPath, parentPath, pathName } from '@/utils/path'
-import { extractArchive } from '@/composables/useArchive'
 
 export interface ArchiveTreeItem {
   name: string
@@ -47,7 +45,6 @@ export function useArchiveExplorer(
   const sortAsc = ref(true)
 
   const archiveName = computed(() => archivePropName?.value || pathName(archivePath.value))
-  const archiveParentDir = computed(() => parentPath(archivePath.value))
   const currentPathStr = computed(() => currentPath.value.join('/'))
   const isAtRoot = computed(() => currentPath.value.length === 0 && !activeEntry.value)
 
@@ -243,14 +240,6 @@ export function useArchiveExplorer(
     window.open(buildArchiveDownloadUrl(archivePath.value, entryPath), '_blank')
   }
 
-  function handleDownloadArchive() {
-    window.open(buildDownloadUrl(archivePath.value), '_blank')
-  }
-
-  async function handleExtract(createSubdir: boolean) {
-    await extractArchive(archivePath.value, archiveParentDir.value, createSubdir)
-  }
-
   function toggleSort(column: ArchiveSortColumn) {
     if (sortBy.value === column) {
       sortAsc.value = !sortAsc.value
@@ -379,7 +368,5 @@ export function useArchiveExplorer(
     backToArchiveList,
     toggleSort,
     downloadEntry,
-    handleDownloadArchive,
-    handleExtract,
   }
 }

@@ -57,8 +57,6 @@ const {
   backToArchiveList,
   toggleSort,
   downloadEntry,
-  handleDownloadArchive,
-  handleExtract,
 } = useArchiveExplorer(toRef(props, 'path'), toRef(props, 'name'))
 
 const shouldShowTree = computed(() => ui.isMedium && treeVisible.value)
@@ -72,11 +70,10 @@ const shouldShowTree = computed(() => ui.isMedium && treeVisible.value)
 
     <ArchiveErrorState
       v-else-if="error"
+      :archive-path="path"
       :archive-name="archiveName"
       :size="size"
       :error="error"
-      @download-archive="handleDownloadArchive"
-      @extract="handleExtract"
     />
 
     <template v-else-if="data">
@@ -111,7 +108,6 @@ const shouldShowTree = computed(() => ui.isMedium && treeVisible.value)
         @toggle-tree="treeVisible = !treeVisible"
         @navigate-root="navigateTo([])"
         @navigate-segment="navigateToSegment"
-        @extract="handleExtract"
       />
 
       <ResizablePanelGroup direction="horizontal" class="flex-1 min-h-0">

@@ -90,10 +90,6 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
 
 <template>
   <div class="flex items-center h-11 px-3 border-b gap-2 shrink-0 bg-background">
-    <span v-if="ui.branding" class="text-sm font-semibold tracking-tight shrink-0 mr-1">
-      {{ ui.branding }}
-    </span>
-
     <Button
       v-if="ui.showTreeToggle"
       variant="ghost"
@@ -102,6 +98,10 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
     >
       <PanelLeft class="size-4" />
     </Button>
+
+    <span v-if="ui.branding" class="text-sm font-semibold tracking-tight shrink-0 mr-1">
+      {{ ui.branding }}
+    </span>
 
     <Breadcrumb class="flex-1 min-w-0">
       <BreadcrumbList>

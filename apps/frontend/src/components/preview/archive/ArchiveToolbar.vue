@@ -12,7 +12,6 @@ import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu'
@@ -21,10 +20,8 @@ import {
   PanelLeft,
   Search,
   ChevronDown,
-  PackageOpen,
 } from '@lucide/vue'
 import { useUiStore } from '@/stores/ui'
-import { archiveSubdirName } from '@/utils/path'
 
 defineProps<{
   archiveName: string
@@ -42,7 +39,6 @@ const emit = defineEmits<{
   navigateSegment: [index: number]
   'update:searchQuery': [val: string]
   'update:searchRecursive': [val: boolean]
-  extract: [createSubdir: boolean]
 }>()
 
 const ui = useUiStore()
@@ -109,7 +105,7 @@ const ui = useUiStore()
             <Input
               :model-value="searchQuery"
               placeholder="Search in archive..."
-              class="h-7 w-44 pl-7 pr-7 text-xs"
+              class="h-7 w-64 pl-7 pr-7 text-xs"
               @update:model-value="emit('update:searchQuery', String($event))"
             />
           </div>
@@ -136,24 +132,6 @@ const ui = useUiStore()
           </DropdownMenu>
         </div>
       </template>
-
-      <DropdownMenu v-if="!ui.readonly && ui.features.archive">
-        <DropdownMenuTrigger as-child>
-          <Button variant="outline" size="sm" class="h-7 text-xs">
-            <PackageOpen class="size-3.5" />
-            Extract
-            <ChevronDown class="size-3" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem @select="emit('extract', false)">
-            Extract Here
-          </DropdownMenuItem>
-          <DropdownMenuItem @select="emit('extract', true)">
-            Extract to "{{ archiveSubdirName(archiveName) }}/"
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
     </div>
   </div>
 </template>

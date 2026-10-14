@@ -22,7 +22,7 @@ export const useUiStore = defineStore('ui', () => {
   const isMedium = useMediaQuery('(min-width: 700px)')
 
   const treePanelVisible = ref(true)
-  const showTreeToggle = computed(() => isMedium.value && !isWide.value)
+  const showTreeToggle = computed(() => isMedium.value)
 
   function initResponsive() {
     treePanelVisible.value = isWide.value
@@ -33,7 +33,6 @@ export const useUiStore = defineStore('ui', () => {
   }
 
   const shouldShowTree = computed(() => {
-    if (isWide.value) return true
     if (isMedium.value) return treePanelVisible.value
     return false
   })

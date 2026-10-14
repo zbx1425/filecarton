@@ -49,7 +49,7 @@ watch(
 
       <ResizableHandle v-if="ui.shouldShowTree" />
 
-      <ResizablePanel :default-size="80">
+      <ResizablePanel :default-size="ui.shouldShowTree ? 80 : 100">
         <ContentPanel />
       </ResizablePanel>
     </ResizablePanelGroup>
