@@ -37,10 +37,10 @@ function api_archive_create(PathSecurity $pathSec, FileOps $fileOps): void {
     count_items_for_archive($dirAbs, $input['items'], $pathSec, $fileCount, $totalSize);
 
     if ($fileCount > FILECARTON_ARCHIVE_MAX_FILES) {
-        Response::error('archive.too_many_files', 400, ['limit' => FILECARTON_ARCHIVE_MAX_FILES]);
+        Response::error('archive.too_many_to_create', 400, ['limit' => FILECARTON_ARCHIVE_MAX_FILES]);
     }
     if ($totalSize > FILECARTON_ARCHIVE_MAX_SIZE) {
-        Response::error('archive.too_large', 400, ['limitGB' => round(FILECARTON_ARCHIVE_MAX_SIZE / 1024 / 1024 / 1024, 1)]);
+        Response::error('archive.too_large_to_create', 400, ['limitMB' => round(FILECARTON_ARCHIVE_MAX_SIZE / 1024 / 1024, 1)]);
     }
 
     $skipped = [];

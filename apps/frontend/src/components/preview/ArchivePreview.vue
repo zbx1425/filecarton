@@ -43,7 +43,9 @@ const {
   sortAsc,
   filteredDirs,
   filteredFiles,
-  filteredCurrentTotalSize,
+  statusDirsCount,
+  statusFilesCount,
+  statusTotalSize,
   isActuallyEmpty,
   isFilteredEmpty,
   showRecursiveSearch,
@@ -60,6 +62,9 @@ const {
 } = useArchiveExplorer(toRef(props, 'path'), toRef(props, 'name'))
 
 const shouldShowTree = computed(() => ui.isMedium && treeVisible.value)
+const canExtract = computed(() => !error.value || error.value.code === 'archive.too_large_to_open')
+
+defineExpose({ canExtract })
 </script>
 
 <template>
@@ -180,8 +185,8 @@ const shouldShowTree = computed(() => ui.isMedium && treeVisible.value)
         style="background: var(--statusbar-bg); color: var(--statusbar-fg); border-top: 1px solid var(--statusbar-border)"
       >
         <span>
-          {{ filteredDirs.length }} folders, {{ filteredFiles.length }} files
-          <span class="ml-1">({{ formatSize(filteredCurrentTotalSize) }})</span>
+          {{ statusDirsCount }} folders, {{ statusFilesCount }} files
+          <span class="ml-1">({{ formatSize(statusTotalSize) }})</span>
         </span>
         <span class="flex-1" />
         <span class="text-muted-foreground/80 truncate">

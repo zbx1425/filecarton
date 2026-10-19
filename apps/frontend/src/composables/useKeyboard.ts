@@ -4,6 +4,7 @@ import { useFileListStore } from '@/stores/fileList'
 import { useUiStore } from '@/stores/ui'
 import { dialogState } from '@/composables/useDialogs'
 import { lightboxState, closeLightbox } from '@/composables/useLightbox'
+import { handleArchiveBackKey } from '@/composables/useArchiveExplorer'
 import {
   copySelected,
   cutSelected,
@@ -60,7 +61,9 @@ export function useKeyboard() {
 
     if (navigation.viewMode !== 'list') {
       if (e.key === 'Escape' || e.key === 'Backspace') {
-        navigation.backToList()
+        if (!handleArchiveBackKey(e.key)) {
+          navigation.backToList()
+        }
         e.preventDefault()
       }
       return

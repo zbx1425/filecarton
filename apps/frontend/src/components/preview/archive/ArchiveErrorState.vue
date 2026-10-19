@@ -27,7 +27,11 @@ function handleDownloadArchive() {
       {{ $t('err.' + error.code, error.params ?? {}) }}
     </p>
     <div class="flex items-center gap-2 mt-1">
-      <ArchiveExtractButton :path="archivePath" :name="archiveName" />
+      <ArchiveExtractButton
+        v-if="error.code === 'archive.too_large_to_open'"
+        :path="archivePath"
+        :name="archiveName"
+      />
       <Button variant="outline" size="sm" @click="handleDownloadArchive">
         <Download class="size-4" />
         Download Archive

@@ -108,7 +108,7 @@ class RepoSetting {
      */
     public function featuresConfig(): array {
         return [
-            'archive' => (bool)($this->featureArchive ?? true),
+            'archive' => (bool)$this->featureArchive,
         ];
     }
 

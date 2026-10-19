@@ -60,15 +60,67 @@ class ArchiveReader {
     /**
      * Extract relative entry path from a PharFileInfo item inside PharData.
      */
-    private static function extractPharEntryPath(\SplFileInfo $item, string $absPath): string {
+    public static function extractPharEntryPath(\SplFileInfo $item, string $absPath): string {
         $raw = str_replace('\\', '/', $item->getPathname());
-        $prefix = 'phar://' . str_replace('\\', '/', $absPath) . '/';
-        if ( strncasecmp($raw, $prefix, strlen($prefix)) === 0 ) {
-            $raw = substr($raw, strlen($prefix));
-        } else {
-            $raw = preg_replace('#^phar://.+?\.(?:tar(?:\.gz)?|tgz|gz)/#i', '', $raw);
+        $cleanAbs = str_replace('\\', '/', realpath($absPath) ?: $absPath);
+        foreach (['phar://' . str_replace('\\', '/', $absPath) . '/', 'phar://' . $cleanAbs . '/'] as $prefix) {
+            if (strncasecmp($raw, $prefix, strlen($prefix)) === 0) {
+                return self::normalizeEntryPath(substr($raw, strlen($prefix)));
+            }
         }
-        return self::normalizeEntryPath($raw);
+        return '';
+    }
+
+    /**
+     * Iterate over normalized entries in a ZIP, TAR, or TAR.GZ archive.
+     *
+     * @return \Generator<int, array{path: string, isDir: bool, openStream: callable}>
+     */
+    public static function iterateEntries(string $absPath): \Generator {
+        $format = self::detectFormat($absPath);
+        if ($format === 'zip') {
+            $zip = new \ZipArchive();
+            if ($zip->open($absPath) !== true) {
+                throw new ApiException('archive.cannot_open', 400);
+            }
+            try {
+                for ($i = 0; $i < $zip->numFiles; $i++) {
+                    $entryName = $zip->getNameIndex($i);
+                    if ($entryName === false) continue;
+                    $isDir = str_ends_with($entryName, '/') || str_ends_with($entryName, '\\');
+                    $norm = self::normalizeEntryPath($entryName);
+                    if ($norm === '') continue;
+                    yield [
+                        'path'       => $norm,
+                        'isDir'      => $isDir,
+                        'openStream' => static function () use ($zip, $entryName) {
+                            return $zip->getStream($entryName);
+                        },
+                    ];
+                }
+            } finally {
+                @$zip->close();
+            }
+        } else {
+            try {
+                $phar = new \PharData($absPath);
+                $iter = new \RecursiveIteratorIterator($phar, \RecursiveIteratorIterator::SELF_FIRST);
+            } catch (\Throwable $e) {
+                throw new ApiException('archive.cannot_open', 400);
+            }
+            foreach ($iter as $item) {
+                $norm = self::extractPharEntryPath($item, $absPath);
+                if ($norm === '') continue;
+                $pathname = $item->getPathname();
+                yield [
+                    'path'       => $norm,
+                    'isDir'      => $item->isDir(),
+                    'openStream' => static function () use ($pathname) {
+                        return @fopen($pathname, 'rb');
+                    },
+                ];
+            }
+        }
     }
 
     /**
@@ -102,26 +154,30 @@ class ArchiveReader {
                 if ($stat === false) continue;
                 $rawName = $stat['name'];
                 $isDir = str_ends_with($rawName, '/') || str_ends_with($rawName, '\\');
-                $entryPath = self::normalizeEntryPath($rawName);
-                if ($entryPath === '') continue;
-
                 $size = $isDir ? 0 : (int)$stat['size'];
-                $mtime = (int)($stat['mtime'] ?? $archiveMtime);
-
-                if (!$isDir) {
-                    $totalFiles++;
-                    $totalSize += $size;
-                }
 
                 if (count($entries) < $listMaxFiles) {
+                    $entryPath = self::normalizeEntryPath($rawName);
+                    if ($entryPath === '') continue;
+
+                    if (!$isDir) {
+                        $totalFiles++;
+                        $totalSize += $size;
+                    }
+
                     $entries[] = [
                         'path'  => $entryPath,
                         'size'  => $size,
-                        'mtime' => $mtime,
+                        'mtime' => (int)($stat['mtime'] ?? $archiveMtime),
                         'isDir' => $isDir,
                     ];
                 } else {
+                    if (trim($rawName, '/\\.') === '') continue;
                     $truncated = true;
+                    if (!$isDir) {
+                        $totalFiles++;
+                        $totalSize += $size;
+                    }
                 }
             }
             $zip->close();
@@ -131,27 +187,30 @@ class ArchiveReader {
                 $phar = new \PharData($absPath);
                 $iter = new \RecursiveIteratorIterator($phar, \RecursiveIteratorIterator::SELF_FIRST);
                 foreach ($iter as $item) {
-                    $entryPath = self::extractPharEntryPath($item, $absPath);
-                    if ($entryPath === '') continue;
-
                     $isDir = $item->isDir();
                     $size = $isDir ? 0 : (int)$item->getSize();
-                    $mtime = (int)$item->getMTime();
-
-                    if (!$isDir) {
-                        $totalFiles++;
-                        $totalSize += $size;
-                    }
 
                     if (count($entries) < $listMaxFiles) {
+                        $entryPath = self::extractPharEntryPath($item, $absPath);
+                        if ($entryPath === '') continue;
+
+                        if (!$isDir) {
+                            $totalFiles++;
+                            $totalSize += $size;
+                        }
+
                         $entries[] = [
                             'path'  => $entryPath,
                             'size'  => $size,
-                            'mtime' => $mtime,
+                            'mtime' => (int)$item->getMTime(),
                             'isDir' => $isDir,
                         ];
                     } else {
                         $truncated = true;
+                        if (!$isDir) {
+                            $totalFiles++;
+                            $totalSize += $size;
+                        }
                     }
                 }
             } catch (ApiException $e) {
@@ -191,6 +250,9 @@ class ArchiveReader {
         $format = self::detectFormat($absPath);
         self::assertCanOpen($absPath, $format);
         $archiveMtime = (int)filemtime($absPath);
+        $maxBytes = defined('FILECARTON_ARCHIVE_MAX_SIZE')
+            ? (int)FILECARTON_ARCHIVE_MAX_SIZE
+            : (1024 * 1024 * 1024);
 
         if ($format === 'zip') {
             $zip = new \ZipArchive();
@@ -221,6 +283,14 @@ class ArchiveReader {
                 throw new ApiException('not_found.file', 404);
             }
 
+            $size = (int)$stat['size'];
+            if ($size > $maxBytes) {
+                $zip->close();
+                throw new ApiException('archive.too_large_to_extract', 413, [
+                    'limitMB' => round($maxBytes / 1024 / 1024, 1),
+                ]);
+            }
+
             $stream = $zip->getStream($stat['name']);
             if ($stream === false) {
                 $zip->close();
@@ -229,7 +299,7 @@ class ArchiveReader {
 
             return [
                 'stream'  => $stream,
-                'size'    => (int)$stat['size'],
+                'size'    => $size,
                 'mtime'   => (int)($stat['mtime'] ?? $archiveMtime),
                 'name'    => basename($targetPath),
                 'cleanup' => function () use ($stream, $zip) {
@@ -257,15 +327,14 @@ class ArchiveReader {
             $matchedMtime = $archiveMtime;
 
             try {
-            foreach ($iter as $item) {
-                $norm = self::extractPharEntryPath($item, $absPath);
-                if ($norm === '') continue;
+                foreach ($iter as $item) {
+                    $norm = self::extractPharEntryPath($item, $absPath);
+                    if ($norm === '') continue;
 
-                    $isDir = $item->isDir();
-                    if (!$isDir) {
+                    if (!$item->isDir()) {
                         $fileCount++;
                         if ($fileCount > $tarMaxAccessFiles) {
-                            throw new ApiException('archive.random_access_disabled', 403, [
+                            throw new ApiException('archive.too_many_to_open', 403, [
                                 'limit' => $tarMaxAccessFiles,
                             ]);
                         }
@@ -284,6 +353,12 @@ class ArchiveReader {
 
             if ($matchedPathname === null) {
                 throw new ApiException('not_found.file', 404);
+            }
+
+            if ($matchedSize > $maxBytes) {
+                throw new ApiException('archive.too_large_to_extract', 413, [
+                    'limitMB' => round($maxBytes / 1024 / 1024, 1),
+                ]);
             }
 
             $stream = @fopen($matchedPathname, 'rb');

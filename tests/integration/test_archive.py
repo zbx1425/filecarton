@@ -145,6 +145,40 @@ def test_extract_subdir_and_conflict(world):
     assert conflict_res.status_code == 409
     assert error_code(conflict_res) == "already_exists"
 
+    # TAR variants (.tgz, .gz, and .tar inside a *.tar parent directory) extract with exact relative paths
+    write_targz(scenario.alice_root / "plain.tgz", {"readme.txt": b"from-tgz"})
+    write_targz(scenario.alice_root / "notes.gz", {"readme.txt": b"from-gz"})
+    parent_tar_dir = scenario.alice_root / "old.tar"
+    parent_tar_dir.mkdir(parents=True, exist_ok=True)
+    write_tar(parent_tar_dir / "docs.tar", {"readme.txt": b"from-nested-tar"})
+
+    for rel_archive, expected_bytes in (
+        ("plain.tgz", b"from-tgz"),
+        ("notes.gz", b"from-gz"),
+        ("old.tar/docs.tar", b"from-nested-tar"),
+    ):
+        dry = client.api(
+            "archive_extract",
+            method="POST",
+            json_body={"path": rel_archive, "targetPath": "", "createSubdir": True, "dryRun": True},
+        )
+        assert dry.status_code == 200, dry.text
+        dry_data = json_body(dry)["data"]
+        assert dry_data["wouldExtract"] == 1
+        assert dry_data["failed"] == []
+
+        ext_res = client.api(
+            "archive_extract",
+            method="POST",
+            json_body={"path": rel_archive, "targetPath": "", "createSubdir": True},
+        )
+        assert ext_res.status_code == 200, ext_res.text
+        ext_data = json_body(ext_res)["data"]
+        assert ext_data["extracted"] == 1
+        assert ext_data["failed"] == []
+        target_dir = scenario.alice_root / ext_data["targetPath"]
+        assert (target_dir / "readme.txt").read_bytes() == expected_bytes
+
 
 def test_archive_list_and_inner_file_access(world):
     scenario, client = world
@@ -258,12 +292,14 @@ def test_archive_limits_and_tar_restrictions(stack, tmp_path_factory, tools):
     write_zip(alice / "many.zip", many_entries)
     write_tar(alice / "many.tar", many_entries)
     write_targz(alice / "big.tar.gz", {"payload.txt": b"x" * 2048})
+    write_zip(alice / "oversize_entry.zip", {"huge.bin": b"x" * 512})
 
     digest = password_hash(tools.php_exe)
     defines = _base_defines({
         "FILECARTON_ARCHIVE_LIST_MAX_FILES": 3,
         "FILECARTON_ARCHIVE_TAR_MAX_ACCESS_FILES": 4,
         "FILECARTON_ARCHIVE_TARGZ_MAX_ACCESS_SIZE": 64,
+        "FILECARTON_ARCHIVE_MAX_SIZE": 128,
         "FILECARTON_STATIC_USER_LIST": [
             {"id": "alice", "passwordHash": digest, "root": fwd(alice)},
         ],
@@ -305,12 +341,20 @@ def test_archive_limits_and_tar_restrictions(stack, tmp_path_factory, tools):
         # TAR single-entry access is rejected when file count exceeds FILECARTON_ARCHIVE_TAR_MAX_ACCESS_FILES
         r_tar_read = client.api("archive_read", query={"path": "many.tar", "entry": "dir/file_0.txt"}, csrf=False)
         assert r_tar_read.status_code == 403
-        assert error_code(r_tar_read) == "archive.random_access_disabled"
+        assert error_code(r_tar_read) == "archive.too_many_to_open"
 
         # TAR.GZ exceeding FILECARTON_ARCHIVE_TARGZ_MAX_ACCESS_SIZE is rejected
         r_tgz = client.api("archive_list", query={"path": "big.tar.gz"}, csrf=False)
         assert r_tgz.status_code == 413
         assert error_code(r_tgz) == "archive.too_large_to_open"
+
+        # Entry exceeding FILECARTON_ARCHIVE_MAX_SIZE is rejected with 413 before streaming
+        r_huge_raw = client.api("archive_raw", query={"path": "oversize_entry.zip", "entry": "huge.bin"}, csrf=False)
+        assert r_huge_raw.status_code == 413
+        assert error_code(r_huge_raw) == "archive.too_large_to_extract"
+        r_huge_dl = client.api("archive_download", query={"path": "oversize_entry.zip", "entry": "huge.bin"}, csrf=False)
+        assert r_huge_dl.status_code == 413
+        assert error_code(r_huge_dl) == "archive.too_large_to_extract"
     finally:
         client.close()
 

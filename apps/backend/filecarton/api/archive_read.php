@@ -33,7 +33,6 @@ function api_archive_read(PathSecurity $pathSec, FileOps $fileOps): void {
             if ($chunk === false || $chunk === '') break;
             $bytesRead += strlen($chunk);
             if ($bytesRead > $maxSize) {
-                $cleanup();
                 Response::error('file_too_large', 413, ['maxMB' => round($maxSize / 1024 / 1024, 1)]);
             }
             $content .= $chunk;

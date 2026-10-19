@@ -33,8 +33,9 @@ export function pathWithoutExtension(name: string): string {
 
 export function archiveSubdirName(name: string): string {
   const m = /^(.+)\.tar\.(?:gz|bz2|xz)$/i.exec(name)
-  if (m) return m[1]
-  return pathWithoutExtension(name)
+  const base = m ? m[1] : pathWithoutExtension(name)
+  const cleaned = base.replace(/[/\\:*?"<>|]/g, '').replace(/[.\s]+$/, '')
+  return cleaned || base
 }
 
 export function isAppleJunkName(name: string): boolean {

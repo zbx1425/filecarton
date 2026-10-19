@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { useNavigationStore } from '@/stores/navigation'
 import { useFileListStore } from '@/stores/fileList'
@@ -20,6 +20,8 @@ const navigation = useNavigationStore()
 const fileList = useFileListStore()
 const ui = useUiStore()
 const preferences = usePreferencesStore()
+
+const archivePreviewRef = ref<InstanceType<typeof ArchivePreview> | null>(null)
 
 const fileName = computed(() => navigation.activeFile ?? '')
 const filePath = computed(() => navigation.activeFilePath ?? '')
@@ -64,7 +66,7 @@ function handleDownload() {
       </Button>
 
       <ArchiveExtractButton
-        v-if="previewType === 'archive'"
+        v-if="previewType === 'archive' && (archivePreviewRef?.canExtract ?? true)"
         :path="filePath"
         :name="fileName"
       />
@@ -79,7 +81,13 @@ function handleDownload() {
       <ImagePreview v-if="previewType === 'image'" :path="filePath" :name="fileName" :size="fileSize" />
       <AudioPreview v-else-if="previewType === 'audio'" :path="filePath" :name="fileName" />
       <VideoPreview v-else-if="previewType === 'video'" :path="filePath" :name="fileName" :size="fileSize" />
-      <ArchivePreview v-else-if="previewType === 'archive'" :path="filePath" :name="fileName" :size="fileSize" />
+      <ArchivePreview
+        v-else-if="previewType === 'archive'"
+        ref="archivePreviewRef"
+        :path="filePath"
+        :name="fileName"
+        :size="fileSize"
+      />
       <CodePreview v-else-if="previewType === 'code'" :path="filePath" :name="fileName" />
       <FallbackPreview v-else :name="fileName" :size="fileSize" :path="filePath" />
     </div>

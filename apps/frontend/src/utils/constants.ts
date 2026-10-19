@@ -11,7 +11,7 @@ export const VIDEO_EXTENSIONS = new Set([
 ])
 
 export const ARCHIVE_EXTENSIONS = new Set([
-  'zip', 'tar', 'gz', 'tgz', 'rar', '7z', 'bz2', 'xz',
+  'zip', 'tar', 'gz', 'tgz',
 ])
 
 export const EDITABLE_EXTENSIONS = new Set([

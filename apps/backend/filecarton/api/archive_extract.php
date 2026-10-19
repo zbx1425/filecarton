@@ -45,18 +45,10 @@ function api_archive_extract(PathSecurity $pathSec, FileOps $fileOps): void {
     }
 
     $normalizedTarget = str_replace('\\', '/', $targetAbs);
-    $ext = strtolower(pathinfo($archiveAbs, PATHINFO_EXTENSION));
+    ArchiveReader::detectFormat($archiveAbs);
 
     if ($dryRun) {
-        $result = ['wouldExtract' => 0, 'conflicts' => [], 'failed' => []];
-        if ($ext === 'zip') {
-            $result = dry_run_zip($archiveAbs, $normalizedTarget, $pathSec);
-        } elseif ($ext === 'tar' || $ext === 'gz' || $ext === 'tgz') {
-            $result = dry_run_tar($archiveAbs, $normalizedTarget, $pathSec);
-        } else {
-            Response::error('archive.unsupported_format', 400);
-        }
-
+        $result = dry_run_archive($archiveAbs, $normalizedTarget, $pathSec);
         $relTarget = substr($normalizedTarget, strlen($pathSec->getRootPath()) + 1);
         Response::ok([
             'wouldExtract' => $result['wouldExtract'],
@@ -75,16 +67,8 @@ function api_archive_extract(PathSecurity $pathSec, FileOps $fileOps): void {
     $extracted = 0;
     $failed = [];
     try {
-        $bytesExtracted = 0;
         $maxBytes = FILECARTON_ARCHIVE_MAX_SIZE;
-
-        if ($ext === 'zip') {
-            $extracted = extract_zip_safe($archiveAbs, $tempExtractDir, $normalizedTemp, $pathSec, $bytesExtracted, $maxBytes, $normalizedTarget, $failed);
-        } elseif ($ext === 'tar' || $ext === 'gz' || $ext === 'tgz') {
-            $extracted = extract_tar_safe($archiveAbs, $tempExtractDir, $normalizedTemp, $pathSec, $bytesExtracted, $maxBytes, $normalizedTarget, $failed);
-        } else {
-            throw new ApiException('archive.unsupported_format', 400);
-        }
+        $extracted = extract_archive_safe($archiveAbs, $normalizedTemp, $pathSec, $maxBytes, $normalizedTarget, $failed);
 
         if (!is_dir($targetAbs) && !mkdir($targetAbs, 0755, true) && !is_dir($targetAbs)) {
             throw new ApiException('server_error', 500);
@@ -202,31 +186,22 @@ function merge_extracted_to_target(string $tempDir, string $targetDir, PathSecur
     return $skipped;
 }
 
-function extract_zip_safe(string $archiveAbs, string $targetAbs, string $normalizedTarget, PathSecurity $pathSec, int &$bytesExtracted, int $maxBytes, string $finalTarget, array &$failed): int {
-    $zip = new \ZipArchive();
-    if ($zip->open($archiveAbs) !== true) {
-        throw new ApiException('archive.cannot_open', 400);
-    }
-
+function extract_archive_safe(string $archiveAbs, string $normalizedTarget, PathSecurity $pathSec, int $maxBytes, string $finalTarget, array &$failed): int {
     $extracted = 0;
-    for ($i = 0; $i < $zip->numFiles; $i++) {
-        $entryName = $zip->getNameIndex($i);
-        $entryPath = str_replace('\\', '/', $entryName);
+    $bytesExtracted = 0;
 
-        $normalized = $pathSec->normalizePath($entryPath);
-        if ($normalized === '') continue;
-        $normalized = sanitize_entry_path($normalized);
+    foreach (ArchiveReader::iterateEntries($archiveAbs) as $entry) {
+        $normalized = sanitize_entry_path($entry['path']);
         if ($normalized === '') continue;
 
         $destPath = $normalizedTarget . '/' . $normalized;
-
         if (!str_starts_with($destPath, $normalizedTarget . '/')) {
             continue;
         }
 
         if (PathSecurity::isAppleJunkPath($normalized)) continue;
 
-        $isDir = str_ends_with($entryPath, '/');
+        $isDir = $entry['isDir'];
         $blockReason = check_extract_entry($normalized, $finalTarget, $pathSec, $isDir);
         if ($blockReason !== null) {
             $failed[] = ['path' => $normalized, 'reason' => $blockReason];
@@ -239,83 +214,7 @@ function extract_zip_safe(string $archiveAbs, string $targetAbs, string $normali
             $parentDir = dirname($destPath);
             if (!is_dir($parentDir)) mkdir($parentDir, 0755, true);
 
-            $stream = $zip->getStream($entryName);
-            if ($stream === false) {
-                $failed[] = ['path' => $normalized, 'reason' => 'io_error'];
-                continue;
-            }
-            $outFile = fopen($destPath, 'wb');
-            if ($outFile === false) {
-                fclose($stream);
-                $failed[] = ['path' => $normalized, 'reason' => 'io_error'];
-                continue;
-            }
-
-            while (!feof($stream)) {
-                $chunk = fread($stream, 65536);
-                if ($chunk === false || $chunk === '') break;
-                fwrite($outFile, $chunk);
-                $bytesExtracted += strlen($chunk);
-                if ($bytesExtracted > $maxBytes) {
-                    fclose($stream);
-                    fclose($outFile);
-                    $zip->close();
-                    throw new ApiException('archive.size_exceeded', 413, ['limitGB' => round($maxBytes / 1024 / 1024 / 1024, 1)]);
-                }
-            }
-
-            fclose($stream);
-            fflush($outFile);
-            fclose($outFile);
-            $extracted++;
-        }
-    }
-    $zip->close();
-    return $extracted;
-}
-
-function extract_tar_safe(string $archiveAbs, string $targetAbs, string $normalizedTarget, PathSecurity $pathSec, int &$bytesExtracted, int $maxBytes, string $finalTarget, array &$failed): int {
-    try {
-        $phar = new \PharData($archiveAbs);
-    } catch (\Throwable $e) {
-        throw new ApiException('archive.cannot_open', 400);
-    }
-
-    $extracted = 0;
-    $iter = new \RecursiveIteratorIterator($phar, \RecursiveIteratorIterator::SELF_FIRST);
-
-    foreach ($iter as $item) {
-        $entryPath = $item->getPathname();
-        $entryPath = preg_replace('#^phar://.*?\.tar(?:\.gz)?/#', '', $entryPath);
-        $entryPath = str_replace('\\', '/', $entryPath);
-
-        $normalized = $pathSec->normalizePath($entryPath);
-        if ($normalized === '') continue;
-        $normalized = sanitize_entry_path($normalized);
-        if ($normalized === '') continue;
-
-        $destPath = $normalizedTarget . '/' . $normalized;
-
-        if (!str_starts_with($destPath, $normalizedTarget . '/')) {
-            continue;
-        }
-
-        if (PathSecurity::isAppleJunkPath($normalized)) continue;
-
-        $isDir = $item->isDir();
-        $blockReason = check_extract_entry($normalized, $finalTarget, $pathSec, $isDir);
-        if ($blockReason !== null) {
-            $failed[] = ['path' => $normalized, 'reason' => $blockReason];
-            continue;
-        }
-
-        if ($isDir) {
-            if (!is_dir($destPath)) mkdir($destPath, 0755, true);
-        } else {
-            $parentDir = dirname($destPath);
-            if (!is_dir($parentDir)) mkdir($parentDir, 0755, true);
-
-            $inStream = @fopen($item->getPathname(), 'rb');
+            $inStream = ($entry['openStream'])();
             if ($inStream === false) {
                 $failed[] = ['path' => $normalized, 'reason' => 'io_error'];
                 continue;
@@ -335,7 +234,7 @@ function extract_tar_safe(string $archiveAbs, string $targetAbs, string $normali
                 if ($bytesExtracted > $maxBytes) {
                     fclose($inStream);
                     fclose($outFile);
-                    throw new ApiException('archive.size_exceeded', 413, ['limitGB' => round($maxBytes / 1024 / 1024 / 1024, 1)]);
+                    throw new ApiException('archive.too_large_to_extract', 413, ['limitMB' => round($maxBytes / 1024 / 1024, 1)]);
                 }
             }
 
@@ -349,76 +248,18 @@ function extract_tar_safe(string $archiveAbs, string $targetAbs, string $normali
     return $extracted;
 }
 
-function dry_run_zip(string $archiveAbs, string $normalizedTarget, PathSecurity $pathSec): array {
-    $zip = new \ZipArchive();
-    if ($zip->open($archiveAbs) !== true) {
-        Response::error('archive.cannot_open', 400);
-    }
-
+function dry_run_archive(string $archiveAbs, string $normalizedTarget, PathSecurity $pathSec): array {
     $wouldExtract = 0;
     $conflicts = [];
     $failed = [];
 
-    for ($i = 0; $i < $zip->numFiles; $i++) {
-        $entryName = $zip->getNameIndex($i);
-        $entryPath = str_replace('\\', '/', $entryName);
-
-        $normalized = $pathSec->normalizePath($entryPath);
-        if ($normalized === '') continue;
-        $normalized = sanitize_entry_path($normalized);
+    foreach (ArchiveReader::iterateEntries($archiveAbs) as $entry) {
+        $normalized = sanitize_entry_path($entry['path']);
         if ($normalized === '') continue;
 
         if (PathSecurity::isAppleJunkPath($normalized)) continue;
 
-        $isDir = str_ends_with($entryPath, '/');
-
-        $destPath = $normalizedTarget . '/' . $normalized;
-        if (!str_starts_with($destPath, $normalizedTarget . '/')) continue;
-
-        $blockReason = check_extract_entry($normalized, $normalizedTarget, $pathSec, $isDir);
-        if ($blockReason !== null) {
-            $failed[] = ['path' => $normalized, 'reason' => $blockReason];
-            continue;
-        }
-
-        if ($isDir) continue;
-
-        $wouldExtract++;
-        if (file_exists($destPath)) {
-            $conflicts[] = $normalized;
-        }
-    }
-    $zip->close();
-
-    return ['wouldExtract' => $wouldExtract, 'conflicts' => $conflicts, 'failed' => $failed];
-}
-
-function dry_run_tar(string $archiveAbs, string $normalizedTarget, PathSecurity $pathSec): array {
-    try {
-        $phar = new \PharData($archiveAbs);
-    } catch (\Throwable $e) {
-        Response::error('archive.cannot_open', 400);
-    }
-
-    $wouldExtract = 0;
-    $conflicts = [];
-    $failed = [];
-    $iter = new \RecursiveIteratorIterator($phar, \RecursiveIteratorIterator::SELF_FIRST);
-
-    foreach ($iter as $item) {
-        $entryPath = $item->getPathname();
-        $entryPath = preg_replace('#^phar://.*?\.tar(?:\.gz)?/#', '', $entryPath);
-        $entryPath = str_replace('\\', '/', $entryPath);
-
-        $normalized = $pathSec->normalizePath($entryPath);
-        if ($normalized === '') continue;
-        $normalized = sanitize_entry_path($normalized);
-        if ($normalized === '') continue;
-
-        if (PathSecurity::isAppleJunkPath($normalized)) continue;
-
-        $isDir = $item->isDir();
-
+        $isDir = $entry['isDir'];
         $destPath = $normalizedTarget . '/' . $normalized;
         if (!str_starts_with($destPath, $normalizedTarget . '/')) continue;
 

@@ -16,7 +16,10 @@ class Response {
     public static function ok($data = null) {
         self::discardOutputBuffer();
         http_response_code(200);
-        echo json_encode(['ok' => true, 'data' => $data], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        echo json_encode(
+            ['ok' => true, 'data' => $data],
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE
+        );
         exit;
     }
 
@@ -30,7 +33,7 @@ class Response {
         if ($authError !== null) {
             $body['authError'] = $authError;
         }
-        echo json_encode($body, JSON_UNESCAPED_UNICODE);
+        echo json_encode($body, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
         exit;
     }
 
@@ -214,36 +217,7 @@ class Response {
 
         header('Content-Type: ' . $mime);
         http_response_code(200);
-        if ($size >= 0) {
-            header('Content-Length: ' . $size);
-        }
-
-        while (ob_get_level() > 0) {
-            ob_end_clean();
-        }
-        @ini_set('zlib.output_compression', 'Off');
-
-        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'HEAD' || $size === 0) {
-            if ($cleanup) $cleanup();
-            exit;
-        }
-
-        @set_time_limit(0);
-        $maxBytes = defined('FILECARTON_ARCHIVE_MAX_SIZE') ? (int)FILECARTON_ARCHIVE_MAX_SIZE : (1024 * 1024 * 1024);
-        $limit = $size > 0 ? min($size, $maxBytes) : $maxBytes;
-        $remaining = $limit;
-        $chunkSize = 65536;
-        while ($remaining > 0 && !feof($stream) && !connection_aborted()) {
-            $buffer = fread($stream, min($chunkSize, $remaining));
-            if ($buffer === false || $buffer === '') {
-                break;
-            }
-            echo $buffer;
-            flush();
-            $remaining -= strlen($buffer);
-        }
-        if ($cleanup) $cleanup();
-        exit;
+        self::pipeResource($stream, $size, $cleanup);
     }
 
     /**
@@ -262,21 +236,35 @@ class Response {
         $encoded = rawurlencode($filename);
         header('Content-Type: application/octet-stream');
         header("Content-Disposition: attachment; filename=\"" . addcslashes($ascii, '"\\') . "\"; filename*=UTF-8''" . $encoded);
+        header('Cache-Control: private, no-store');
+        header('X-Content-Type-Options: nosniff');
+        http_response_code(200);
+        self::pipeResource($stream, $size, $cleanup);
+    }
+
+    /**
+     * Stream an open resource body with Content-Length and size cap, then clean up and exit.
+     *
+     * @param resource $stream
+     */
+    private static function pipeResource($stream, int $size, ?callable $cleanup): void {
         if ($size >= 0) {
             header('Content-Length: ' . $size);
         }
-        header('Cache-Control: private, no-store');
-        header('X-Content-Type-Options: nosniff');
 
         while (ob_get_level() > 0) {
             ob_end_clean();
         }
         @ini_set('zlib.output_compression', 'Off');
 
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'HEAD' || $size === 0) {
+            if ($cleanup) $cleanup();
+            exit;
+        }
+
         @set_time_limit(0);
         $maxBytes = defined('FILECARTON_ARCHIVE_MAX_SIZE') ? (int)FILECARTON_ARCHIVE_MAX_SIZE : (1024 * 1024 * 1024);
-        $limit = $size > 0 ? min($size, $maxBytes) : $maxBytes;
-        $remaining = $limit;
+        $remaining = $size > 0 ? min($size, $maxBytes) : $maxBytes;
         $chunkSize = 65536;
         while ($remaining > 0 && !feof($stream) && !connection_aborted()) {
             $buffer = fread($stream, min($chunkSize, $remaining));

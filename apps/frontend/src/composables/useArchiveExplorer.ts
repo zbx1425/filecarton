@@ -1,4 +1,4 @@
-import { ref, computed, watch, onMounted, type Ref } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, type Ref } from 'vue'
 import {
   apiGet,
   toErrorInfo,
@@ -8,6 +8,12 @@ import type { ErrorInfo } from '@/api/client'
 import type { ArchiveListResponse, ArchiveEntry } from '@/api/types'
 import { usePreferencesStore } from '@/stores/preferences'
 import { splitPath, parentPath, pathName } from '@/utils/path'
+
+let activeArchiveBackHandler: ((key: 'Escape' | 'Backspace') => boolean) | null = null
+
+export function handleArchiveBackKey(key: 'Escape' | 'Backspace'): boolean {
+  return activeArchiveBackHandler ? activeArchiveBackHandler(key) : false
+}
 
 export interface ArchiveTreeItem {
   name: string
@@ -162,7 +168,27 @@ export function useArchiveExplorer(
     }
   }
 
-  onMounted(fetchArchiveList)
+  function onBackKey(key: 'Escape' | 'Backspace'): boolean {
+    if (viewMode.value === 'preview') {
+      backToArchiveList()
+      return true
+    }
+    if (key === 'Backspace' && currentPath.value.length > 0) {
+      goUp()
+      return true
+    }
+    return false
+  }
+
+  onMounted(() => {
+    activeArchiveBackHandler = onBackKey
+    fetchArchiveList()
+  })
+  onBeforeUnmount(() => {
+    if (activeArchiveBackHandler === onBackKey) {
+      activeArchiveBackHandler = null
+    }
+  })
   watch(archivePath, fetchArchiveList)
 
   function isVisibleByDotfilePref(name: string): boolean {
@@ -335,6 +361,24 @@ export function useArchiveExplorer(
     return matches
   })
 
+  const statusDirsCount = computed(() =>
+    showRecursiveSearch.value
+      ? recursiveSearchResults.value.filter(item => item.isDir).length
+      : filteredDirs.value.length,
+  )
+
+  const statusFilesCount = computed(() =>
+    showRecursiveSearch.value
+      ? recursiveSearchResults.value.filter(item => !item.isDir).length
+      : filteredFiles.value.length,
+  )
+
+  const statusTotalSize = computed(() =>
+    showRecursiveSearch.value
+      ? recursiveSearchResults.value.reduce((sum, item) => sum + (item.isDir ? 0 : item.size), 0)
+      : filteredCurrentTotalSize.value,
+  )
+
   return {
     loading,
     error,
@@ -355,6 +399,9 @@ export function useArchiveExplorer(
     filteredDirs,
     filteredFiles,
     filteredCurrentTotalSize,
+    statusDirsCount,
+    statusFilesCount,
+    statusTotalSize,
     isActuallyEmpty,
     isFilteredEmpty,
     showRecursiveSearch,
