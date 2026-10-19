@@ -25,7 +25,7 @@ import {
 import { useUiStore } from '@/stores/ui'
 import { usePreferencesStore } from '@/stores/preferences'
 import { Sun, Moon, Monitor, Settings, List, Code, Info } from '@lucide/vue'
-import Badge from './ui/badge/Badge.vue'
+import Badge from '@/components/ui/badge/Badge.vue'
 
 const appVersion = __APP_VERSION__
 const ui = useUiStore()

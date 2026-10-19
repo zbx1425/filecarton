@@ -136,7 +136,7 @@ function startResize(e: MouseEvent) {
           <component :is="sortIcon('mtime')" v-if="sortIcon('mtime')" class="size-3" />
         </div>
         <template v-if="showUnixCols">
-          <div class="w-28 text-right shrink-0">
+          <div class="w-24 text-right shrink-0">
             Permissions
           </div>
           <div class="w-32 text-right shrink-0">
@@ -187,7 +187,7 @@ function startResize(e: MouseEvent) {
             <div class="w-20" />
             <div class="w-24" />
             <template v-if="showUnixCols">
-              <div class="w-28" />
+              <div class="w-24" />
               <div class="w-32" />
             </template>
           </div>

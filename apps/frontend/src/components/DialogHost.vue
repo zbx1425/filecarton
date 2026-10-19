@@ -20,8 +20,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { pathWithoutExtension } from '@/utils/path'
-import OperationReportDialog from './OperationReportDialog.vue'
-import PermissionsDialog from './PermissionsDialog.vue'
+import OperationReportDialog from '@/components/modal/OperationReportDialog.vue'
+import PermissionsDialog from '@/components/modal/PermissionsDialog.vue'
 
 const promptValue = ref('')
 const promptInputRef = ref<InstanceType<typeof Input> | null>(null)

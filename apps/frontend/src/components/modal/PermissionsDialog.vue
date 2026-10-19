@@ -52,7 +52,7 @@ const ROWS: Array<{
 }> = [
   { label: 'Read', cols: ['ur', 'gr', 'or'], specialKey: 'suid', specialLabel: 'SUID' },
   { label: 'Write', cols: ['uw', 'gw', 'ow'], specialKey: 'sgid', specialLabel: 'SGID' },
-  { label: 'Execute', cols: ['ux', 'gx', 'ox'], specialKey: 'sticky', specialLabel: 'Sticky' },
+  { label: 'Exec', cols: ['ux', 'gx', 'ox'], specialKey: 'sticky', specialLabel: 'Sticky' },
 ]
 
 const ui = useUiStore()
@@ -333,7 +333,7 @@ async function applyPermissions(recursive: boolean) {
 
 <template>
   <Dialog :open="state.open" @update:open="(v: boolean) => { if (!v) closeDialog() }">
-    <DialogContent class="sm:max-w-lg">
+    <DialogContent class="sm:!max-w-xl">
       <DialogHeader>
         <DialogTitle class="truncate pr-6">{{ dialogTitle }}</DialogTitle>
         <DialogDescription class="sr-only">
@@ -344,10 +344,6 @@ async function applyPermissions(recursive: boolean) {
       <div class="space-y-4 py-1">
         <!-- Section 1: File mode (left 4x4 grid + right Octal box) -->
         <div class="space-y-2">
-          <div class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            File mode
-          </div>
-
           <div class="flex flex-col sm:flex-row gap-4 items-stretch">
             <!-- Left: 4x4 Checkbox Grid -->
             <div class="flex-1 rounded-md border bg-muted/15 p-3">
@@ -368,7 +364,7 @@ async function applyPermissions(recursive: boolean) {
                 <div class="min-w-0 self-start">
                   <div class="text-xs font-medium text-foreground">Others</div>
                 </div>
-                <div />
+                <div></div>
 
                 <!-- 3 Permission rows -->
                 <template v-for="row in ROWS" :key="row.label">
@@ -409,9 +405,9 @@ async function applyPermissions(recursive: boolean) {
                   @keydown.enter.prevent="handleOctalBlur"
                 />
               </div>
-              <div class="text-center">
+              <div>
                 <div class="text-[11px] text-muted-foreground mb-0.5">Preview</div>
-                <div class="font-mono text-xs text-foreground tracking-wider bg-background/80 border rounded px-1.5 py-0.5">
+                <div class="font-mono text-center text-xs text-foreground tracking-wider bg-background/80 border rounded px-1.5 py-0.5">
                   {{ symbolicPreview }}
                 </div>
               </div>
@@ -423,10 +419,6 @@ async function applyPermissions(recursive: boolean) {
 
         <!-- Section 2 & 3: Running user notice & Ownership form -->
         <div class="space-y-3">
-          <div class="text-xs text-muted-foreground">
-            FileCarton is running as <strong class="text-foreground font-medium">{{ processUser }}</strong>.
-          </div>
-
           <div class="grid grid-cols-2 gap-3">
             <div class="space-y-1.5">
               <label class="text-xs font-medium text-foreground block">Owner</label>
@@ -446,6 +438,9 @@ async function applyPermissions(recursive: boolean) {
                 class="h-8 text-xs"
               />
             </div>
+          </div>
+          <div class="text-xs text-muted-foreground">
+            FileCarton is running as <strong class="text-foreground font-medium">{{ processUser }}</strong>.
           </div>
         </div>
       </div>

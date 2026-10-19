@@ -15,7 +15,8 @@ import { useUiStore } from '@/stores/ui'
 import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
 import { formatSize, formatTime, formatUnixMode } from '@/utils/format'
 import {
-  copySelected, cutSelected, deleteItems, renameItem, pasteItems, openPermissionsSelected,
+  copySelected, cutSelected, deleteItems, renameItem, pasteItems,
+  openPermissionsSelected, canModifyItemPermissions, canModifySelectedPermissions,
 } from '@/composables/useFileActions'
 import { buildDownloadUrl, buildRawUrl } from '@/api/client'
 import { joinPath, archiveSubdirName } from '@/utils/path'
@@ -61,6 +62,13 @@ const isSelected = computed(() => fileList.selected.has(props.name))
 const isCut = computed(() => clipboard.isCutItem(navigation.currentPathStr, props.name))
 const icon = computed(() => getFileIcon(props.name, props.isDir))
 const iconColor = computed(() => getFileIconColor(props.name, props.isDir))
+
+const canModifyPermissions = computed(() => {
+  if (fileList.selected.has(props.name)) {
+    return canModifySelectedPermissions()
+  }
+  return canModifyItemPermissions({ name: props.name, isDir: props.isDir, owner: props.owner })
+})
 
 function handleRowClick(e: MouseEvent) {
   if (e.shiftKey) {
@@ -254,10 +262,13 @@ const thumbnailUrl = computed(() => {
         </div>
 
         <template v-if="showUnixCols">
-          <div class="w-28 text-right font-mono text-muted-foreground shrink-0">
+          <div class="w-24 text-right font-mono text-muted-foreground shrink-0">
             {{ mode !== undefined ? formatUnixMode(mode, isDir) : '—' }}
           </div>
-          <div class="w-32 text-right text-muted-foreground shrink-0 truncate pl-2">
+          <div
+            class="w-32 text-right text-muted-foreground shrink-0 truncate pl-2"
+            :title="owner !== undefined && group !== undefined ? `${owner}:${group}` : undefined"
+          >
             {{ owner !== undefined && group !== undefined ? `${owner}:${group}` : '—' }}
           </div>
         </template>
@@ -317,7 +328,7 @@ const thumbnailUrl = computed(() => {
         </template>
         <template v-if="!ui.readonly && ui.features.unixPermModify">
           <ContextMenuSeparator v-if="!ui.features.archive" />
-          <ContextMenuItem @select="handlePermissions">
+          <ContextMenuItem :disabled="!canModifyPermissions" @select="handlePermissions">
             <Shield class="size-4" />
             Permissions
           </ContextMenuItem>

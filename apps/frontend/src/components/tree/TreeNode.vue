@@ -20,7 +20,7 @@ import { useUiStore } from '@/stores/ui'
 import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
 import { joinPath, parentPath, validateFileName, archiveSubdirName } from '@/utils/path'
 import {
-  deleteItems, renameItem, pasteItems,
+  deleteItems, renameItem, pasteItems, canModifyItemPermissions,
 } from '@/composables/useFileActions'
 import { isInternalDrag, handleDrop as dndHandleDrop } from '@/composables/useDragDrop'
 import { createArchive, extractArchive } from '@/composables/useArchive'
@@ -175,7 +175,12 @@ async function handleExtract(createSubdir = false) {
   await extractArchive(props.path, dirPath.value, createSubdir)
 }
 
+const canModifyPermissions = computed(() =>
+  canModifyItemPermissions({ name: props.name, isDir: isDir.value, owner: props.owner }),
+)
+
 function handlePermissions() {
+  if (!canModifyPermissions.value) return
   showPermissionsDialog(dirPath.value, [{
     name: props.name,
     isDir: isDir.value,
@@ -301,7 +306,7 @@ async function handleNewFolder() {
               <FolderPlus class="size-4" />
               New Folder
             </ContextMenuItem>
-            <ContextMenuItem v-if="ui.features.unixPermModify" @select="handlePermissions">
+            <ContextMenuItem v-if="ui.features.unixPermModify" :disabled="!canModifyPermissions" @select="handlePermissions">
               <Shield class="size-4" />
               Permissions
             </ContextMenuItem>
