@@ -36,3 +36,24 @@ export function formatDuration(seconds: number): string {
   return hrs > 0 ? `${hrs}:${pad(mins)}:${pad(secs)}` : `${pad(mins)}:${pad(secs)}`
 }
 
+export function formatUnixMode(mode: number, isDir: boolean): string {
+  const typeChar = isDir ? 'd' : '-'
+  const ur = (mode & 0o400) ? 'r' : '-'
+  const uw = (mode & 0o200) ? 'w' : '-'
+  const ux = (mode & 0o4000)
+    ? ((mode & 0o100) ? 's' : 'S')
+    : ((mode & 0o100) ? 'x' : '-')
+  const gr = (mode & 0o040) ? 'r' : '-'
+  const gw = (mode & 0o020) ? 'w' : '-'
+  const gx = (mode & 0o2000)
+    ? ((mode & 0o010) ? 's' : 'S')
+    : ((mode & 0o010) ? 'x' : '-')
+  const or = (mode & 0o004) ? 'r' : '-'
+  const ow = (mode & 0o002) ? 'w' : '-'
+  const ox = (mode & 0o1000)
+    ? ((mode & 0o001) ? 't' : 'T')
+    : ((mode & 0o001) ? 'x' : '-')
+  return `${typeChar}${ur}${uw}${ux}${gr}${gw}${gx}${or}${ow}${ox}`
+}
+
+

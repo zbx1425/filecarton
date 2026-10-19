@@ -43,6 +43,20 @@ export interface OperationReportState {
   resolve: ((value: boolean) => void) | null
 }
 
+export interface PermissionItemInfo {
+  name: string
+  isDir: boolean
+  mode?: number
+  owner?: string
+  group?: string
+}
+
+export interface PermissionsDialogState {
+  open: boolean
+  dirPath: string
+  items: PermissionItemInfo[]
+}
+
 export const dialogState = reactive({
   confirm: {
     open: false, title: '', message: '', actionLabel: 'Confirm', danger: false, hideCancel: false, resolve: null,
@@ -57,7 +71,17 @@ export const dialogState = reactive({
     open: false, title: '', description: '', items: [], warningBanner: '', highlightItem: '',
     continueLabel: '', dangerContinue: false, resolve: null,
   } as OperationReportState,
+  permissions: {
+    open: false, dirPath: '', items: [],
+  } as PermissionsDialogState,
 })
+
+export function showPermissionsDialog(dirPath: string, items: PermissionItemInfo[]) {
+  if (items.length === 0) return
+  dialogState.permissions.dirPath = dirPath
+  dialogState.permissions.items = items
+  dialogState.permissions.open = true
+}
 
 export function confirm(
   title: string,

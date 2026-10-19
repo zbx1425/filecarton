@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { ChevronRight, Loader2, FolderPlus, FileArchive, PackageOpen } from '@lucide/vue'
+import { ChevronRight, Loader2, FolderPlus, FileArchive, PackageOpen, Shield } from '@lucide/vue'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -28,7 +28,7 @@ import { isArchive } from '@/composables/useFileType'
 import { apiPost } from '@/api/client'
 import type { CreateResponse } from '@/api/types'
 import { toast } from 'vue-sonner'
-import { prompt } from '@/composables/useDialogs'
+import { prompt, showPermissionsDialog } from '@/composables/useDialogs'
 import { usePreferencesStore } from '@/stores/preferences'
 import { errorMessage } from '@/utils/errorMessage'
 
@@ -38,6 +38,9 @@ const props = defineProps<{
   type: 'dir' | 'file'
   hasChildren: boolean
   depth: number
+  mode?: number
+  owner?: string
+  group?: string
 }>()
 
 const tree = useTreeStore()
@@ -172,6 +175,16 @@ async function handleExtract(createSubdir = false) {
   await extractArchive(props.path, dirPath.value, createSubdir)
 }
 
+function handlePermissions() {
+  showPermissionsDialog(dirPath.value, [{
+    name: props.name,
+    isDir: isDir.value,
+    mode: props.mode,
+    owner: props.owner,
+    group: props.group,
+  }])
+}
+
 async function handleNewFolder() {
   if (!isDir.value) return
   const name = await prompt('New Folder', { placeholder: 'folder-name', submitLabel: 'Create' })
@@ -252,7 +265,7 @@ async function handleNewFolder() {
           @delete="handleDelete"
           @download="handleDownload"
         >
-          <template v-if="!ui.readonly && (ui.features.archive || isDir)">
+          <template v-if="!ui.readonly && (ui.features.archive || isDir || ui.features.unixPermModify)">
             <ContextMenuSeparator />
             <template v-if="ui.features.archive">
               <template v-if="!isDir && isArchive(name)">
@@ -288,6 +301,10 @@ async function handleNewFolder() {
               <FolderPlus class="size-4" />
               New Folder
             </ContextMenuItem>
+            <ContextMenuItem v-if="ui.features.unixPermModify" @select="handlePermissions">
+              <Shield class="size-4" />
+              Permissions
+            </ContextMenuItem>
           </template>
         </FileItemMenu>
       </ContextMenuContent>
@@ -302,6 +319,9 @@ async function handleNewFolder() {
         :type="child.type"
         :has-children="child.hasChildren"
         :depth="depth + 1"
+        :mode="child.mode"
+        :owner="child.owner"
+        :group="child.group"
       />
     </template>
   </div>

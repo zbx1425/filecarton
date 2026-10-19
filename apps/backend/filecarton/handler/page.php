@@ -66,6 +66,10 @@ $configData = [
     'readonly'  => $readonly,
     'features'  => $current->featuresConfig(),
 ];
+if ($current->unixPermEnabled()) {
+    require_once FILECARTON_SCRIPT_DIR . '/lib/Platform.php';
+    $configData['unixPerm'] = Platform::processUserInfo();
+}
 if ($repoName !== '') {
     $configData['repoName'] = $repoName;
 }

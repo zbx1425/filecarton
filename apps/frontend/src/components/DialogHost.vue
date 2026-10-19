@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { pathWithoutExtension } from '@/utils/path'
 import OperationReportDialog from './OperationReportDialog.vue'
+import PermissionsDialog from './PermissionsDialog.vue'
 
 const promptValue = ref('')
 const promptInputRef = ref<InstanceType<typeof Input> | null>(null)
@@ -130,6 +131,9 @@ function handleEditorConflictOpenChange(open: boolean) {
 
   <!-- Operation Report (file list errors/conflicts) -->
   <OperationReportDialog />
+
+  <!-- Unix Permissions Dialog -->
+  <PermissionsDialog />
 
   <!-- Editor Conflict (Dialog) -->
   <Dialog :open="dialogState.editorConflict.open" @update:open="handleEditorConflictOpenChange">

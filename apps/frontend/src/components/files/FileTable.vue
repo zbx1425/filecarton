@@ -27,6 +27,8 @@ const clipboard = useClipboardStore()
 const ui = useUiStore()
 const preferences = usePreferencesStore()
 
+const showUnixCols = computed(() => ui.features.unixPerm && preferences.showUnixPerm)
+
 function handleRefresh() {
   const dir = navigation.currentPathStr
   fileList.fetchDir(dir)
@@ -133,6 +135,14 @@ function startResize(e: MouseEvent) {
           Modified
           <component :is="sortIcon('mtime')" v-if="sortIcon('mtime')" class="size-3" />
         </div>
+        <template v-if="showUnixCols">
+          <div class="w-28 text-right shrink-0">
+            Permissions
+          </div>
+          <div class="w-32 text-right shrink-0">
+            Owner
+          </div>
+        </template>
       </div>
       <!-- Resize handle on header -->
       <div
@@ -176,6 +186,10 @@ function startResize(e: MouseEvent) {
             </div>
             <div class="w-20" />
             <div class="w-24" />
+            <template v-if="showUnixCols">
+              <div class="w-28" />
+              <div class="w-32" />
+            </template>
           </div>
 
           <FileRow
@@ -184,6 +198,9 @@ function startResize(e: MouseEvent) {
             :name="d.name"
             :is-dir="true"
             :mtime="d.mtime"
+            :mode="d.mode"
+            :owner="d.owner"
+            :group="d.group"
           />
           <FileRow
             v-for="f in fileList.filteredFiles"
@@ -192,6 +209,9 @@ function startResize(e: MouseEvent) {
             :is-dir="false"
             :size="f.size"
             :mtime="f.mtime"
+            :mode="f.mode"
+            :owner="f.owner"
+            :group="f.group"
           />
 
           <!-- Empty state -->

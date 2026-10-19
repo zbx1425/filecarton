@@ -47,6 +47,13 @@ define_default('FILECARTON_REPO_SETTING', [
 
     // Enable archive creation, listing (preview), and extraction.
     'featureArchive' => true,
+
+    // Enable displaying Unix file permissions and ownership (on Unix systems).
+    'featureUnixPerm' => false,
+
+    // Enable modifying Unix file permissions and ownership (requires featureUnixPerm).
+    // WARNING: This feature is risky. Only enable when all users of your system are people who you trust.
+    'featureUnixPermModify' => false,
 ]);
 
 // If set, FileCarton is forced in read-only mode, and neither FILECARTON_REPO_SETTING

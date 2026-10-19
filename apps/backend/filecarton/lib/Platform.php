@@ -169,6 +169,101 @@ class Platform {
     // ------------------------------------------------------------------
 
     /**
+     * Whether Unix-style permissions (chmod/fileperms) are supported on this OS and PHP runtime.
+     */
+    public static function supportsUnixPerm(): bool {
+        if (self::$isWindows === null) {
+            self::$isWindows = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN');
+        }
+        if (self::$isWindows || DIRECTORY_SEPARATOR !== '/') {
+            return false;
+        }
+        if (!function_exists('chmod') || !function_exists('fileperms')) {
+            return false;
+        }
+        $disabled = ini_get('disable_functions');
+        if ($disabled !== false && $disabled !== '') {
+            $list = array_map('trim', explode(',', strtolower($disabled)));
+            if (in_array('chmod', $list, true) || in_array('fileperms', $list, true)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** @var array<int, string> */
+    private static $uidCache = [];
+    /** @var array<int, string> */
+    private static $gidCache = [];
+    /** @var array{user: string, isRoot: bool}|null */
+    private static $procUser = null;
+
+    /**
+     * Get the current process effective user name and whether it is running as root (UID 0).
+     *
+     * @return array{user: string, isRoot: bool}
+     */
+    public static function processUserInfo(): array {
+        if (self::$procUser !== null) {
+            return self::$procUser;
+        }
+        $euid = null;
+        $user = '';
+        if (function_exists('posix_geteuid')) {
+            $euid = @posix_geteuid();
+            if (is_int($euid)) {
+                $user = self::resolveOwnerName($euid);
+            }
+        }
+        if ($user === '') {
+            $u = @get_current_user();
+            $user = (is_string($u) && $u !== '') ? $u : 'unknown';
+        }
+        $isRoot = ($euid === 0) || ($euid === null && $user === 'root');
+        self::$procUser = [
+            'user'   => $user,
+            'isRoot' => $isRoot,
+        ];
+        return self::$procUser;
+    }
+
+    /**
+     * Resolve a numeric UID to a username, falling back to stringified UID.
+     */
+    public static function resolveOwnerName(int $uid): string {
+        if (isset(self::$uidCache[$uid])) {
+            return self::$uidCache[$uid];
+        }
+        $name = (string)$uid;
+        if (function_exists('posix_getpwuid')) {
+            $info = @posix_getpwuid($uid);
+            if (is_array($info) && isset($info['name']) && is_string($info['name']) && $info['name'] !== '') {
+                $name = $info['name'];
+            }
+        }
+        self::$uidCache[$uid] = $name;
+        return $name;
+    }
+
+    /**
+     * Resolve a numeric GID to a group name, falling back to stringified GID.
+     */
+    public static function resolveGroupName(int $gid): string {
+        if (isset(self::$gidCache[$gid])) {
+            return self::$gidCache[$gid];
+        }
+        $name = (string)$gid;
+        if (function_exists('posix_getgrgid')) {
+            $info = @posix_getgrgid($gid);
+            if (is_array($info) && isset($info['name']) && is_string($info['name']) && $info['name'] !== '') {
+                $name = $info['name'];
+            }
+        }
+        self::$gidCache[$gid] = $name;
+        return $name;
+    }
+
+    /**
      * Parse a PHP ini shorthand byte value (e.g. '128M', '2G') into an integer.
      */
     public static function parsePhpSize(string $size): int {

@@ -49,6 +49,10 @@
   "err.paste.into_self": "Cannot place a directory inside itself",
   "err.paste.target_protected": "Target directory contains protected items",
 
+  "err.perm.disabled": "Unix permissions modification is disabled",
+  "err.perm.invalid_owner": "User not found on system",
+  "err.perm.invalid_group": "Group not found on system",
+
   "err.auth.required": "Authentication required",
   "err.auth.allowlist": "This account is not allowed to log in. Your account ID is: {id}",
   "err.auth.bad_root": "Account root directory is missing",

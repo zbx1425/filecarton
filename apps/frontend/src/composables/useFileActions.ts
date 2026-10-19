@@ -6,7 +6,7 @@ import { useTreeStore } from '@/stores/tree'
 import { useNavigationStore } from '@/stores/navigation'
 import { useClipboardStore } from '@/stores/clipboard'
 import { useUiStore } from '@/stores/ui'
-import { confirm, prompt, showPasteConflict, showOperationReport } from '@/composables/useDialogs'
+import { confirm, prompt, showPasteConflict, showOperationReport, showPermissionsDialog } from '@/composables/useDialogs'
 import { usePreferencesStore } from '@/stores/preferences'
 import { joinPath, validateFileName } from '@/utils/path'
 import { errorMessage } from '@/utils/errorMessage'
@@ -360,3 +360,32 @@ export async function renameSelected() {
   const entry = fileList.allEntries.find(e => e.name === name)
   await renameItem(navigation.currentPathStr, name, entry?.isDir)
 }
+
+export function openPermissionsSelected() {
+  const ui = useUiStore()
+  if (ui.readonly || !ui.features.unixPermModify) return
+
+  const fileList = useFileListStore()
+  const navigation = useNavigationStore()
+  const visible = new Set(fileList.filteredEntries.map(e => e.name))
+  const selectedNames = Array.from(fileList.selected).filter(n => visible.has(n))
+  if (selectedNames.length === 0) return
+
+  const items = selectedNames.map(name => {
+    const dir = fileList.getDirByName(name)
+    if (dir) {
+      return { name: dir.name, isDir: true, mode: dir.mode, owner: dir.owner, group: dir.group }
+    }
+    const file = fileList.getFileByName(name)
+    return {
+      name,
+      isDir: false,
+      mode: file?.mode,
+      owner: file?.owner,
+      group: file?.group,
+    }
+  })
+
+  showPermissionsDialog(navigation.currentPathStr, items)
+}
+

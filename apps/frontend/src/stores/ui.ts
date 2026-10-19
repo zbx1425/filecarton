@@ -10,8 +10,11 @@ export const useUiStore = defineStore('ui', () => {
   const repoName = ref(config.repoName ?? '')
   const branding = ref(config.branding ?? '')
   const features = ref<FileCartonFeatures>({
-    archive: config.features?.archive ?? true,
+    archive: config.features?.archive ?? false,
+    unixPerm: config.features?.unixPerm ?? false,
+    unixPermModify: config.features?.unixPermModify ?? false,
   })
+  const unixPermInfo = ref(config.unixPerm ?? { user: 'unknown', isRoot: false })
 
   const searchQuery = ref('')
   const searchRecursive = ref(false)
@@ -42,6 +45,7 @@ export const useUiStore = defineStore('ui', () => {
     repoName,
     branding,
     features,
+    unixPermInfo,
     searchQuery,
     searchRecursive,
     settingsOpen,

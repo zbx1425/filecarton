@@ -1,12 +1,18 @@
 export interface DirEntry {
   name: string
   mtime: number
+  mode?: number
+  owner?: string
+  group?: string
 }
 
 export interface FileEntry {
   name: string
   size: number
   mtime: number
+  mode?: number
+  owner?: string
+  group?: string
 }
 
 export interface ListResponse {
@@ -18,6 +24,9 @@ export interface TreeChild {
   name: string
   type: 'dir' | 'file'
   hasChildren: boolean
+  mode?: number
+  owner?: string
+  group?: string
 }
 
 export interface TreeNodeResponse {
@@ -129,6 +138,16 @@ export interface CheckUploadConflictsResponse {
   existing: string[]
 }
 
+export interface ChmodResponse {
+  completed: number
+  failed: Array<{ name: string; error: string }>
+}
+
+export interface FileCartonUnixPermConfig {
+  user: string
+  isRoot: boolean
+}
+
 export interface FileCartonAuthPluginIcon {
   mono_url: string
   light_tint?: string
@@ -165,6 +184,8 @@ export interface FileCartonAuthConfig {
 
 export interface FileCartonFeatures {
   archive: boolean
+  unixPerm: boolean
+  unixPermModify: boolean
 }
 
 export interface FileCartonConfig {
@@ -174,6 +195,7 @@ export interface FileCartonConfig {
   repoName?: string
   branding?: string
   features?: FileCartonFeatures
+  unixPerm?: FileCartonUnixPermConfig
   upload?: {
     maxFileSize: number
     chunkSize: number

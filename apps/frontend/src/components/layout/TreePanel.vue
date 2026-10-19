@@ -31,6 +31,9 @@ watch(
           :type="child.type"
           :has-children="child.hasChildren"
           :depth="0"
+          :mode="child.mode"
+          :owner="child.owner"
+          :group="child.group"
         />
       </template>
     </div>

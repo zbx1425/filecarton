@@ -253,6 +253,39 @@ function setEditorFontSize(val: number | undefined) {
                   <span>{{ prefs.dotFilesLockedReason }}</span>
                 </div>
               </div>
+
+              <!-- Unix Permissions -->
+              <label class="text-sm text-muted-foreground">Unix Permissions</label>
+              <div class="space-y-1.5">
+                <div class="flex gap-1">
+                  <Button
+                    size="sm"
+                    :variant="!prefs.showUnixPerm ? 'default' : 'outline'"
+                    class="flex-1 px-1 text-xs"
+                    :disabled="prefs.unixPermLocked"
+                    @click="prefs.showUnixPerm = false"
+                  >
+                    Hidden
+                  </Button>
+                  <Button
+                    size="sm"
+                    :variant="prefs.showUnixPerm ? 'default' : 'outline'"
+                    class="flex-1 px-1 text-xs"
+                    :disabled="prefs.unixPermLocked"
+                    @click="prefs.showUnixPerm = true"
+                  >
+                    Shown
+                  </Button>
+                  <div class="flex-1 px-1 text-xs"></div>
+                </div>
+                <div
+                  v-if="prefs.unixPermLocked"
+                  class="flex items-start gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5 text-xs text-muted-foreground"
+                >
+                  <Info class="size-3 shrink-0 mt-0.5" />
+                  <span>{{ prefs.unixPermLockedReason }}</span>
+                </div>
+              </div>
             </div>
           </div>
 

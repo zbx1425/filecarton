@@ -10,9 +10,9 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useFileListStore } from '@/stores/fileList'
 import { useUiStore } from '@/stores/ui'
-import { copySelected, cutSelected, deleteSelected } from '@/composables/useFileActions'
+import { copySelected, cutSelected, deleteSelected, openPermissionsSelected } from '@/composables/useFileActions'
 import { createArchive } from '@/composables/useArchive'
-import { Copy, Scissors, Trash2, X, FileArchive } from '@lucide/vue'
+import { Copy, Scissors, Trash2, X, FileArchive, Shield } from '@lucide/vue'
 
 const fileList = useFileListStore()
 const ui = useUiStore()
@@ -70,6 +70,11 @@ function handleSelectAll(checked: boolean | "indeterminate") {
           <DropdownMenuItem @select="createArchive('tar')">Create .tar</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <Button v-if="ui.features.unixPermModify" variant="ghost" size="xs" @click="openPermissionsSelected">
+        <Shield class="size-3.5" />
+        Permissions
+      </Button>
     </template>
 
     <Button variant="ghost" size="xs" @click="fileList.clearSelection()">

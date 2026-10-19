@@ -13,13 +13,13 @@ import { useNavigationStore } from '@/stores/navigation'
 import { useClipboardStore } from '@/stores/clipboard'
 import { useUiStore } from '@/stores/ui'
 import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
-import { formatSize, formatTime } from '@/utils/format'
+import { formatSize, formatTime, formatUnixMode } from '@/utils/format'
 import {
-  copySelected, cutSelected, deleteItems, renameItem, pasteItems,
+  copySelected, cutSelected, deleteItems, renameItem, pasteItems, openPermissionsSelected,
 } from '@/composables/useFileActions'
 import { buildDownloadUrl, buildRawUrl } from '@/api/client'
 import { joinPath, archiveSubdirName } from '@/utils/path'
-import { PackageOpen, FileArchive } from '@lucide/vue'
+import { PackageOpen, FileArchive, Shield } from '@lucide/vue'
 import {
   ContextMenuSub,
   ContextMenuSubTrigger,
@@ -38,6 +38,9 @@ const props = defineProps<{
   isDir: boolean
   size?: number
   mtime: number
+  mode?: number
+  owner?: string
+  group?: string
 }>()
 
 const fileList = useFileListStore()
@@ -45,6 +48,8 @@ const navigation = useNavigationStore()
 const clipboard = useClipboardStore()
 const ui = useUiStore()
 const preferences = usePreferencesStore()
+
+const showUnixCols = computed(() => ui.features.unixPerm && preferences.showUnixPerm)
 
 const constrainedStyle = computed(() => {
   const maxW = preferences.effectiveTableMaxWidth
@@ -125,6 +130,14 @@ async function handleDelete() {
 function handleDownload() {
   const filePath = joinPath(navigation.currentPathStr, props.name)
   window.open(buildDownloadUrl(filePath), '_blank')
+}
+
+function handlePermissions() {
+  if (!fileList.selected.has(props.name)) {
+    fileList.clearSelection()
+    fileList.toggleSelect(props.name)
+  }
+  openPermissionsSelected()
 }
 
 const dropHover = ref(false)
@@ -239,6 +252,15 @@ const thumbnailUrl = computed(() => {
         <div class="w-24 text-right text-muted-foreground shrink-0">
           {{ formatTime(mtime) }}
         </div>
+
+        <template v-if="showUnixCols">
+          <div class="w-28 text-right font-mono text-muted-foreground shrink-0">
+            {{ mode !== undefined ? formatUnixMode(mode, isDir) : '—' }}
+          </div>
+          <div class="w-32 text-right text-muted-foreground shrink-0 truncate pl-2">
+            {{ owner !== undefined && group !== undefined ? `${owner}:${group}` : '—' }}
+          </div>
+        </template>
       </div>
     </ContextMenuTrigger>
 
@@ -292,6 +314,13 @@ const thumbnailUrl = computed(() => {
               </ContextMenuSubContent>
             </ContextMenuSub>
           </template>
+        </template>
+        <template v-if="!ui.readonly && ui.features.unixPermModify">
+          <ContextMenuSeparator v-if="!ui.features.archive" />
+          <ContextMenuItem @select="handlePermissions">
+            <Shield class="size-4" />
+            Permissions
+          </ContextMenuItem>
         </template>
       </FileItemMenu>
     </ContextMenuContent>

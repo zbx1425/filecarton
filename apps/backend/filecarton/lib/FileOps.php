@@ -13,15 +13,25 @@ class FileOps {
             throw new \RuntimeException('Cannot read directory', 500);
         }
 
+        $includeUnixPerm = RepoSetting::current()->unixPermEnabled();
+
         $dirs = [];
         $files = [];
         foreach ($entries as $entry) {
             if ($entry === '.' || $entry === '..') continue;
             $full = $absPath . '/' . $entry;
             if (is_dir($full)) {
-                $dirs[] = ['name' => $entry, 'mtime' => filemtime($full)];
+                $item = ['name' => $entry, 'mtime' => filemtime($full)];
+                if ($includeUnixPerm) {
+                    $this->attachUnixPerm($item, $full);
+                }
+                $dirs[] = $item;
             } elseif (is_file($full)) {
-                $files[] = ['name' => $entry, 'size' => filesize($full), 'mtime' => filemtime($full)];
+                $item = ['name' => $entry, 'size' => filesize($full), 'mtime' => filemtime($full)];
+                if ($includeUnixPerm) {
+                    $this->attachUnixPerm($item, $full);
+                }
+                $files[] = $item;
             }
         }
 
@@ -41,7 +51,8 @@ class FileOps {
             throw new \RuntimeException('Cannot read directory', 500);
         }
 
-        $children = [];
+        $includeUnixPerm = RepoSetting::current()->unixPermEnabled();
+
         $dirItems = [];
         $fileItems = [];
 
@@ -54,9 +65,17 @@ class FileOps {
                 if ($sub !== false) {
                     $hasChildren = count(array_diff($sub, ['.', '..'])) > 0;
                 }
-                $dirItems[] = ['name' => $entry, 'type' => 'dir', 'hasChildren' => $hasChildren];
+                $item = ['name' => $entry, 'type' => 'dir', 'hasChildren' => $hasChildren];
+                if ($includeUnixPerm) {
+                    $this->attachUnixPerm($item, $full);
+                }
+                $dirItems[] = $item;
             } elseif (is_file($full)) {
-                $fileItems[] = ['name' => $entry, 'type' => 'file', 'hasChildren' => false];
+                $item = ['name' => $entry, 'type' => 'file', 'hasChildren' => false];
+                if ($includeUnixPerm) {
+                    $this->attachUnixPerm($item, $full);
+                }
+                $fileItems[] = $item;
             }
         }
 
@@ -64,6 +83,21 @@ class FileOps {
         usort($fileItems, function($a, $b) { return strnatcasecmp($a['name'], $b['name']); });
 
         return array_merge($dirItems, $fileItems);
+    }
+
+    private function attachUnixPerm(array &$item, string $fullPath): void {
+        $perms = @fileperms($fullPath);
+        if ($perms !== false) {
+            $item['mode'] = $perms & 07777;
+        }
+        $uid = @fileowner($fullPath);
+        if ($uid !== false) {
+            $item['owner'] = Platform::resolveOwnerName((int)$uid);
+        }
+        $gid = @filegroup($fullPath);
+        if ($gid !== false) {
+            $item['group'] = Platform::resolveGroupName((int)$gid);
+        }
     }
 
     public function copyItem(string $src, string $dst): void {

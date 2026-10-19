@@ -13,6 +13,10 @@ class RepoSetting {
     public $repoName;
     /** @var bool|null */
     public $featureArchive;
+    /** @var bool|null */
+    public $featureUnixPerm;
+    /** @var bool|null */
+    public $featureUnixPermModify;
 
     public function __construct() {
         $this->rootPath = null;
@@ -20,11 +24,13 @@ class RepoSetting {
         $this->branding = null;
         $this->repoName = null;
         $this->featureArchive = null;
+        $this->featureUnixPerm = null;
+        $this->featureUnixPermModify = null;
     }
 
     /**
      * Parse from the FILECARTON_REPO_SETTING config array.
-     * Missing or wrong-typed keys become null.
+     * Missing or wrong-typed keys become null (except optional feature flags which default to false).
      */
     public static function fromConfigArray(array $arr): self {
         $s = new self();
@@ -40,9 +46,15 @@ class RepoSetting {
         if (array_key_exists('repoName', $arr) && is_string($arr['repoName'])) {
             $s->repoName = $arr['repoName'];
         }
-        if (array_key_exists('featureArchive', $arr) && is_bool($arr['featureArchive'])) {
-            $s->featureArchive = $arr['featureArchive'];
-        }
+        $s->featureArchive = (array_key_exists('featureArchive', $arr) && is_bool($arr['featureArchive']))
+            ? $arr['featureArchive']
+            : false;
+        $s->featureUnixPerm = (array_key_exists('featureUnixPerm', $arr) && is_bool($arr['featureUnixPerm']))
+            ? $arr['featureUnixPerm']
+            : false;
+        $s->featureUnixPermModify = (array_key_exists('featureUnixPermModify', $arr) && is_bool($arr['featureUnixPermModify']))
+            ? $arr['featureUnixPermModify']
+            : false;
         return $s;
     }
 
@@ -67,11 +79,18 @@ class RepoSetting {
         if (array_key_exists('featureArchive', $row) && is_bool($row['featureArchive'])) {
             $s->featureArchive = $row['featureArchive'];
         }
+        if (array_key_exists('featureUnixPerm', $row) && is_bool($row['featureUnixPerm'])) {
+            $s->featureUnixPerm = $row['featureUnixPerm'];
+        }
+        if (array_key_exists('featureUnixPermModify', $row) && is_bool($row['featureUnixPermModify'])) {
+            $s->featureUnixPermModify = $row['featureUnixPermModify'];
+        }
         return $s;
     }
 
     /**
-     * Structural validation: all 5 fields must be present with correct types.
+     * Structural validation: core 4 fields must be present with correct types.
+     * Feature flags default to false if absent or non-bool.
      * rootPath='' is valid (means "must be overridden by a per-user grant").
      * @return string[] problem descriptions; empty array if valid
      */
@@ -81,7 +100,6 @@ class RepoSetting {
             || $this->readonly === null
             || $this->branding === null
             || $this->repoName === null
-            || $this->featureArchive === null
         ) {
             $p[] = 'FILECARTON_REPO_SETTING is not containing all fields.';
         }
@@ -99,7 +117,25 @@ class RepoSetting {
         if ($override->branding !== null) $result->branding = $override->branding;
         if ($override->repoName !== null) $result->repoName = $override->repoName;
         if ($override->featureArchive !== null) $result->featureArchive = $override->featureArchive;
+        if ($override->featureUnixPerm !== null) $result->featureUnixPerm = $override->featureUnixPerm;
+        if ($override->featureUnixPermModify !== null) $result->featureUnixPermModify = $override->featureUnixPermModify;
         return $result;
+    }
+
+    /**
+     * Whether displaying Unix permissions is enabled and supported on the current OS.
+     */
+    public function unixPermEnabled(): bool {
+        if (!$this->featureUnixPerm) return false;
+        require_once FILECARTON_SCRIPT_DIR . '/lib/Platform.php';
+        return Platform::supportsUnixPerm();
+    }
+
+    /**
+     * Whether modifying Unix permissions is enabled and supported on the current OS.
+     */
+    public function unixPermModifyEnabled(): bool {
+        return $this->unixPermEnabled() && (bool)$this->featureUnixPermModify && !$this->readonly;
     }
 
     /**
@@ -108,7 +144,9 @@ class RepoSetting {
      */
     public function featuresConfig(): array {
         return [
-            'archive' => (bool)$this->featureArchive,
+            'archive'        => (bool)$this->featureArchive,
+            'unixPerm'       => $this->unixPermEnabled(),
+            'unixPermModify' => $this->unixPermModifyEnabled(),
         ];
     }
 

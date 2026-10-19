@@ -19,6 +19,7 @@ interface StoredPreferences {
   displayDensity: Density
   tableMaxWidth: number | null
   showDotFiles: boolean
+  showUnixPerm: boolean
 }
 
 const DEFAULTS: StoredPreferences = {
@@ -32,6 +33,7 @@ const DEFAULTS: StoredPreferences = {
   displayDensity: 'default',
   tableMaxWidth: null,
   showDotFiles: false,
+  showUnixPerm: true,
 }
 
 const DENSITY_ROW_HEIGHT: Record<Density, number> = {
@@ -123,6 +125,24 @@ export const usePreferencesStore = defineStore('preferences', () => {
     return ''
   })
 
+  const _showUnixPerm = ref(saved.showUnixPerm)
+  const unixPermLocked = computed(() => !config.features?.unixPerm)
+  const unixPermLockedReason = computed(() =>
+    unixPermLocked.value ? 'Setting managed by administrator.' : '',
+  )
+
+  const showUnixPerm = computed({
+    get() {
+      if (unixPermLocked.value) return false
+      return _showUnixPerm.value
+    },
+    set(val: boolean) {
+      if (unixPermLocked.value) return
+      _showUnixPerm.value = val
+      persist()
+    },
+  })
+
   const { width: windowWidth } = useWindowSize()
 
   const breakpointBracket = computed(() => {
@@ -152,6 +172,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
       displayDensity: displayDensity.value,
       tableMaxWidth: tableMaxWidth.value,
       showDotFiles: _showDotFiles.value,
+      showUnixPerm: _showUnixPerm.value,
     })
   }
 
@@ -229,7 +250,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
   watch(theme, () => { applyTheme(); persist() })
   watch(baseFontSize, () => { applyTypography(); persist() })
   watch(displayDensity, () => { applyDensity(); persist() })
-  watch([editorFontSize, editorWordWrap, editorTabSize, editorLineNumbers, editorAutoDetect, _showDotFiles], () => persist())
+  watch([editorFontSize, editorWordWrap, editorTabSize, editorLineNumbers, editorAutoDetect, _showDotFiles, _showUnixPerm], () => persist())
 
   watch(breakpointBracket, (newBracket) => {
     if (newBracket !== prevBracket) {
@@ -256,6 +277,9 @@ export const usePreferencesStore = defineStore('preferences', () => {
     dotFilesLocked,
     dotFilesLockedReason,
     dotfilesConfig,
+    showUnixPerm,
+    unixPermLocked,
+    unixPermLockedReason,
     resolvedTheme,
     isFilenameBlocked,
     isDotFileBlocked,

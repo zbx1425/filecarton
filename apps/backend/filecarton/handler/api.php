@@ -32,7 +32,7 @@ ob_start();
 
 $validActions = [
     'list', 'tree_node', 'read', 'write', 'raw', 'download',
-    'search', 'create', 'delete', 'rename', 'paste', 'upload',
+    'search', 'create', 'delete', 'rename', 'paste', 'chmod', 'upload',
     'upload_chunk', 'upload_complete', 'archive_create', 'archive_extract',
     'archive_list', 'archive_read', 'archive_raw', 'archive_download',
     'check_upload_conflicts',
@@ -40,7 +40,7 @@ $validActions = [
 ];
 
 $postActions = [
-    'write', 'create', 'delete', 'rename', 'paste', 'upload',
+    'write', 'create', 'delete', 'rename', 'paste', 'chmod', 'upload',
     'upload_chunk', 'upload_complete', 'archive_create', 'archive_extract',
     'check_upload_conflicts',
     'auth_login', 'auth_logout',
@@ -70,6 +70,10 @@ try {
     ];
     if (in_array($action, $archiveActions, true) && !RepoSetting::current()->featureArchive) {
         Response::error('archive.disabled', 403);
+    }
+
+    if ($action === 'chmod' && !RepoSetting::current()->unixPermModifyEnabled()) {
+        Response::error('perm.disabled', 403);
     }
 
     $pathSec = null;

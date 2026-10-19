@@ -28,6 +28,13 @@ def test_readonly_grant_blocks_post(stack, tmp_path_factory, tools):
         )
         assert created.status_code == 403
         assert error_code(created) == "readonly"
+        chmod_resp = bob.api(
+            "chmod",
+            method="POST",
+            json_body={"path": "", "items": ["secret.txt"], "setMask": 0o644},
+        )
+        assert chmod_resp.status_code == 403
+        assert error_code(chmod_resp) == "readonly"
         assert_unchanged(before, snapshot(scenario.bob_root), "bob")
     finally:
         bob.close()
