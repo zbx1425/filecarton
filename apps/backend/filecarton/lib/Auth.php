@@ -468,7 +468,7 @@ class Auth {
             return;
         }
         self::ensureSession();
-        $specs = defined('FILECARTON_AUTH_PROVIDERS') ? FILECARTON_AUTH_PROVIDERS : [];
+        $specs = FILECARTON_AUTH_PROVIDERS;
         if (!is_array($specs)) {
             self::$bootErrors[] = 'FILECARTON_AUTH_PROVIDERS must be an array.';
             $specs = [];
@@ -493,8 +493,7 @@ class Auth {
     }
 
     public static function staticUserList(): array {
-        $list = defined('FILECARTON_STATIC_USER_LIST') ? FILECARTON_STATIC_USER_LIST : [];
-        return is_array($list) ? $list : [];
+        return is_array(FILECARTON_STATIC_USER_LIST) ? FILECARTON_STATIC_USER_LIST : [];
     }
 
     /**
@@ -541,8 +540,7 @@ class Auth {
         }
 
         // Grant resolver availability
-        $grantSpecs = defined('FILECARTON_GRANT_RESOLVERS') ? FILECARTON_GRANT_RESOLVERS : [];
-        $grantSpecs = is_array($grantSpecs) ? $grantSpecs : [];
+        $grantSpecs = is_array(FILECARTON_GRANT_RESOLVERS) ? FILECARTON_GRANT_RESOLVERS : [];
         $hasAnyResolver = false;
         foreach ($grantSpecs as $spec) {
             if (is_array($spec) && !empty($spec['class'])) {
@@ -817,7 +815,7 @@ class Auth {
      * Set FILECARTON_PUBLIC_ORIGIN when auto-detected origin doesn't match the IdP allowlist.
      */
     public static function absoluteScriptUrl(): string {
-        $origin = defined('FILECARTON_PUBLIC_ORIGIN') ? FILECARTON_PUBLIC_ORIGIN : '';
+        $origin = FILECARTON_PUBLIC_ORIGIN;
         if (!is_string($origin) || $origin === '') {
             $origin = (self::requestIsHttps() ? 'https://' : 'http://')
                 . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost');

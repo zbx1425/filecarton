@@ -42,7 +42,7 @@ class StaticGrantResolver implements GrantResolver {
     }
 
     public function resolve(AuthIdentity $identity) {
-        $list = defined('FILECARTON_STATIC_USER_LIST') ? FILECARTON_STATIC_USER_LIST : [];
+        $list = FILECARTON_STATIC_USER_LIST;
         if (!is_array($list)) return null;
         foreach ($list as $row) {
             if (!is_array($row) || !isset($row['id']) || !is_string($row['id']) || $row['id'] === '') {
@@ -91,7 +91,7 @@ class Grants {
         if (self::$booted) return;
         self::$booted = true;
         self::$resolvers = [];
-        $specs = defined('FILECARTON_GRANT_RESOLVERS') ? FILECARTON_GRANT_RESOLVERS : [];
+        $specs = FILECARTON_GRANT_RESOLVERS;
         if (!is_array($specs)) {
             self::$bootErrors[] = 'FILECARTON_GRANT_RESOLVERS must be an array.';
             $specs = [];

@@ -63,7 +63,7 @@ class HttpClient {
         if ($body !== null) {
             $opts[CURLOPT_POSTFIELDS] = $body;
         }
-        if (defined('FILECARTON_HTTP_CLIENT_PROXY') && FILECARTON_HTTP_CLIENT_PROXY !== '') {
+        if (FILECARTON_HTTP_CLIENT_PROXY !== '') {
             $opts[CURLOPT_PROXY] = FILECARTON_HTTP_CLIENT_PROXY;
         }
         curl_setopt_array($ch, $opts);

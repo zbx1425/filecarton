@@ -26,7 +26,7 @@ class StartupCheck {
         $p = [];
 
         // FILECARTON_REPO_SETTING structural validation
-        $repoArr = defined('FILECARTON_REPO_SETTING') ? FILECARTON_REPO_SETTING : [];
+        $repoArr = FILECARTON_REPO_SETTING;
         if (!is_array($repoArr)) {
             $p[] = 'FILECARTON_REPO_SETTING must be an array.';
         } else {
@@ -69,7 +69,7 @@ class StartupCheck {
         }
 
         // Size checks (only meaningful when writes are possible)
-        $mustReadonly = defined('FILECARTON_MUST_READONLY') && FILECARTON_MUST_READONLY === true;
+        $mustReadonly = FILECARTON_MUST_READONLY === true;
         if (!$mustReadonly) {
             if (FILECARTON_UPLOAD_CHUNK_SIZE <= 0) {
                 $p[] = 'FILECARTON_UPLOAD_CHUNK_SIZE must be greater than 0.';
@@ -185,7 +185,7 @@ class StartupCheck {
         }
 
         // Session name
-        $sessionName = defined('FILECARTON_SESSION_NAME') ? FILECARTON_SESSION_NAME : 'FILECARTON';
+        $sessionName = FILECARTON_SESSION_NAME;
         if (!is_string($sessionName) || !preg_match('/^[a-zA-Z][a-zA-Z0-9]*$/', $sessionName)) {
             $p[] = 'FILECARTON_SESSION_NAME must start with a letter and contain only letters and digits.';
         }

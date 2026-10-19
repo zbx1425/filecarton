@@ -73,7 +73,7 @@ class Csrf {
             throw new \RuntimeException('Sessions are disabled', 500);
         }
         if (session_status() === PHP_SESSION_NONE) {
-            $name = defined('FILECARTON_SESSION_NAME') ? FILECARTON_SESSION_NAME : 'FILECARTON';
+            $name = FILECARTON_SESSION_NAME;
             if (is_string($name) && preg_match('/^[a-zA-Z][a-zA-Z0-9]*$/', $name)) {
                 session_name($name);
             }

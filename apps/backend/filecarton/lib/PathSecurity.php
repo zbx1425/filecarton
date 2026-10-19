@@ -396,12 +396,11 @@ class PathSecurity {
         $this->rootPath = rtrim(str_replace('\\', '/', $real), '/');
         $this->caseInsensitive = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
 
-        $blocklistRules = defined('FILECARTON_FILENAME_BLOCKLIST') ? FILECARTON_FILENAME_BLOCKLIST : [];
-        $this->blocklist = new FilenameBlocklist(is_array($blocklistRules) ? $blocklistRules : []);
+        $this->blocklist = new FilenameBlocklist(is_array(FILECARTON_FILENAME_BLOCKLIST) ? FILECARTON_FILENAME_BLOCKLIST : []);
 
         $this->ignore = new IgnoreRules($this->rootPath, $this->caseInsensitive);
 
-        if (defined('FILECARTON_IGNORE_REALPATH') && is_array(FILECARTON_IGNORE_REALPATH)) {
+        if (is_array(FILECARTON_IGNORE_REALPATH)) {
             foreach (FILECARTON_IGNORE_REALPATH as $path) {
                 $resolved = realpath($path);
                 if ($resolved !== false) {
@@ -423,7 +422,7 @@ class PathSecurity {
             }
         }
 
-        if (defined('FILECARTON_IGNORE_PATTERN') && is_array(FILECARTON_IGNORE_PATTERN)) {
+        if (is_array(FILECARTON_IGNORE_PATTERN)) {
             foreach (FILECARTON_IGNORE_PATTERN as $pattern) {
                 $this->ignore->addPattern($pattern);
             }

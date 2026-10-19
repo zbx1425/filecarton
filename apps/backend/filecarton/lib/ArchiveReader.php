@@ -27,9 +27,7 @@ class ArchiveReader {
      */
     public static function assertCanOpen(string $absPath, string $format): void {
         if ($format === 'targz') {
-            $maxSize = defined('FILECARTON_ARCHIVE_TARGZ_MAX_ACCESS_SIZE')
-                ? (int)FILECARTON_ARCHIVE_TARGZ_MAX_ACCESS_SIZE
-                : (64 * 1024 * 1024);
+            $maxSize = (int)FILECARTON_ARCHIVE_TARGZ_MAX_ACCESS_SIZE;
             $compressedSize = (int)filesize($absPath);
             if ($compressedSize > $maxSize) {
                 throw new ApiException('archive.too_large_to_open', 413, [
@@ -119,12 +117,8 @@ class ArchiveReader {
         $format = self::detectFormat($absPath);
         self::assertCanOpen($absPath, $format);
 
-        $listMaxFiles = defined('FILECARTON_ARCHIVE_LIST_MAX_FILES')
-            ? (int)FILECARTON_ARCHIVE_LIST_MAX_FILES
-            : 10000;
-        $tarMaxAccessFiles = defined('FILECARTON_ARCHIVE_TAR_MAX_ACCESS_FILES')
-            ? (int)FILECARTON_ARCHIVE_TAR_MAX_ACCESS_FILES
-            : 1000;
+        $listMaxFiles = (int)FILECARTON_ARCHIVE_LIST_MAX_FILES;
+        $tarMaxAccessFiles = (int)FILECARTON_ARCHIVE_TAR_MAX_ACCESS_FILES;
 
         $entries = [];
         $totalFiles = 0;
@@ -239,9 +233,7 @@ class ArchiveReader {
         $format = self::detectFormat($absPath);
         self::assertCanOpen($absPath, $format);
         $archiveMtime = (int)filemtime($absPath);
-        $maxBytes = defined('FILECARTON_ARCHIVE_MAX_SIZE')
-            ? (int)FILECARTON_ARCHIVE_MAX_SIZE
-            : (1024 * 1024 * 1024);
+        $maxBytes = (int)FILECARTON_ARCHIVE_MAX_SIZE;
 
         if ($format === 'zip') {
             $zip = new \ZipArchive();
@@ -299,9 +291,7 @@ class ArchiveReader {
                 },
             ];
         } else {
-            $tarMaxAccessFiles = defined('FILECARTON_ARCHIVE_TAR_MAX_ACCESS_FILES')
-                ? (int)FILECARTON_ARCHIVE_TAR_MAX_ACCESS_FILES
-                : 1000;
+            $tarMaxAccessFiles = (int)FILECARTON_ARCHIVE_TAR_MAX_ACCESS_FILES;
 
             try {
                 $phar = new \PharData($absPath);

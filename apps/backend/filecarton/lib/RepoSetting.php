@@ -156,7 +156,7 @@ class RepoSetting {
         }
         self::$resolving = true;
 
-        $arr = defined('FILECARTON_REPO_SETTING') ? FILECARTON_REPO_SETTING : [];
+        $arr = FILECARTON_REPO_SETTING;
         if (!is_array($arr)) $arr = [];
         $default = self::fromConfigArray($arr);
 
@@ -178,7 +178,7 @@ class RepoSetting {
             }
         }
 
-        if (defined('FILECARTON_MUST_READONLY') && FILECARTON_MUST_READONLY === true) {
+        if (FILECARTON_MUST_READONLY === true) {
             $merged->readonly = true;
         }
 

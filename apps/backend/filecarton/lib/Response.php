@@ -263,7 +263,7 @@ class Response {
         }
 
         @set_time_limit(0);
-        $maxBytes = defined('FILECARTON_ARCHIVE_MAX_SIZE') ? (int)FILECARTON_ARCHIVE_MAX_SIZE : (1024 * 1024 * 1024);
+        $maxBytes = (int)FILECARTON_ARCHIVE_MAX_SIZE;
         $remaining = $size > 0 ? min($size, $maxBytes) : $maxBytes;
         $chunkSize = 65536;
         while ($remaining > 0 && !feof($stream) && !connection_aborted()) {
@@ -289,7 +289,7 @@ class Response {
      *   [[phys, uri], ...] — Nginx X-Accel-Redirect (prefix mapping)
      */
     public static function trySendfile(string $absPath): bool {
-        if (!defined('FILECARTON_SENDFILE') || !FILECARTON_SENDFILE) {
+        if (!FILECARTON_SENDFILE) {
             return false;
         }
 

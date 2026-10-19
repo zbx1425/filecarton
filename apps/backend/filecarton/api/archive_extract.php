@@ -67,8 +67,8 @@ function api_archive_extract(PathSecurity $pathSec, FileOps $fileOps): void {
     $extracted = 0;
     $failed = [];
     try {
-        $maxBytes = defined('FILECARTON_ARCHIVE_MAX_SIZE') ? (int)FILECARTON_ARCHIVE_MAX_SIZE : (1024 * 1024 * 1024);
-        $maxEntries = defined('FILECARTON_ARCHIVE_MAX_FILES') ? (int)FILECARTON_ARCHIVE_MAX_FILES : 10000;
+        $maxBytes = (int)FILECARTON_ARCHIVE_MAX_SIZE;
+        $maxEntries = (int)FILECARTON_ARCHIVE_MAX_FILES;
         $extracted = extract_archive_safe($archiveAbs, $normalizedTemp, $pathSec, $maxBytes, $maxEntries, $normalizedTarget, $failed);
 
         if (!is_dir($targetAbs) && !mkdir($targetAbs, 0755, true) && !is_dir($targetAbs)) {
@@ -324,7 +324,7 @@ function extract_archive_safe(
 function dry_run_archive(string $archiveAbs, string $normalizedTarget, PathSecurity $pathSec): array {
     $wouldExtract = 0;
     $entryCount = 0;
-    $maxEntries = defined('FILECARTON_ARCHIVE_MAX_FILES') ? (int)FILECARTON_ARCHIVE_MAX_FILES : 10000;
+    $maxEntries = (int)FILECARTON_ARCHIVE_MAX_FILES;
     $conflicts = [];
     $failed = [];
 
