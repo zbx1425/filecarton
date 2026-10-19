@@ -265,7 +265,7 @@ async function handleNewFolder() {
                     <ContextMenuItem @select="handleExtract(false)">
                       Here
                     </ContextMenuItem>
-                    <ContextMenuItem @select="handleExtract(true)">
+                    <ContextMenuItem v-if="archiveSubdirName(name)" @select="handleExtract(true)">
                       To "{{ archiveSubdirName(name) }}/"
                     </ContextMenuItem>
                   </ContextMenuSubContent>

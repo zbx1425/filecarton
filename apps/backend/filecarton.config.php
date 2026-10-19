@@ -81,10 +81,10 @@ define_default('FILECARTON_CHUNK_EXPIRY', 86400);
 // Probability of running cleanup on each chunk upload request (1 in N).
 define_default('FILECARTON_CHUNK_CLEANUP_CHANCE', 10);
 
-// Maximum number of files allowed in a single archive creation.
+// Maximum number of entries allowed when creating or extracting an archive.
 define_default('FILECARTON_ARCHIVE_MAX_FILES', 10000);
 
-// Maximum total (uncompressed) size for archive creation (bytes).
+// Maximum uncompressed size (bytes) for archive creation, extraction, and single-entry access.
 define_default('FILECARTON_ARCHIVE_MAX_SIZE', 1 * 1024 * 1024 * 1024);
 
 // Maximum number of entries returned by archive_list before truncating.

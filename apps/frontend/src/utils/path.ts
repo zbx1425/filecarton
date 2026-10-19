@@ -34,8 +34,9 @@ export function pathWithoutExtension(name: string): string {
 export function archiveSubdirName(name: string): string {
   const m = /^(.+)\.tar\.(?:gz|bz2|xz)$/i.exec(name)
   const base = m ? m[1] : pathWithoutExtension(name)
-  const cleaned = base.replace(/[/\\:*?"<>|]/g, '').replace(/[.\s]+$/, '')
-  return cleaned || base
+  // eslint-disable-next-line no-control-regex
+  const cleaned = base.replace(/[\x00-\x1f\x7f/\\:*?"<>|]/g, '').replace(/[.\s]+$/, '')
+  return cleaned === '.' || cleaned === '..' ? '' : cleaned
 }
 
 export function isAppleJunkName(name: string): boolean {

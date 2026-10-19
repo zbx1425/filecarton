@@ -271,7 +271,10 @@ const thumbnailUrl = computed(() => {
                 <ContextMenuItem @select="extractArchive(joinPath(navigation.currentPathStr, name), navigation.currentPathStr, false)">
                   Here
                 </ContextMenuItem>
-                <ContextMenuItem @select="extractArchive(joinPath(navigation.currentPathStr, name), navigation.currentPathStr, true)">
+                <ContextMenuItem
+                  v-if="archiveSubdirName(name)"
+                  @select="extractArchive(joinPath(navigation.currentPathStr, name), navigation.currentPathStr, true)"
+                >
                   To "{{ archiveSubdirName(name) }}/"
                 </ContextMenuItem>
               </ContextMenuSubContent>

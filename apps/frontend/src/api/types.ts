@@ -109,7 +109,7 @@ export interface ArchiveCreateResponse {
 
 export interface ArchiveExtractFailedEntry {
   path: string
-  reason: 'blocked.name' | 'blocked.ignored' | 'blocked.invalid' | 'io_error'
+  reason: 'blocked.name' | 'blocked.ignored' | 'blocked.invalid' | 'already_exists' | 'io_error'
 }
 
 export interface ArchiveExtractResponse {

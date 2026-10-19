@@ -632,9 +632,8 @@ class PathSecurity {
 
     /**
      * Normalize a path logically (resolve . and .. segments) without requiring existence.
-     * Used for zip slip detection on archive entry paths.
      */
-    public function normalizePath(string $path): string {
+    public static function normalizePath(string $path): string {
         $path = str_replace('\\', '/', $path);
         $parts = explode('/', $path);
         $result = [];

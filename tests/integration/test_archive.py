@@ -145,6 +145,44 @@ def test_extract_subdir_and_conflict(world):
     assert conflict_res.status_code == 409
     assert error_code(conflict_res) == "already_exists"
 
+    # Symmetric type-mismatch protection: forbid file-over-dir and dir-over-file
+    keep_dir = scenario.alice_root / "keep_dir"
+    keep_dir.mkdir(parents=True, exist_ok=True)
+    (keep_dir / "inside.txt").write_bytes(b"precious")
+    (scenario.alice_root / "keep_file").write_bytes(b"original-file")
+
+    write_zip(
+        scenario.alice_root / "type_clash.zip",
+        {
+            "keep_dir": b"file-trying-to-replace-dir",
+            "keep_file/nested.txt": b"dir-trying-to-replace-file",
+            "clean.txt": b"ok-file",
+        },
+    )
+    dry_clash = client.api(
+        "archive_extract",
+        method="POST",
+        json_body={"path": "type_clash.zip", "targetPath": "", "dryRun": True},
+    )
+    assert dry_clash.status_code == 200, dry_clash.text
+    dry_clash_data = json_body(dry_clash)["data"]
+    assert dry_clash_data["wouldExtract"] == 1
+    assert dry_clash_data["conflicts"] == []
+    dry_reasons = {item["path"]: item["reason"] for item in dry_clash_data["failed"]}
+    assert dry_reasons.get("keep_dir") == "already_exists"
+    assert dry_reasons.get("keep_file/nested.txt") == "already_exists"
+
+    ext_clash = _extract(client, "type_clash.zip")
+    assert ext_clash.status_code == 200, ext_clash.text
+    ext_clash_data = json_body(ext_clash)["data"]
+    assert ext_clash_data["extracted"] == 1
+    ext_reasons = {item["path"]: item["reason"] for item in ext_clash_data["failed"]}
+    assert ext_reasons.get("keep_dir") == "already_exists"
+    assert ext_reasons.get("keep_file/nested.txt") == "already_exists"
+    assert (keep_dir / "inside.txt").read_bytes() == b"precious"
+    assert (scenario.alice_root / "keep_file").read_bytes() == b"original-file"
+    assert (scenario.alice_root / "clean.txt").read_bytes() == b"ok-file"
+
     # TAR variants (.tgz, .gz, and .tar inside a *.tar parent directory) extract with exact relative paths
     write_targz(scenario.alice_root / "plain.tgz", {"readme.txt": b"from-tgz"})
     write_targz(scenario.alice_root / "notes.gz", {"readme.txt": b"from-gz"})
@@ -300,6 +338,7 @@ def test_archive_limits_and_tar_restrictions(stack, tmp_path_factory, tools):
         "FILECARTON_ARCHIVE_TAR_MAX_ACCESS_FILES": 4,
         "FILECARTON_ARCHIVE_TARGZ_MAX_ACCESS_SIZE": 64,
         "FILECARTON_ARCHIVE_MAX_SIZE": 128,
+        "FILECARTON_ARCHIVE_MAX_FILES": 4,
         "FILECARTON_STATIC_USER_LIST": [
             {"id": "alice", "passwordHash": digest, "root": fwd(alice)},
         ],
@@ -355,6 +394,25 @@ def test_archive_limits_and_tar_restrictions(stack, tmp_path_factory, tools):
         r_huge_dl = client.api("archive_download", query={"path": "oversize_entry.zip", "entry": "huge.bin"}, csrf=False)
         assert r_huge_dl.status_code == 413
         assert error_code(r_huge_dl) == "archive.too_large_to_extract"
+
+        # Archive exceeding FILECARTON_ARCHIVE_MAX_FILES (even with 0-byte files) is rejected on dryRun and extract
+        write_zip(alice / "empty_bomb.zip", {f"empty_{i}.txt": b"" for i in range(6)})
+        r_bomb_dry = client.api(
+            "archive_extract",
+            method="POST",
+            json_body={"path": "empty_bomb.zip", "targetPath": "", "dryRun": True},
+        )
+        assert r_bomb_dry.status_code == 413
+        assert error_code(r_bomb_dry) == "archive.too_many_to_extract"
+
+        r_bomb_ext = client.api(
+            "archive_extract",
+            method="POST",
+            json_body={"path": "empty_bomb.zip", "targetPath": ""},
+        )
+        assert r_bomb_ext.status_code == 413
+        assert error_code(r_bomb_ext) == "archive.too_many_to_extract"
+        assert not (alice / "empty_0.txt").exists()
     finally:
         client.close()
 

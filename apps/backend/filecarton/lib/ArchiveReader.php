@@ -43,18 +43,7 @@ class ArchiveReader {
      * Normalize an archive entry path to a canonical relative path without leading/trailing slashes.
      */
     public static function normalizeEntryPath(string $rawPath): string {
-        $path = str_replace('\\', '/', $rawPath);
-        $parts = explode('/', $path);
-        $result = [];
-        foreach ($parts as $part) {
-            if ($part === '' || $part === '.') continue;
-            if ($part === '..') {
-                array_pop($result);
-            } else {
-                $result[] = $part;
-            }
-        }
-        return implode('/', $result);
+        return PathSecurity::normalizePath($rawPath);
     }
 
     /**

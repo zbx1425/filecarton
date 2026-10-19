@@ -59,7 +59,17 @@ export function useKeyboard() {
       return
     }
 
+    const ctrl = e.ctrlKey || e.metaKey
+
     if (navigation.viewMode !== 'list') {
+      if (ctrl && e.key.toLowerCase() === 'f') {
+        const archiveSearch = document.querySelector<HTMLInputElement>('[data-archive-search]')
+        if (archiveSearch) {
+          e.preventDefault()
+          archiveSearch.focus()
+        }
+        return
+      }
       if (e.key === 'Escape' || e.key === 'Backspace') {
         if (!handleArchiveBackKey(e.key)) {
           navigation.backToList()
@@ -68,8 +78,6 @@ export function useKeyboard() {
       }
       return
     }
-
-    const ctrl = e.ctrlKey || e.metaKey
 
     if (ctrl && e.key === 'c' && !ui.readonly) {
       e.preventDefault()

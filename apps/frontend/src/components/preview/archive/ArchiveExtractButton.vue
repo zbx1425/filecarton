@@ -20,6 +20,7 @@ const props = defineProps<{
 const ui = useUiStore()
 
 const archiveName = computed(() => props.name || pathName(props.path))
+const subdirName = computed(() => archiveSubdirName(archiveName.value))
 const targetDir = computed(() => parentPath(props.path))
 
 async function handleExtract(createSubdir: boolean) {
@@ -40,8 +41,8 @@ async function handleExtract(createSubdir: boolean) {
       <DropdownMenuItem @select="handleExtract(false)">
         Extract Here
       </DropdownMenuItem>
-      <DropdownMenuItem @select="handleExtract(true)">
-        Extract to "{{ archiveSubdirName(archiveName) }}/"
+      <DropdownMenuItem v-if="subdirName" @select="handleExtract(true)">
+        Extract to "{{ subdirName }}/"
       </DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>

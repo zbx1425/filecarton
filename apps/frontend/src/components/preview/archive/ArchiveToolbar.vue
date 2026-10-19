@@ -97,15 +97,16 @@ const ui = useUiStore()
       </BreadcrumbList>
     </Breadcrumb>
 
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-2 min-w-0 shrink">
       <template v-if="viewMode === 'list'">
-        <div class="flex items-center">
-          <div class="relative">
+        <div class="flex items-center min-w-0">
+          <div class="relative min-w-0">
             <Search class="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
             <Input
               :model-value="searchQuery"
+              data-archive-search
               placeholder="Search in archive..."
-              class="h-7 w-64 pl-7 pr-7 text-xs"
+              class="h-7 w-64 max-w-full pl-7 pr-7 text-xs"
               @update:model-value="emit('update:searchQuery', String($event))"
             />
           </div>

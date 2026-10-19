@@ -145,10 +145,15 @@ export function useArchiveExplorer(
     childrenByParent.value = childrenMap
   }
 
+  let fetchSeq = 0
+
   async function fetchArchiveList() {
+    const seq = ++fetchSeq
     loading.value = true
     error.value = null
     data.value = null
+    nodeMap.value = new Map()
+    childrenByParent.value = new Map()
     currentPath.value = []
     viewMode.value = 'list'
     activeEntry.value = null
@@ -159,12 +164,16 @@ export function useArchiveExplorer(
 
     try {
       const res = await apiGet<ArchiveListResponse>('archive_list', { path: archivePath.value })
+      if (seq !== fetchSeq) return
       data.value = res
       buildTreeFromEntries(res.entries)
     } catch (e: unknown) {
+      if (seq !== fetchSeq) return
       error.value = toErrorInfo(e)
     } finally {
-      loading.value = false
+      if (seq === fetchSeq) {
+        loading.value = false
+      }
     }
   }
 

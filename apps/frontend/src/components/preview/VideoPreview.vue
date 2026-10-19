@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import { buildRawUrl, buildDownloadUrl } from '@/api/client'
+import type { ErrorInfo } from '@/api/client'
 import { formatSize, formatDuration } from '@/utils/format'
 import { Video, Download } from '@lucide/vue'
 
@@ -20,6 +21,7 @@ const videoWidth = ref(0)
 const videoHeight = ref(0)
 const duration = ref(0)
 const playbackError = ref(false)
+const serverError = ref<ErrorInfo | null>(null)
 
 watch(
   [() => props.path, () => props.rawUrl],
@@ -28,6 +30,7 @@ watch(
     videoHeight.value = 0
     duration.value = 0
     playbackError.value = false
+    serverError.value = null
   },
 )
 
@@ -38,8 +41,23 @@ function handleLoadedMetadata(e: Event) {
   duration.value = video.duration
 }
 
-function handleError() {
+async function handleError() {
   playbackError.value = true
+  const src = videoSrc.value
+  const controller = new AbortController()
+  try {
+    const res = await fetch(src, { signal: controller.signal, credentials: 'same-origin' })
+    if (!res.ok) {
+      const json = await res.json().catch(() => null)
+      if (src === videoSrc.value && json && typeof json.error === 'string') {
+        serverError.value = { code: json.error, params: json.params }
+      }
+    } else {
+      controller.abort()
+    }
+  } catch {
+    // Fall back to codec error message
+  }
 }
 </script>
 
@@ -71,13 +89,18 @@ function handleError() {
     <template v-else>
       <Video class="size-16 text-muted-foreground" />
       <p class="text-sm font-mono">{{ name }}</p>
-      <p class="text-xs text-muted-foreground">
-        This video format or codec cannot be played directly in your browser ({{ formatSize(size) }}).
+      <p v-if="serverError" class="text-sm text-destructive max-w-md text-center">
+        {{ $t('err.' + serverError.code, serverError.params ?? {}) }}
       </p>
-      <Button variant="outline" as="a" :href="downloadUrl" target="_blank">
-        <Download class="size-4" />
-        Download
-      </Button>
+      <template v-else>
+        <p class="text-xs text-muted-foreground">
+          This video format or codec cannot be played directly in your browser ({{ formatSize(size) }}).
+        </p>
+        <Button variant="outline" as="a" :href="downloadUrl" target="_blank">
+          <Download class="size-4" />
+          Download
+        </Button>
+      </template>
     </template>
   </div>
 </template>
