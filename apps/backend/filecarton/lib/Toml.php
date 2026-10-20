@@ -2,13 +2,6 @@
 
 namespace FileCarton;
 
-/**
- * Lightweight, zero-dependency TOML parser for FileCarton configuration.
- *
- * Supports tables ([a.b]), arrays of tables ([[a.b]]), inline tables ({ k = v }),
- * arrays (including nested arrays and inline tables), basic/literal single- and
- * multi-line strings, booleans, integers (dec/hex/oct/bin), and floats.
- */
 class Toml {
     /** @var string */
     private $src;
@@ -77,11 +70,8 @@ class Toml {
 
             $ch = $this->src[$this->pos];
             if ($ch === '[') {
-                if ($this->pos + 1 < $this->len && $this->src[$this->pos + 1] === '[') {
-                    $this->parseArrayOfTablesHeader($root, $metaRoot);
-                } else {
-                    $this->parseTableHeader($root, $metaRoot);
-                }
+                $isArray = ($this->pos + 1 < $this->len && $this->src[$this->pos + 1] === '[');
+                $this->parseTableHeader($root, $metaRoot, $isArray);
             } else {
                 $this->parseKeyValueInto($this->currentTable, $this->currentMeta);
                 $this->skipSpaces();
@@ -103,18 +93,17 @@ class Toml {
         ];
     }
 
-    /**
-     * Parse [table.header] and bind $this->currentTable / $this->currentMeta.
-     */
-    private function parseTableHeader(array &$root, array &$metaRoot): void {
+    private function parseTableHeader(array &$root, array &$metaRoot, bool $isArray): void {
         $headerLine = $this->line;
-        $this->pos += 1; // skip '['
+        $step = $isArray ? 2 : 1;
+        $close = $isArray ? ']]' : ']';
+        $this->pos += $step;
         $keys = $this->parseKeyPath();
         $this->skipSpaces();
-        if ($this->pos >= $this->len || $this->src[$this->pos] !== ']') {
-            $this->error("Expected ']' to close table header");
+        if (substr($this->src, $this->pos, $step) !== $close) {
+            $this->error("Expected '{$close}' to close table header");
         }
-        $this->pos += 1; // skip ']'
+        $this->pos += $step;
         $this->skipSpaces();
         $this->skipComment();
         $this->expectNewlineOrEof();
@@ -145,81 +134,38 @@ class Toml {
         }
 
         $last = $keys[$n - 1];
-        if (!isset($meta['children'][$last])) {
-            $curr[$last] = [];
-            $meta['children'][$last] = self::newTableMeta(true);
-        } else {
-            $targetMeta = &$meta['children'][$last];
-            if ($targetMeta['type'] !== 'table' || $targetMeta['explicit'] || $targetMeta['dotted'] || $targetMeta['frozen']) {
-                $this->error('Table [' . implode('.', $keys) . '] has already been defined', $headerLine);
-            }
-            $targetMeta['explicit'] = true;
-        }
-
-        $this->currentTable = &$curr[$last];
-        $this->currentMeta  = &$meta['children'][$last];
-    }
-
-    /**
-     * Parse [[array.of.tables]] and bind $this->currentTable / $this->currentMeta.
-     */
-    private function parseArrayOfTablesHeader(array &$root, array &$metaRoot): void {
-        $headerLine = $this->line;
-        $this->pos += 2; // skip '[['
-        $keys = $this->parseKeyPath();
-        $this->skipSpaces();
-        if ($this->pos + 1 >= $this->len || $this->src[$this->pos] !== ']' || $this->src[$this->pos + 1] !== ']') {
-            $this->error("Expected ']]' to close array of tables header");
-        }
-        $this->pos += 2; // skip ']]'
-        $this->skipSpaces();
-        $this->skipComment();
-        $this->expectNewlineOrEof();
-
-        $curr = &$root;
-        $meta = &$metaRoot;
-        $n = count($keys);
-
-        for ($i = 0; $i < $n - 1; $i++) {
-            $seg = $keys[$i];
-            if (!isset($meta['children'][$seg])) {
-                $curr[$seg] = [];
-                $meta['children'][$seg] = self::newTableMeta(false);
+        if ($isArray) {
+            if (!isset($meta['children'][$last])) {
+                $curr[$last] = [[]];
+                $meta['children'][$last] = [
+                    'type'  => 'array_table',
+                    'items' => [self::newTableMeta(true)],
+                ];
             } else {
-                $childMeta = &$meta['children'][$seg];
-                if ($childMeta['type'] === 'value' || !empty($childMeta['frozen'])) {
-                    $this->error("Cannot extend non-table key '{$seg}'", $headerLine);
+                $targetMeta = &$meta['children'][$last];
+                if ($targetMeta['type'] !== 'array_table') {
+                    $this->error('Cannot redefine [' . implode('.', $keys) . '] as array of tables', $headerLine);
                 }
-                if ($childMeta['type'] === 'array_table') {
-                    $lastIdx = count($curr[$seg]) - 1;
-                    $curr = &$curr[$seg][$lastIdx];
-                    $meta = &$childMeta['items'][$lastIdx];
-                    continue;
-                }
+                $curr[$last][] = [];
+                $targetMeta['items'][] = self::newTableMeta(true);
             }
-            $curr = &$curr[$seg];
-            $meta = &$meta['children'][$seg];
-        }
-
-        $last = $keys[$n - 1];
-        if (!isset($meta['children'][$last])) {
-            $curr[$last] = [[]];
-            $meta['children'][$last] = [
-                'type'  => 'array_table',
-                'items' => [self::newTableMeta(true)],
-            ];
+            $lastIdx = count($curr[$last]) - 1;
+            $this->currentTable = &$curr[$last][$lastIdx];
+            $this->currentMeta  = &$meta['children'][$last]['items'][$lastIdx];
         } else {
-            $targetMeta = &$meta['children'][$last];
-            if ($targetMeta['type'] !== 'array_table') {
-                $this->error('Cannot redefine [' . implode('.', $keys) . '] as array of tables', $headerLine);
+            if (!isset($meta['children'][$last])) {
+                $curr[$last] = [];
+                $meta['children'][$last] = self::newTableMeta(true);
+            } else {
+                $targetMeta = &$meta['children'][$last];
+                if ($targetMeta['type'] !== 'table' || $targetMeta['explicit'] || $targetMeta['dotted'] || $targetMeta['frozen']) {
+                    $this->error('Table [' . implode('.', $keys) . '] has already been defined', $headerLine);
+                }
+                $targetMeta['explicit'] = true;
             }
-            $curr[$last][] = [];
-            $targetMeta['items'][] = self::newTableMeta(true);
+            $this->currentTable = &$curr[$last];
+            $this->currentMeta  = &$meta['children'][$last];
         }
-
-        $lastIdx = count($curr[$last]) - 1;
-        $this->currentTable = &$curr[$last][$lastIdx];
-        $this->currentMeta  = &$meta['children'][$last]['items'][$lastIdx];
     }
 
     /**
@@ -288,26 +234,20 @@ class Toml {
 
     private function parseKeySegment(): string {
         if ($this->pos >= $this->len) {
-            $this->error('Unexpected end of input while expecting a key');
+            $this->error('Expected key');
         }
         $ch = $this->src[$this->pos];
-        if ($ch === '"') {
-            if ($this->pos + 2 < $this->len && $this->src[$this->pos + 1] === '"' && $this->src[$this->pos + 2] === '"') {
-                $this->error('Multiline strings are not allowed as keys');
+        if ($ch === '"' || $ch === "'") {
+            if (substr($this->src, $this->pos, 3) === str_repeat($ch, 3)) {
+                $this->error('Multiline key not allowed');
             }
-            return $this->parseBasicString();
-        }
-        if ($ch === "'") {
-            if ($this->pos + 2 < $this->len && $this->src[$this->pos + 1] === "'" && $this->src[$this->pos + 2] === "'") {
-                $this->error('Multiline strings are not allowed as keys');
-            }
-            return $this->parseLiteralString();
+            return $this->parseString($ch, false);
         }
         if (preg_match('/\G[A-Za-z0-9_-]+/', $this->src, $m, 0, $this->pos)) {
             $this->pos += strlen($m[0]);
             return $m[0];
         }
-        $this->error('Invalid or empty key');
+        $this->error('Invalid key');
     }
 
     /**
@@ -315,31 +255,22 @@ class Toml {
      */
     private function parseValue(): array {
         if ($this->pos >= $this->len) {
-            $this->error('Unexpected end of input while expecting a value');
+            $this->error('Expected value');
         }
 
         $ch = $this->src[$this->pos];
 
-        if ($ch === '"') {
-            if ($this->pos + 2 < $this->len && $this->src[$this->pos + 1] === '"' && $this->src[$this->pos + 2] === '"') {
-                return [$this->parseMultilineBasicString(), ['type' => 'value']];
-            }
-            return [$this->parseBasicString(), ['type' => 'value']];
-        }
-
-        if ($ch === "'") {
-            if ($this->pos + 2 < $this->len && $this->src[$this->pos + 1] === "'" && $this->src[$this->pos + 2] === "'") {
-                return [$this->parseMultilineLiteralString(), ['type' => 'value']];
-            }
-            return [$this->parseLiteralString(), ['type' => 'value']];
+        if ($ch === '"' || $ch === "'") {
+            $ml = substr($this->src, $this->pos, 3) === str_repeat($ch, 3);
+            return [$this->parseString($ch, $ml), ['type' => 'value']];
         }
 
         if ($ch === '[') {
-            return [$this->parseArray(), ['type' => 'value']];
+            return $this->parseCollection(']');
         }
 
         if ($ch === '{') {
-            return $this->parseInlineTable();
+            return $this->parseCollection('}');
         }
 
         if (preg_match('/\G(true|false)(?=[\s,#\]}]|$)/', $this->src, $m, 0, $this->pos)) {
@@ -350,81 +281,43 @@ class Toml {
         return [$this->parseNumber(), ['type' => 'value']];
     }
 
-    private function parseBasicString(): string {
-        $this->pos += 1; // skip opening '"'
-        $out = '';
+    private function parseString(string $quote, bool $multiline): string {
+        $delim = $multiline ? str_repeat($quote, 3) : $quote;
+        $basic = ($quote === '"');
+        $this->pos += strlen($delim);
 
-        while ($this->pos < $this->len) {
-            $ch = $this->src[$this->pos];
-            if ($ch === '"') {
-                $this->pos += 1;
-                return $out;
-            }
-            if ($ch === "\n") {
-                $this->error('Unterminated basic string');
-            }
-            if ($ch === '\\') {
-                $this->pos += 1;
-                $out .= $this->parseEscapeSequence();
-                continue;
-            }
-            $ord = ord($ch);
-            if (($ord < 0x20 && $ch !== "\t") || $ord === 0x7F) {
-                $this->error('Control characters are not allowed in basic strings');
-            }
-            $out .= $ch;
-            $this->pos += 1;
-        }
-
-        $this->error('Unterminated basic string');
-    }
-
-    private function parseMultilineBasicString(): string {
-        $this->pos += 3; // skip '"""'
-        if ($this->pos < $this->len && $this->src[$this->pos] === "\n") {
+        if ($multiline && $this->pos < $this->len && $this->src[$this->pos] === "\n") {
             $this->pos += 1;
             $this->line += 1;
         }
 
         $out = '';
         while ($this->pos < $this->len) {
-            if (
-                $this->src[$this->pos] === '"'
-                && $this->pos + 2 < $this->len
-                && $this->src[$this->pos + 1] === '"'
-                && $this->src[$this->pos + 2] === '"'
-            ) {
-                // Up to two extra quotes are allowed before the closing """
-                $quotes = 0;
-                while ($this->pos < $this->len && $this->src[$this->pos] === '"') {
-                    $quotes++;
-                    $this->pos++;
+            if ($multiline) {
+                if (substr($this->src, $this->pos, 3) === $delim) {
+                    $quotes = 0;
+                    while ($this->pos < $this->len && $this->src[$this->pos] === $quote) {
+                        $quotes++;
+                        $this->pos++;
+                    }
+                    if ($quotes > 5) {
+                        $this->error('Invalid quote sequence');
+                    }
+                    return $out . str_repeat($quote, $quotes - 3);
                 }
-                if ($quotes < 3 || $quotes > 5) {
-                    $this->error('Invalid quotation mark sequence in multiline basic string');
-                }
-                $out .= str_repeat('"', $quotes - 3);
+            } elseif ($this->src[$this->pos] === $quote) {
+                $this->pos += 1;
                 return $out;
+            } elseif ($this->src[$this->pos] === "\n") {
+                $this->error('Unterminated string');
             }
 
             $ch = $this->src[$this->pos];
-            if ($ch === '\\') {
+            if ($basic && $ch === '\\') {
                 $this->pos += 1;
-                // Line-ending backslash trims whitespace and newlines
-                if (preg_match('/\G[ \t]*\n/', $this->src, $m, 0, $this->pos)) {
+                if ($multiline && preg_match('/\G[ \t]*\n([ \t\n]*)/', $this->src, $m, 0, $this->pos)) {
                     $this->pos += strlen($m[0]);
-                    $this->line += 1;
-                    while ($this->pos < $this->len) {
-                        $c = $this->src[$this->pos];
-                        if ($c === ' ' || $c === "\t") {
-                            $this->pos += 1;
-                        } elseif ($c === "\n") {
-                            $this->pos += 1;
-                            $this->line += 1;
-                        } else {
-                            break;
-                        }
-                    }
+                    $this->line += 1 + substr_count($m[1], "\n");
                     continue;
                 }
                 $out .= $this->parseEscapeSequence();
@@ -438,208 +331,78 @@ class Toml {
                 continue;
             }
 
-            $ord = ord($ch);
-            if (($ord < 0x20 && $ch !== "\t") || $ord === 0x7F) {
-                $this->error('Control characters are not allowed in multiline basic strings');
-            }
+            $this->checkControlChar($ch);
             $out .= $ch;
             $this->pos += 1;
         }
 
-        $this->error('Unterminated multiline basic string');
-    }
-
-    private function parseLiteralString(): string {
-        $this->pos += 1; // skip "'"
-        $out = '';
-
-        while ($this->pos < $this->len) {
-            $ch = $this->src[$this->pos];
-            if ($ch === "'") {
-                $this->pos += 1;
-                return $out;
-            }
-            if ($ch === "\n") {
-                $this->error('Unterminated literal string');
-            }
-            $ord = ord($ch);
-            if (($ord < 0x20 && $ch !== "\t") || $ord === 0x7F) {
-                $this->error('Control characters are not allowed in literal strings');
-            }
-            $out .= $ch;
-            $this->pos += 1;
-        }
-
-        $this->error('Unterminated literal string');
-    }
-
-    private function parseMultilineLiteralString(): string {
-        $this->pos += 3; // skip "'''"
-        if ($this->pos < $this->len && $this->src[$this->pos] === "\n") {
-            $this->pos += 1;
-            $this->line += 1;
-        }
-
-        $out = '';
-        while ($this->pos < $this->len) {
-            if (
-                $this->src[$this->pos] === "'"
-                && $this->pos + 2 < $this->len
-                && $this->src[$this->pos + 1] === "'"
-                && $this->src[$this->pos + 2] === "'"
-            ) {
-                $quotes = 0;
-                while ($this->pos < $this->len && $this->src[$this->pos] === "'") {
-                    $quotes++;
-                    $this->pos++;
-                }
-                if ($quotes < 3 || $quotes > 5) {
-                    $this->error('Invalid apostrophe sequence in multiline literal string');
-                }
-                $out .= str_repeat("'", $quotes - 3);
-                return $out;
-            }
-
-            $ch = $this->src[$this->pos];
-            if ($ch === "\n") {
-                $this->line += 1;
-                $out .= "\n";
-                $this->pos += 1;
-                continue;
-            }
-
-            $ord = ord($ch);
-            if (($ord < 0x20 && $ch !== "\t") || $ord === 0x7F) {
-                $this->error('Control characters are not allowed in multiline literal strings');
-            }
-            $out .= $ch;
-            $this->pos += 1;
-        }
-
-        $this->error('Unterminated multiline literal string');
+        $this->error('Unterminated string');
     }
 
     private function parseEscapeSequence(): string {
         if ($this->pos >= $this->len) {
-            $this->error('Unexpected end of string after escape character');
+            $this->error('Unterminated escape');
         }
-        $ch = $this->src[$this->pos];
-        $this->pos += 1;
-
-        switch ($ch) {
-            case 'b':  return "\x08";
-            case 't':  return "\t";
-            case 'n':  return "\n";
-            case 'f':  return "\f";
-            case 'r':  return "\r";
-            case '"':  return '"';
-            case '\\': return '\\';
-            case 'u':
-                if (!preg_match('/\G[0-9a-fA-F]{4}/', $this->src, $m, 0, $this->pos)) {
-                    $this->error('Invalid \uXXXX escape sequence');
-                }
-                $this->pos += 4;
-                return $this->codepointToUtf8((int)hexdec($m[0]));
-            case 'U':
-                if (!preg_match('/\G[0-9a-fA-F]{8}/', $this->src, $m, 0, $this->pos)) {
-                    $this->error('Invalid \UXXXXXXXX escape sequence');
-                }
-                $this->pos += 8;
-                return $this->codepointToUtf8((int)hexdec($m[0]));
-            default:
-                $this->error("Invalid escape sequence '\\{$ch}'");
+        $ch = $this->src[$this->pos++];
+        $map = ['b' => "\x08", 't' => "\t", 'n' => "\n", 'f' => "\f", 'r' => "\r", '"' => '"', '\\' => '\\'];
+        if (isset($map[$ch])) {
+            return $map[$ch];
         }
+        if ($ch === 'u' || $ch === 'U') {
+            $n = $ch === 'u' ? 4 : 8;
+            if (!preg_match("/\\G[0-9a-fA-F]{{$n}}/", $this->src, $m, 0, $this->pos)) {
+                $this->error('Invalid unicode escape');
+            }
+            $this->pos += $n;
+            return $this->codepointToUtf8((int)hexdec($m[0]));
+        }
+        $this->error("Invalid escape '\\{$ch}'");
     }
 
     private function codepointToUtf8(int $cp): string {
         if (($cp >= 0xD800 && $cp <= 0xDFFF) || $cp < 0 || $cp > 0x10FFFF) {
-            $this->error('Invalid Unicode scalar value in escape sequence');
+            $this->error('Invalid unicode scalar');
         }
-        if ($cp <= 0x7F) {
-            return chr($cp);
-        }
-        if ($cp <= 0x7FF) {
-            return chr(0xC0 | ($cp >> 6)) . chr(0x80 | ($cp & 0x3F));
-        }
+        if ($cp <= 0x7F) return chr($cp);
+        if ($cp <= 0x7FF) return chr(0xC0 | ($cp >> 6)) . chr(0x80 | ($cp & 0x3F));
         if ($cp <= 0xFFFF) {
-            return chr(0xE0 | ($cp >> 12))
-                . chr(0x80 | (($cp >> 6) & 0x3F))
-                . chr(0x80 | ($cp & 0x3F));
+            return chr(0xE0 | ($cp >> 12)) . chr(0x80 | (($cp >> 6) & 0x3F)) . chr(0x80 | ($cp & 0x3F));
         }
-        return chr(0xF0 | ($cp >> 18))
-            . chr(0x80 | (($cp >> 12) & 0x3F))
-            . chr(0x80 | (($cp >> 6) & 0x3F))
-            . chr(0x80 | ($cp & 0x3F));
+        return chr(0xF0 | ($cp >> 18)) . chr(0x80 | (($cp >> 12) & 0x3F))
+            . chr(0x80 | (($cp >> 6) & 0x3F)) . chr(0x80 | ($cp & 0x3F));
     }
 
-    private function parseArray(): array {
-        $this->pos += 1; // skip '['
-        $result = [];
+    private function parseCollection(string $close): array {
+        $this->pos += 1;
+        $out = [];
+        $isTable = ($close === '}');
+        $meta = $isTable ? self::newTableMeta(true, false, false) : ['type' => 'value'];
 
         while (true) {
             $this->skipWhitespaceAndComments(true);
-            if ($this->pos >= $this->len) {
-                $this->error("Unterminated array (expected ']')");
-            }
-            if ($this->src[$this->pos] === ']') {
+            if ($this->pos < $this->len && $this->src[$this->pos] === $close) {
                 $this->pos += 1;
-                return $result;
+                if ($isTable) $meta['frozen'] = true;
+                return [$out, $meta];
             }
 
-            [$val] = $this->parseValue();
-            $result[] = $val;
+            if ($isTable) {
+                $this->parseKeyValueInto($out, $meta);
+            } else {
+                $out[] = $this->parseValue()[0];
+            }
 
             $this->skipWhitespaceAndComments(true);
-            if ($this->pos >= $this->len) {
-                $this->error("Unterminated array (expected ',' or ']')");
-            }
-            if ($this->src[$this->pos] === ',') {
+            if ($this->pos < $this->len && $this->src[$this->pos] === ',') {
                 $this->pos += 1;
                 continue;
             }
-            if ($this->src[$this->pos] === ']') {
+            if ($this->pos < $this->len && $this->src[$this->pos] === $close) {
                 $this->pos += 1;
-                return $result;
+                if ($isTable) $meta['frozen'] = true;
+                return [$out, $meta];
             }
-            $this->error("Expected ',' or ']' in array");
-        }
-    }
-
-    /**
-     * Parse { k = v, ... } and return [$table, $metaNode].
-     */
-    private function parseInlineTable(): array {
-        $this->pos += 1; // skip '{'
-        $table = [];
-        $meta = self::newTableMeta(true, false, false);
-
-        while (true) {
-            $this->skipWhitespaceAndComments(true);
-            if ($this->pos >= $this->len) {
-                $this->error("Unterminated inline table (expected '}')");
-            }
-            if ($this->src[$this->pos] === '}') {
-                $this->pos += 1;
-                $meta['frozen'] = true;
-                return [$table, $meta];
-            }
-
-            $this->parseKeyValueInto($table, $meta);
-
-            $this->skipWhitespaceAndComments(true);
-            if ($this->pos >= $this->len) {
-                $this->error("Unterminated inline table (expected ',' or '}')");
-            }
-            if ($this->src[$this->pos] === ',') {
-                $this->pos += 1;
-                continue;
-            }
-            if ($this->src[$this->pos] === '}') {
-                $this->pos += 1;
-                $meta['frozen'] = true;
-                return [$table, $meta];
-            }
-            $this->error("Expected ',' or '}' in inline table");
+            $this->error("Expected ',' or '{$close}'");
         }
     }
 
@@ -691,6 +454,13 @@ class Toml {
         $this->error('Invalid value');
     }
 
+    private function checkControlChar(string $ch): void {
+        $ord = ord($ch);
+        if (($ord < 0x20 && $ch !== "\t") || $ord === 0x7F) {
+            $this->error('Invalid control character');
+        }
+    }
+
     private function skipSpaces(): void {
         while ($this->pos < $this->len) {
             $ch = $this->src[$this->pos];
@@ -706,11 +476,7 @@ class Toml {
         if ($this->pos < $this->len && $this->src[$this->pos] === '#') {
             $this->pos += 1;
             while ($this->pos < $this->len && $this->src[$this->pos] !== "\n") {
-                $ch = $this->src[$this->pos];
-                $ord = ord($ch);
-                if (($ord < 0x20 && $ch !== "\t") || $ord === 0x7F) {
-                    $this->error('Control characters are not allowed in comments');
-                }
+                $this->checkControlChar($this->src[$this->pos]);
                 $this->pos += 1;
             }
         }

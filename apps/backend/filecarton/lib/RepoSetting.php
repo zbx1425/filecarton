@@ -31,36 +31,25 @@ class RepoSetting {
         $this->featureRemoteDownload = null;
     }
 
+    private const BOOL_MAP = [
+        'readonly'                 => 'readonly',
+        'feature_archive'          => 'featureArchive',
+        'feature_unix_perm'        => 'featureUnixPerm',
+        'feature_unix_perm_modify' => 'featureUnixPermModify',
+        'feature_remote_download'  => 'featureRemoteDownload',
+    ];
+
     /**
      * Parse from the FILECARTON_REPO_SETTING config array.
      * Missing or wrong-typed keys become null (except optional feature flags which default to false).
      */
     public static function fromConfigArray(array $arr): self {
-        $s = new self();
-        if (array_key_exists('root_path', $arr) && is_string($arr['root_path'])) {
-            $s->rootPath = $arr['root_path'];
+        $s = self::fromStaticRow($arr, true);
+        foreach (self::BOOL_MAP as $k => $prop) {
+            if ($k !== 'readonly' && $s->$prop === null) {
+                $s->$prop = false;
+            }
         }
-        if (array_key_exists('readonly', $arr) && is_bool($arr['readonly'])) {
-            $s->readonly = $arr['readonly'];
-        }
-        if (array_key_exists('branding', $arr) && is_string($arr['branding'])) {
-            $s->branding = $arr['branding'];
-        }
-        if (array_key_exists('repo_name', $arr) && is_string($arr['repo_name'])) {
-            $s->repoName = $arr['repo_name'];
-        }
-        $s->featureArchive = (array_key_exists('feature_archive', $arr) && is_bool($arr['feature_archive']))
-            ? $arr['feature_archive']
-            : false;
-        $s->featureUnixPerm = (array_key_exists('feature_unix_perm', $arr) && is_bool($arr['feature_unix_perm']))
-            ? $arr['feature_unix_perm']
-            : false;
-        $s->featureUnixPermModify = (array_key_exists('feature_unix_perm_modify', $arr) && is_bool($arr['feature_unix_perm_modify']))
-            ? $arr['feature_unix_perm_modify']
-            : false;
-        $s->featureRemoteDownload = (array_key_exists('feature_remote_download', $arr) && is_bool($arr['feature_remote_download']))
-            ? $arr['feature_remote_download']
-            : false;
         return $s;
     }
 
@@ -68,31 +57,21 @@ class RepoSetting {
      * Parse from a STATIC_USER_LIST row (per-user override).
      * Only present values are set; null means inherit the default.
      */
-    public static function fromStaticRow(array $row): self {
+    public static function fromStaticRow(array $row, bool $allowEmptyRoot = false): self {
         $s = new self();
-        if (isset($row['root_path']) && is_string($row['root_path']) && $row['root_path'] !== '') {
+        if (isset($row['root_path']) && is_string($row['root_path']) && ($allowEmptyRoot || $row['root_path'] !== '')) {
             $s->rootPath = $row['root_path'];
         }
-        if (array_key_exists('readonly', $row) && is_bool($row['readonly'])) {
-            $s->readonly = $row['readonly'];
-        }
-        if (array_key_exists('branding', $row) && is_string($row['branding'])) {
+        if (isset($row['branding']) && is_string($row['branding'])) {
             $s->branding = $row['branding'];
         }
-        if (array_key_exists('repo_name', $row) && is_string($row['repo_name'])) {
+        if (isset($row['repo_name']) && is_string($row['repo_name'])) {
             $s->repoName = $row['repo_name'];
         }
-        if (array_key_exists('feature_archive', $row) && is_bool($row['feature_archive'])) {
-            $s->featureArchive = $row['feature_archive'];
-        }
-        if (array_key_exists('feature_unix_perm', $row) && is_bool($row['feature_unix_perm'])) {
-            $s->featureUnixPerm = $row['feature_unix_perm'];
-        }
-        if (array_key_exists('feature_unix_perm_modify', $row) && is_bool($row['feature_unix_perm_modify'])) {
-            $s->featureUnixPermModify = $row['feature_unix_perm_modify'];
-        }
-        if (array_key_exists('feature_remote_download', $row) && is_bool($row['feature_remote_download'])) {
-            $s->featureRemoteDownload = $row['feature_remote_download'];
+        foreach (self::BOOL_MAP as $k => $prop) {
+            if (isset($row[$k]) && is_bool($row[$k])) {
+                $s->$prop = $row[$k];
+            }
         }
         return $s;
     }

@@ -121,4 +121,90 @@ final class ConfigTest extends TestCase
         $this->expectException(\RuntimeException::class);
         Config::parseSize('invalid_size');
     }
+
+    public function testRejectsReservedAndUnknownKeys(): void
+    {
+        foreach (['embed' => true, 'single_file' => true, 'script_dir' => '/tmp', 'nonexistent_key' => 1] as $key => $val) {
+            try {
+                Config::resolve(['auth' => [$key => $val]], '/cfg', '/scr');
+                self::fail("Expected exception for disallowed key '{$key}'");
+            } catch (\RuntimeException $e) {
+                self::assertStringContainsString("Unknown config key: {$key}", $e->getMessage());
+            }
+        }
+    }
+
+    public function testRejectsWrongValueTypes(): void
+    {
+        $invalidCases = [
+            ['security' => ['ignore_realpath' => '/not/an/array']],
+            ['security' => ['filename_blocklist' => '*.php']],
+            ['security' => ['must_readonly' => 'true']],
+            ['limits'   => ['upload_max_depth' => '50']],
+            ['repo'     => 'not_a_table'],
+        ];
+
+        foreach ($invalidCases as $raw) {
+            try {
+                Config::resolve($raw, '/cfg', '/scr');
+                self::fail('Expected exception for invalid config value type');
+            } catch (\RuntimeException $e) {
+                self::assertStringContainsString('Invalid config value for:', $e->getMessage());
+            }
+        }
+    }
+
+    public function testLoadBrokenConfigFileFailsClosedInCleanProcess(): void
+    {
+        $tmpFile = tempnam(sys_get_temp_dir(), 'fc_bad_toml_');
+        self::assertIsString($tmpFile);
+        file_put_contents($tmpFile, "[repo\nbroken = true\n");
+        try {
+            $res = $this->runCleanConfigLoad($tmpFile, false);
+            self::assertNotEmpty($res['problems']);
+            self::assertTrue($res['must_readonly']);
+            self::assertSame('', $res['repo']['root_path']);
+            self::assertTrue($res['repo']['readonly']);
+            self::assertFalse($res['repo']['feature_archive']);
+        } finally {
+            @unlink($tmpFile);
+        }
+    }
+
+    public function testLoadMissingConfigFileSucceedsWhenEmbeddedInCleanProcess(): void
+    {
+        $nonExistent = sys_get_temp_dir() . '/fc_nonexistent_' . bin2hex(random_bytes(4)) . '.toml.php';
+        $res = $this->runCleanConfigLoad($nonExistent, true);
+
+        self::assertSame([], $res['problems']);
+        self::assertFalse($res['must_readonly']);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function runCleanConfigLoad(string $configFile, bool $embed): array
+    {
+        $backend = dirname(__DIR__, 3) . '/apps/backend/filecarton/lib';
+        $script = sprintf(
+            'require %s; require %s; require %s; require %s; %s \FileCarton\Config::load(%s); echo json_encode([\'problems\' => \FileCarton\Config::problems(), \'must_readonly\' => FILECARTON_MUST_READONLY, \'repo\' => FILECARTON_REPO_SETTING]);',
+            var_export($backend . '/Polyfill.php', true),
+            var_export($backend . '/Platform.php', true),
+            var_export($backend . '/Toml.php', true),
+            var_export($backend . '/Config.php', true),
+            $embed ? "define('FILECARTON_EMBED', true);" : '',
+            var_export($configFile, true)
+        );
+
+        $proc = proc_open([PHP_BINARY, '-r', $script], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        self::assertIsResource($proc);
+        $out = stream_get_contents($pipes[1]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        proc_close($proc);
+        self::assertIsString($out);
+        $decoded = json_decode($out, true);
+        self::assertIsArray($decoded);
+        return $decoded;
+    }
 }

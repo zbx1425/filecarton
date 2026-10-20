@@ -70,4 +70,17 @@ final class RepoSettingTest extends TestCase
         self::assertTrue($combined->featureRemoteDownload);
         self::assertSame([], $combined->verifyAllSet());
     }
+
+    public function testNonBooleanReadonlyInConfigArrayFailsVerification(): void
+    {
+        $s = RepoSetting::fromConfigArray([
+            'root_path' => '/tmp/repo',
+            'readonly'  => 'false',
+            'branding'  => 'FileCarton',
+            'repo_name' => 'test',
+        ]);
+
+        self::assertNull($s->readonly);
+        self::assertNotEmpty($s->verifyAllSet());
+    }
 }

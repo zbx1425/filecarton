@@ -205,4 +205,16 @@ TOML;
         $this->expectException(\RuntimeException::class);
         Toml::parse("invalid_line_without_equals");
     }
+
+    public function testUnquotedSecretDoesNotLeakRawTokenInErrorMessage(): void
+    {
+        $secret = '$2y$10$secretBcryptTokenValueWithDot.AndSlash';
+        try {
+            Toml::parse("password_hash = {$secret}\n");
+            self::fail('Expected syntax error for unquoted bcrypt hash');
+        } catch (\RuntimeException $e) {
+            self::assertStringNotContainsString($secret, $e->getMessage());
+            self::assertStringContainsString('line 1', $e->getMessage());
+        }
+    }
 }
