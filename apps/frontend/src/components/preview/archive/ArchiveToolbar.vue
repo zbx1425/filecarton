@@ -68,7 +68,6 @@ const ui = useUiStore()
             @click="emit('navigateRoot')"
           >
             <FileArchive class="size-3.5 text-icon-archive" />
-            <span class="truncate max-w-[180px]">{{ archiveName }}</span>
           </BreadcrumbLink>
         </BreadcrumbItem>
 

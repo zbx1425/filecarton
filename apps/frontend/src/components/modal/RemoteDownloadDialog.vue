@@ -104,8 +104,7 @@ function handleSubmit() {
         <DialogHeader>
           <DialogTitle>Remote Download</DialogTitle>
           <DialogDescription>
-            Download a file from a URL to
-            <span class="font-mono text-foreground">/{{ state.targetDir || '' }}</span>
+            To <span class="font-mono text-foreground">/{{ state.targetDir || '' }}</span>
           </DialogDescription>
         </DialogHeader>
 
@@ -120,7 +119,6 @@ function handleSubmit() {
                 ref="urlInputRef"
                 v-model="urlInput"
                 type="url"
-                placeholder="https://example.com/archive.tar.gz"
                 class="pl-8 font-mono text-xs"
                 autocomplete="off"
                 spellcheck="false"
@@ -133,10 +131,9 @@ function handleSubmit() {
 
           <!-- Target Filename Field -->
           <div class="space-y-1.5">
-            <div class="flex items-center justify-between">
-              <Label for="fc-remote-name" class="text-xs font-medium">Save as</Label>
-              <span class="text-[11px] text-muted-foreground">Optional</span>
-            </div>
+            <Label for="fc-remote-name" class="text-xs font-medium">Save as 
+              <span class="text-muted-foreground">(Optional)</span>
+            </Label>
             <Input
               id="fc-remote-name"
               v-model="nameInput"
@@ -145,7 +142,7 @@ function handleSubmit() {
               autocomplete="off"
               spellcheck="false"
             />
-            <p v-if="nameError" class="text-xs text-destructive">
+            <p class="text-xs leading-4 min-h-4 text-destructive">
               {{ nameError }}
             </p>
           </div>
@@ -165,7 +162,6 @@ function handleSubmit() {
             Cancel
           </Button>
           <Button type="submit" :disabled="!canSubmit">
-            <CloudDownload class="size-4" />
             Download
           </Button>
         </DialogFooter>
