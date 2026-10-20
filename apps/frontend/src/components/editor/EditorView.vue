@@ -167,7 +167,7 @@ onBeforeUnmount(() => {
         Back
       </Button>
 
-      <span class="text-xs font-mono truncate flex-1 text-muted-foreground">
+      <span class="text-sm font-mono truncate flex-1 text-muted-foreground">
         {{ fileName }}
         <span v-if="navigation.editDirty" class="text-foreground ml-1">*</span>
       </span>

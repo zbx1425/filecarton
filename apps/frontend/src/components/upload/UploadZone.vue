@@ -39,7 +39,7 @@ function handleFolderSelect(e: Event) {
 <template>
   <div v-if="upload.visible" class="border-b">
     <div class="flex items-center px-3 py-2 gap-2">
-      <span class="text-xs font-medium flex-1">Upload</span>
+      <span class="text-sm font-medium flex-1">Upload</span>
       <Button variant="outline" size="sm" @click="openFilePicker">
         <Upload class="size-4" />
         Files

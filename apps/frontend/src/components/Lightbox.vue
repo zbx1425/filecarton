@@ -102,7 +102,7 @@ function handleKeydown(e: KeyboardEvent) {
         draggable="false"
       />
 
-      <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-xs">
+      <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm">
         {{ lightboxState.alt }}
       </div>
     </div>

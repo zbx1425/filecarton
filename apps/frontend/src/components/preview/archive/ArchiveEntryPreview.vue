@@ -40,12 +40,12 @@ const downloadUrl = computed(() => buildArchiveDownloadUrl(props.archivePath, pr
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <div class="flex items-center h-9 px-3 border-b gap-2 shrink-0 bg-muted/20">
-      <Button variant="ghost" size="sm" class="h-7 text-xs" @click="emit('back')">
+      <Button variant="ghost" size="sm" class="h-7 text-sm" @click="emit('back')">
         <ArrowLeft class="size-3.5" />
         Back
       </Button>
 
-      <span class="text-xs font-mono truncate flex-1 text-muted-foreground">
+      <span class="text-sm font-mono truncate flex-1 text-muted-foreground">
         {{ entry.path }}
       </span>
 
@@ -53,7 +53,7 @@ const downloadUrl = computed(() => buildArchiveDownloadUrl(props.archivePath, pr
         v-if="randomAccess"
         variant="outline"
         size="sm"
-        class="h-7 text-xs"
+        class="h-7 text-sm"
         @click="emit('download', entry.path)"
       >
         <Download class="size-3.5" />

@@ -13,7 +13,7 @@ import { useNavigationStore } from '@/stores/navigation'
 import { useClipboardStore } from '@/stores/clipboard'
 import { useUiStore } from '@/stores/ui'
 import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
-import { formatSize, formatTime, formatUnixMode } from '@/utils/format'
+import { formatSize, formatTime, formatTimeLocalISO8601, formatUnixMode } from '@/utils/format'
 import {
   copySelected, cutSelected, deleteItems, renameItem, pasteItems,
   openPermissionsSelected, canModifyItemPermissions, canModifySelectedPermissions,
@@ -245,20 +245,20 @@ const thumbnailUrl = computed(() => {
           <span class="truncate" :class="isDir ? 'font-medium' : ''">{{ name }}</span>
         </div>
 
-        <div class="w-20 text-right text-muted-foreground shrink-0 tabular-nums">
+        <div class="w-22 text-muted-foreground shrink-0 tabular-nums">
           {{ isDir ? '—' : formatSize(size ?? 0) }}
         </div>
 
-        <div class="w-24 text-right text-muted-foreground shrink-0">
+        <div class="w-28 text-muted-foreground shrink-0" :title="formatTimeLocalISO8601(mtime)">
           {{ formatTime(mtime) }}
         </div>
 
         <template v-if="showUnixCols">
-          <div class="w-24 text-right font-mono text-muted-foreground shrink-0">
+          <div class="w-28 font-mono text-muted-foreground shrink-0">
             {{ mode !== undefined ? formatUnixMode(mode, isDir) : '—' }}
           </div>
           <div
-            class="w-32 text-right text-muted-foreground shrink-0 truncate pl-2"
+            class="w-36 text-muted-foreground shrink-0 truncate pl-2"
             :title="owner !== undefined && group !== undefined ? `${owner}:${group}` : undefined"
           >
             {{ owner !== undefined && group !== undefined ? `${owner}:${group}` : '—' }}

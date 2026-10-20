@@ -103,7 +103,7 @@ function handleSubmit() {
         <div class="space-y-4 py-4">
           <!-- URL Field -->
           <div class="space-y-1.5">
-            <Label for="fc-remote-url" class="text-xs font-medium">URL</Label>
+            <Label for="fc-remote-url" class="text-sm font-medium">URL</Label>
             <div class="relative">
               <Link class="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
               <Input
@@ -111,36 +111,36 @@ function handleSubmit() {
                 ref="urlInputRef"
                 v-model="urlInput"
                 type="url"
-                class="pl-8 font-mono text-xs"
+                class="pl-8 font-mono text-sm"
                 autocomplete="off"
                 spellcheck="false"
               />
             </div>
-            <p v-if="urlError" class="text-xs text-destructive">
+            <p v-if="urlError" class="text-sm text-destructive">
               {{ urlError }}
             </p>
           </div>
 
           <!-- Target Filename Field -->
           <div class="space-y-1.5">
-            <Label for="fc-remote-name" class="text-xs font-medium">Save as 
+            <Label for="fc-remote-name" class="text-sm font-medium">Save as 
               <span class="text-muted-foreground">(Optional)</span>
             </Label>
             <Input
               id="fc-remote-name"
               v-model="nameInput"
               placeholder="(Auto-detect)"
-              class="text-xs"
+              class="text-sm"
               autocomplete="off"
               spellcheck="false"
             />
-            <p class="text-xs leading-4 min-h-4 text-destructive">
+            <p class="text-sm leading-4 min-h-4 text-destructive">
               {{ nameError }}
             </p>
           </div>
 
           <!-- Timeout / Gateway Notice -->
-          <div class="flex items-start gap-2.5 rounded-md border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground leading-relaxed">
+          <div class="flex items-start gap-2.5 rounded-md border bg-muted/40 px-3 py-2.5 text-sm text-muted-foreground leading-relaxed">
             <Info class="size-4 shrink-0 mt-0.5 text-muted-foreground" />
             <span>
               The file is fetched directly by the server. <br/>

@@ -77,7 +77,7 @@ function handleClick() {
           <span v-else class="w-4 shrink-0" />
 
           <component :is="icon" class="size-4 mx-1.5 shrink-0" :class="iconColor" />
-          <span class="truncate text-xs">{{ node.name }}</span>
+          <span class="truncate text-sm">{{ node.name }}</span>
         </div>
       </ContextMenuTrigger>
 

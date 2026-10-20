@@ -160,7 +160,7 @@ async function handleDrop(e: DragEvent) {
         <p class="text-sm font-medium mb-1" :class="isDragging ? 'text-primary' : 'text-foreground'">
           {{ isDragging ? 'Release to upload' : 'Drag and drop files here' }}
         </p>
-        <p class="text-xs text-muted-foreground">
+        <p class="text-sm text-muted-foreground">
           or use the buttons below
         </p>
       </div>

@@ -24,8 +24,8 @@ const effectiveDownloadUrl = computed(() =>
   <div class="flex flex-col items-center justify-center p-8 gap-4 h-full text-center">
     <component :is="icon" class="size-16 text-muted-foreground" />
     <p class="text-sm font-mono">{{ name }}</p>
-    <p class="text-xs text-muted-foreground">{{ formatSize(size) }}</p>
-    <p v-if="hint" class="text-xs text-muted-foreground max-w-md">{{ hint }}</p>
+    <p class="text-sm text-muted-foreground">{{ formatSize(size) }}</p>
+    <p v-if="hint" class="text-sm text-muted-foreground max-w-md">{{ hint }}</p>
     <Button v-if="effectiveDownloadUrl" variant="outline" as="a" :href="effectiveDownloadUrl" target="_blank">
       <Download class="size-4" />
       Download

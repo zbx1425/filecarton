@@ -33,7 +33,7 @@ function handleDirClick(pathStr: string) {
 
 <template>
   <div class="flex flex-col h-full">
-    <div class="flex items-center px-3 h-8 text-xs text-muted-foreground border-b bg-muted/30 shrink-0">
+    <div class="flex items-center px-3 h-8 text-sm text-muted-foreground border-b bg-muted/30 shrink-0">
       <Search class="size-3.5 mr-2" />
       Searching in /{{ currentPathStr || '(archive root)' }} for "{{ searchQuery }}"
     </div>
@@ -46,7 +46,7 @@ function handleDirClick(pathStr: string) {
       <ContextMenu v-for="item in results" :key="item.path">
         <ContextMenuTrigger as-child>
           <div
-            class="flex items-center px-3 text-xs cursor-pointer hover:bg-muted/50 gap-2 h-(--fc-row-height)"
+            class="flex items-center px-3 text-sm cursor-pointer hover:bg-muted/50 gap-2 h-(--fc-row-height)"
             @click="emit('openNode', item)"
           >
             <component

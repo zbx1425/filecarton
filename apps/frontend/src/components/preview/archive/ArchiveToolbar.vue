@@ -58,13 +58,13 @@ const ui = useUiStore()
     <Breadcrumb class="flex-1 min-w-0">
       <BreadcrumbList>
         <BreadcrumbItem>
-          <BreadcrumbPage v-if="isAtRoot" class="flex items-center gap-1.5 text-xs">
+          <BreadcrumbPage v-if="isAtRoot" class="flex items-center gap-1.5 text-sm">
             <FileArchive class="size-3.5 text-icon-archive" />
             <span class="font-medium truncate max-w-45">{{ archiveName }}</span>
           </BreadcrumbPage>
           <BreadcrumbLink
             v-else
-            class="flex items-center gap-1.5 cursor-pointer text-xs"
+            class="flex items-center gap-1.5 cursor-pointer text-sm"
             @click="emit('navigateRoot')"
           >
             <FileArchive class="size-3.5 text-icon-archive" />
@@ -76,19 +76,19 @@ const ui = useUiStore()
           <BreadcrumbItem>
             <BreadcrumbLink
               v-if="i < currentPath.length - 1 || activeFileName"
-              class="cursor-pointer text-xs"
+              class="cursor-pointer text-sm"
               @click="emit('navigateSegment', i)"
             >
               {{ segment }}
             </BreadcrumbLink>
-            <BreadcrumbPage v-else class="text-xs">{{ segment }}</BreadcrumbPage>
+            <BreadcrumbPage v-else class="text-sm">{{ segment }}</BreadcrumbPage>
           </BreadcrumbItem>
         </template>
 
         <template v-if="activeFileName">
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage class="font-mono text-xs">
+            <BreadcrumbPage class="font-mono text-sm">
               {{ activeFileName }}
             </BreadcrumbPage>
           </BreadcrumbItem>
@@ -105,7 +105,7 @@ const ui = useUiStore()
               :model-value="searchQuery"
               data-archive-search
               placeholder="Search in archive..."
-              class="h-7 w-64 max-w-full pl-7 pr-7 text-xs"
+              class="h-7 w-64 max-w-full pl-7 pr-7 text-sm"
               @update:model-value="emit('update:searchQuery', String($event))"
             />
           </div>

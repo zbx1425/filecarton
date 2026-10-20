@@ -56,7 +56,7 @@ function handleDownload() {
         Back
       </Button>
 
-      <span class="text-xs font-mono truncate flex-1 text-muted-foreground">
+      <span class="text-sm font-mono truncate flex-1 text-muted-foreground">
         {{ fileName }}
       </span>
 

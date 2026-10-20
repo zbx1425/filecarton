@@ -48,7 +48,7 @@ function handleClick() {
           @load="handleLoad"
         />
       </div>
-      <div class="text-xs text-muted-foreground space-x-3">
+      <div class="text-sm text-muted-foreground space-x-3">
         <span>{{ formatSize(size) }}</span>
         <span v-if="naturalWidth">{{ naturalWidth }} × {{ naturalHeight }}</span>
       </div>
@@ -57,7 +57,7 @@ function handleClick() {
     <template v-else>
       <FileImage class="size-16 text-muted-foreground" />
       <p class="text-sm text-muted-foreground">{{ name }}</p>
-      <p class="text-xs text-muted-foreground">
+      <p class="text-sm text-muted-foreground">
         File too large to preview ({{ formatSize(size) }}). Use Download.
       </p>
     </template>

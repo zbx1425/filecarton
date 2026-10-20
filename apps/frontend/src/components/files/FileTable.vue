@@ -107,7 +107,7 @@ function startResize(e: MouseEvent) {
   <div class="flex flex-col h-full">
     <!-- Header -->
     <div class="border-b bg-muted/30 sticky top-0 z-10 relative" @click="handleEmptyClick">
-      <div class="flex items-center px-3 text-xs font-medium text-muted-foreground h-(--fc-row-height) max-w-(--fc-table-max-w)">
+      <div class="flex items-center px-3 text-sm font-medium text-muted-foreground h-(--fc-row-height) max-w-(--fc-table-max-w)">
         <div class="w-6 shrink-0" />
         <div
           class="flex items-center gap-1 flex-1 min-w-0 cursor-pointer hover:text-foreground"
@@ -117,24 +117,24 @@ function startResize(e: MouseEvent) {
           <component :is="sortIcon('name')" v-if="sortIcon('name')" class="size-3" />
         </div>
         <div
-          class="w-20 text-right cursor-pointer hover:text-foreground flex items-center justify-end gap-1"
+          class="w-22 cursor-pointer hover:text-foreground flex items-center gap-1"
           @click="fileList.toggleSort('size')"
         >
           Size
           <component :is="sortIcon('size')" v-if="sortIcon('size')" class="size-3" />
         </div>
         <div
-          class="w-24 text-right cursor-pointer hover:text-foreground flex items-center justify-end gap-1"
+          class="w-28 cursor-pointer hover:text-foreground flex items-center gap-1"
           @click="fileList.toggleSort('mtime')"
         >
           Modified
           <component :is="sortIcon('mtime')" v-if="sortIcon('mtime')" class="size-3" />
         </div>
         <template v-if="showUnixCols">
-          <div class="w-24 text-right shrink-0">
+          <div class="w-28 shrink-0">
             Permissions
           </div>
-          <div class="w-32 text-right shrink-0">
+          <div class="w-36 shrink-0">
             Owner
           </div>
         </template>
@@ -167,7 +167,7 @@ function startResize(e: MouseEvent) {
           <!-- Go up row -->
           <div
             v-if="!isRoot"
-            class="flex items-center px-3 text-xs text-muted-foreground cursor-pointer hover:bg-muted/50 h-(--fc-row-height) max-w-(--fc-table-max-w)"
+            class="flex items-center px-3 text-sm text-muted-foreground cursor-pointer hover:bg-muted/50 h-(--fc-row-height) max-w-(--fc-table-max-w)"
             data-file-row
             @click="goUp"
           >
@@ -213,7 +213,7 @@ function startResize(e: MouseEvent) {
           </div>
           <div v-else-if="isActuallyEmpty" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
             <p class="text-sm">This folder is empty</p>
-            <p v-if="!ui.readonly" class="text-xs mt-1">Drag files here to upload</p>
+            <p v-if="!ui.readonly" class="text-sm mt-1">Drag files here to upload</p>
           </div>
 
         </div>
@@ -259,7 +259,7 @@ function startResize(e: MouseEvent) {
     <BatchActionBar v-if="fileList.hasSelection" />
     <div
       v-else-if="!fileList.loading && !fileList.error"
-      class="flex items-center h-9 px-3 text-xs shrink-0 bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
+      class="flex items-center h-9 px-3 text-sm shrink-0 bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
     >
       {{ fileList.filteredDirs.length }} folders, {{ fileList.filteredFiles.length }} files
       <span class="ml-1">({{ formatSize(fileList.filteredTotalSize) }})</span>

@@ -38,7 +38,7 @@ function handleOpenChange(open: boolean) {
           <div
             v-for="task in upload.errorTasks"
             :key="task.id"
-            class="flex items-start gap-2 rounded-md border border-border/60 p-2 text-xs"
+            class="flex items-start gap-2 rounded-md border border-border/60 p-2 text-sm"
           >
             <AlertTriangle class="size-3.5 text-destructive shrink-0 mt-0.5" />
             <div class="flex-1 min-w-0 overflow-hidden">

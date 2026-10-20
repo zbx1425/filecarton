@@ -22,7 +22,7 @@ function handleDownloadArchive() {
   <div class="flex-1 flex flex-col items-center justify-center p-8 gap-4 text-center">
     <FileArchive class="size-16 text-muted-foreground" />
     <p class="text-sm font-mono">{{ archiveName }}</p>
-    <p v-if="size" class="text-xs text-muted-foreground">{{ formatSize(size) }}</p>
+    <p v-if="size" class="text-sm text-muted-foreground">{{ formatSize(size) }}</p>
     <p class="text-sm text-destructive max-w-md">
       {{ $t('err.' + error.code, error.params ?? {}) }}
     </p>
@@ -34,7 +34,7 @@ function handleDownloadArchive() {
       />
       <Button variant="outline" size="sm" @click="handleDownloadArchive">
         <Download class="size-4" />
-        Download Archive
+        Download
       </Button>
     </div>
   </div>

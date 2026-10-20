@@ -92,7 +92,7 @@ function navigateToDir(path: string) {
 
 <template>
   <div class="flex flex-col h-full">
-    <div class="flex items-center px-3 h-8 text-xs text-muted-foreground border-b bg-muted/30">
+    <div class="flex items-center px-3 h-8 text-sm text-muted-foreground border-b bg-muted/30">
       <Search class="size-3.5 mr-2" />
       Searching in /{{ navigation.currentPathStr || '(root)' }} for "{{ ui.searchQuery }}"
     </div>
@@ -113,7 +113,7 @@ function navigateToDir(path: string) {
       <div
         v-for="result in results"
         :key="result.path + '/' + result.name"
-        class="flex items-center px-3 text-xs cursor-pointer hover:bg-muted/50 gap-2 h-(--fc-row-height)"
+        class="flex items-center px-3 text-sm cursor-pointer hover:bg-muted/50 gap-2 h-(--fc-row-height)"
         @click="openResult(result)"
       >
         <component
@@ -133,7 +133,7 @@ function navigateToDir(path: string) {
         </span>
       </div>
 
-      <div v-if="truncated || scanLimitReached" class="px-3 py-2 text-xs text-muted-foreground text-center border-t space-y-0.5">
+      <div v-if="truncated || scanLimitReached" class="px-3 py-2 text-sm text-muted-foreground text-center border-t space-y-0.5">
         <p v-if="truncated">Results truncated. Refine your search for more specific results.</p>
         <p v-if="scanLimitReached">Too many files to scan, results may be incomplete. Try searching within a subdirectory.</p>
       </div>

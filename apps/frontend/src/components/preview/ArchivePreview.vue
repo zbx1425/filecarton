@@ -84,7 +84,7 @@ defineExpose({ canExtract })
     <template v-else-if="data">
       <div
         v-if="data.truncated"
-        class="flex items-center gap-2 px-3 py-1.5 text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 border-b shrink-0"
+        class="flex items-center gap-2 px-3 py-1.5 text-sm bg-amber-500/10 text-amber-700 dark:text-amber-400 border-b shrink-0"
       >
         <AlertTriangle class="size-3.5 shrink-0" />
         <span>
@@ -94,7 +94,7 @@ defineExpose({ canExtract })
 
       <div
         v-if="!data.randomAccess"
-        class="flex items-center gap-2 px-3 py-1.5 text-xs bg-muted/60 text-muted-foreground border-b shrink-0"
+        class="flex items-center gap-2 px-3 py-1.5 text-sm bg-muted/60 text-muted-foreground border-b shrink-0"
       >
         <Info class="size-3.5 shrink-0" />
         <span>
@@ -181,7 +181,7 @@ defineExpose({ canExtract })
       </ResizablePanelGroup>
 
       <div
-        class="flex items-center h-9 px-3 text-xs shrink-0 gap-2 bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
+        class="flex items-center h-9 px-3 text-sm shrink-0 gap-2 bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
       >
         <span>
           {{ statusDirsCount }} folders, {{ statusFilesCount }} files

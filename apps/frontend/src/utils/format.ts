@@ -26,6 +26,28 @@ export function formatTime(timestamp: number): string {
   return `${year}-${month}-${day}`
 }
 
+export function formatTimeLocalISO8601(timestamp: number): string {
+  const date = new Date(timestamp * 1000);
+  const pad = (n: number, len = 2) => String(n).padStart(len, '0');
+
+  const year  = pad(date.getFullYear(), 4);
+  const month = pad(date.getMonth() + 1);
+  const day   = pad(date.getDate());
+  const hour  = pad(date.getHours());
+  const min   = pad(date.getMinutes());
+  const sec   = pad(date.getSeconds());
+
+  const offsetMinutes = -date.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? '+' : '-';
+  const abs  = Math.abs(offsetMinutes);
+  const offsetStr = `${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
+
+  return (
+    `${year}-${month}-${day}T${hour}:${min}:${sec}` +
+    offsetStr
+  );
+}
+
 export function formatDuration(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return ''
   const total = Math.floor(seconds)

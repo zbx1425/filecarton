@@ -145,7 +145,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div
-    class="flex items-center h-9 px-2 text-xs select-none shrink-0 gap-0.5 bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
+    class="flex items-center h-9 px-2 text-sm select-none shrink-0 gap-0.5 bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
   >
     <span class="px-2 tabular-nums">
       Ln {{ cursorLine }}, Col {{ cursorCol }}
@@ -181,7 +181,7 @@ onBeforeUnmount(() => {
       </PopoverTrigger>
       <PopoverContent align="end" :side-offset="4" class="w-52 p-3 space-y-3">
         <div class="flex items-center justify-between">
-          <label class="text-xs">Auto Detect</label>
+          <label class="text-sm">Auto Detect</label>
           <Switch
             :model-value="autoDetect"
             @update:model-value="setAutoDetect"
@@ -190,13 +190,14 @@ onBeforeUnmount(() => {
 
         <Separator />
 
-        <div class="space-y-1.5">
-          <label class="text-xs text-muted-foreground">Indent Using</label>
+        <div class="flex flex-col gap-2">
+          <label class="text-sm text-muted-foreground">Indent Using</label>
           <div class="flex gap-1">
             <Button
               size="sm"
               :variant="insertSpaces ? 'default' : 'outline'"
-              class="flex-1 h-7 text-xs"
+              :disabled="autoDetect"
+              class="flex-1 h-7 text-sm"
               @click="setIndentSpaces(true)"
             >
               Spaces
@@ -204,7 +205,8 @@ onBeforeUnmount(() => {
             <Button
               size="sm"
               :variant="!insertSpaces ? 'default' : 'outline'"
-              class="flex-1 h-7 text-xs"
+              :disabled="autoDetect"
+              class="flex-1 h-7 text-sm"
               @click="setIndentSpaces(false)"
             >
               Tabs
@@ -214,15 +216,16 @@ onBeforeUnmount(() => {
 
         <Separator />
 
-        <div class="space-y-1.5">
-          <label class="text-xs text-muted-foreground">Tab Size</label>
+        <div class="flex flex-col gap-2">
+          <label class="text-sm text-muted-foreground">Tab Size</label>
           <div class="flex gap-1">
             <Button
               v-for="size in [2, 4] as const"
               :key="size"
               size="sm"
               :variant="tabSize === size ? 'default' : 'outline'"
-              class="flex-1 h-7 text-xs"
+              class="flex-1 h-7 text-sm"
+              :disabled="autoDetect"
               @click="setTabSize(size)"
             >
               {{ size }}

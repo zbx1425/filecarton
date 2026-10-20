@@ -11,8 +11,9 @@ import {
 import { buildArchiveRawUrl } from '@/api/client'
 import { usePreferencesStore } from '@/stores/preferences'
 import { getFileIcon, getFileIconColor, canPreviewImage } from '@/composables/useFileType'
-import { formatSize, formatTime } from '@/utils/format'
+import { formatSize, formatTime, formatTimeLocalISO8601 } from '@/utils/format'
 import type { ArchiveTreeItem, ArchiveSortColumn } from '@/composables/useArchiveExplorer'
+import FileItemMenu from '@/components/FileItemMenu.vue'
 
 const props = defineProps<{
   archivePath: string
@@ -115,7 +116,7 @@ onBeforeUnmount(() => {
   <div class="flex flex-col h-full">
     <div class="border-b bg-muted/30 sticky top-0 z-10 relative shrink-0" @click="emit('update:selectedName', null)">
       <div
-        class="flex items-center px-3 text-xs font-medium text-muted-foreground h-(--fc-row-height) max-w-(--fc-table-max-w)"
+        class="flex items-center px-3 text-sm font-medium text-muted-foreground h-(--fc-row-height) max-w-(--fc-table-max-w)"
       >
         <div
           class="flex items-center gap-1 flex-1 min-w-0 cursor-pointer hover:text-foreground"
@@ -125,14 +126,14 @@ onBeforeUnmount(() => {
           <component :is="sortIcon('name')" v-if="sortIcon('name')" class="size-3" />
         </div>
         <div
-          class="w-20 text-right cursor-pointer hover:text-foreground flex items-center justify-end gap-1"
+          class="w-22 cursor-pointer hover:text-foreground flex items-center gap-1"
           @click="emit('toggleSort', 'size')"
         >
           Size
           <component :is="sortIcon('size')" v-if="sortIcon('size')" class="size-3" />
         </div>
         <div
-          class="w-24 text-right cursor-pointer hover:text-foreground flex items-center justify-end gap-1"
+          class="w-28 cursor-pointer hover:text-foreground flex items-center gap-1"
           @click="emit('toggleSort', 'mtime')"
         >
           Modified
@@ -154,15 +155,15 @@ onBeforeUnmount(() => {
       <div
         v-if="!isRoot"
         data-archive-row
-        class="flex items-center px-3 text-xs text-muted-foreground cursor-pointer hover:bg-muted/50 h-(--fc-row-height) max-w-(--fc-table-max-w)"
+        class="flex items-center px-3 text-sm text-muted-foreground cursor-pointer hover:bg-muted/50 h-(--fc-row-height) max-w-(--fc-table-max-w)"
         @click="emit('goUp')"
       >
         <div class="flex items-center gap-2 flex-1">
           <CornerLeftUp class="size-4" />
           <span>..</span>
         </div>
-        <div class="w-20" />
-        <div class="w-24" />
+        <div class="w-22" />
+        <div class="w-28" />
       </div>
 
       <ContextMenu
@@ -173,7 +174,7 @@ onBeforeUnmount(() => {
         <ContextMenuTrigger as-child>
           <div
             data-archive-row
-            class="flex items-center px-3 text-xs group border-b border-transparent cursor-default select-none h-(--fc-row-height) max-w-(--fc-table-max-w)"
+            class="flex items-center px-3 text-sm group border-b border-transparent cursor-default select-none h-(--fc-row-height) max-w-(--fc-table-max-w)"
             :class="selectedName === item.name ? 'bg-selected' : 'hover:bg-muted/50'"
             @click="emit('update:selectedName', item.name)"
             @dblclick="emit('openNode', item)"
@@ -192,11 +193,11 @@ onBeforeUnmount(() => {
               <span class="truncate" :class="item.isDir ? 'font-medium' : ''">{{ item.name }}</span>
             </div>
 
-            <div class="w-20 text-right text-muted-foreground shrink-0 tabular-nums">
+            <div class="w-22 text-muted-foreground shrink-0 tabular-nums">
               {{ item.isDir ? '—' : formatSize(item.size) }}
             </div>
 
-            <div class="w-24 text-right text-muted-foreground shrink-0">
+            <div class="w-28 text-muted-foreground shrink-0" :title="item.mtime ? formatTimeLocalISO8601(item.mtime) : '-'">
               {{ item.mtime ? formatTime(item.mtime) : '—' }}
             </div>
           </div>

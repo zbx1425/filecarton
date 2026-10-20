@@ -31,7 +31,7 @@ const latestBatchAllSuccess = computed(() => result.value != null && result.valu
         <div class="text-sm font-medium">Uploading {{ upload.activeTotal }} file(s)...</div>
         <Progress :model-value="totalProgress" class="h-1.5 mt-1" />
       </div>
-      <span class="text-xs tabular-nums text-muted-foreground shrink-0 w-8 text-right">{{ totalProgress }}%</span>
+      <span class="text-sm tabular-nums text-muted-foreground shrink-0 w-8 text-right">{{ totalProgress }}%</span>
     </div>
 
     <!-- Done: show latest batch result -->
@@ -54,12 +54,12 @@ const latestBatchAllSuccess = computed(() => result.value != null && result.valu
       <div v-if="hasErrors" class="mt-1.5 ml-6.5">
         <div
           v-if="latestBatchAllSuccess && upload.oldErrorCount > 0"
-          class="text-xs text-muted-foreground"
+          class="text-sm text-muted-foreground"
         >
           {{ upload.oldErrorCount }} earlier upload(s) still failed
         </div>
         <button
-          class="text-xs text-primary hover:underline cursor-pointer mt-0.5"
+          class="text-sm text-primary hover:underline cursor-pointer mt-0.5"
           @click="upload.openErrorDialog()"
         >
           View details
@@ -73,7 +73,7 @@ const latestBatchAllSuccess = computed(() => result.value != null && result.valu
       <div class="flex-1 min-w-0">
         <div class="text-sm font-medium">{{ upload.errorTasks.length }} upload(s) failed</div>
         <button
-          class="text-xs text-primary hover:underline cursor-pointer mt-0.5"
+          class="text-sm text-primary hover:underline cursor-pointer mt-0.5"
           @click="upload.openErrorDialog()"
         >
           View details

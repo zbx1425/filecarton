@@ -27,6 +27,7 @@ import { usePreferencesStore } from '@/stores/preferences'
 import { RADIX_SCALE_LIST, RADIX_SCALES, formatToolbarColorLabel } from '@/utils/themeColors'
 import { Sun, Moon, Monitor, Settings, Palette, List, Code, Info, Check } from '@lucide/vue'
 import Badge from '@/components/ui/badge/Badge.vue'
+import Checkbox from '../ui/checkbox/Checkbox.vue'
 
 const appVersion = __APP_VERSION__
 const ui = useUiStore()
@@ -62,7 +63,7 @@ function setEditorFontSize(val: number | undefined) {
             :key="item.id"
             variant="ghost"
             size="sm"
-            class="gap-1.5 text-xs rounded-b-none shrink-0"
+            class="gap-1.5 text-sm rounded-b-none shrink-0"
             :class="activeSection === item.id
               ? 'bg-background text-foreground font-medium border border-b-0 border-border'
               : 'text-muted-foreground'"
@@ -129,7 +130,7 @@ function setEditorFontSize(val: number | undefined) {
                   FileCarton
                   <span class="font-medium">by Zbx1425</span>
                 </div>
-                <div class="text-xs text-muted-foreground">
+                <div class="text-sm text-muted-foreground">
                   A modern, snappy, and easily embeddable web-based file manager.
                 </div>
               </div>
@@ -154,7 +155,7 @@ function setEditorFontSize(val: number | undefined) {
                     <NumberFieldIncrement />
                   </NumberFieldContent>
                 </NumberField>
-                <span class="text-xs text-muted-foreground">px</span>
+                <span class="text-sm text-muted-foreground">px</span>
               </div>
             </div>
           </div>
@@ -168,7 +169,7 @@ function setEditorFontSize(val: number | undefined) {
                 <Button
                   size="sm"
                   :variant="prefs.theme === 'system' ? 'default' : 'outline'"
-                  class="flex-1 px-1 text-xs"
+                  class="flex-1 px-1 text-sm"
                   @click="prefs.theme = 'system'"
                 >
                   <Monitor class="size-3.5" />
@@ -177,7 +178,7 @@ function setEditorFontSize(val: number | undefined) {
                 <Button
                   size="sm"
                   :variant="prefs.theme === 'light' ? 'default' : 'outline'"
-                  class="flex-1 px-1 text-xs"
+                  class="flex-1 px-1 text-sm"
                   @click="prefs.theme = 'light'"
                 >
                   <Sun class="size-3.5" />
@@ -186,7 +187,7 @@ function setEditorFontSize(val: number | undefined) {
                 <Button
                   size="sm"
                   :variant="prefs.theme === 'dark' ? 'default' : 'outline'"
-                  class="flex-1 px-1 text-xs"
+                  class="flex-1 px-1 text-sm"
                   @click="prefs.theme = 'dark'"
                 >
                   <Moon class="size-3.5" />
@@ -197,18 +198,19 @@ function setEditorFontSize(val: number | undefined) {
               <!-- Primary Color -->
               <label class="text-sm text-muted-foreground sm:pt-1">Primary Color</label>
               <div class="space-y-2.5">
-                <div class="flex items-center gap-2">
-                  <Button
-                    size="xs"
-                    :variant="prefs.primaryColor === 'default' ? 'default' : 'outline'"
+                <div class="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    :data-primary-swatch="prefs.backendDefaultPrimary ?? 'builtin'"
+                    title="Default"
+                    class="size-6 rounded-sm border flex items-center justify-center transition-transform hover:scale-110 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     @click="prefs.primaryColor = 'default'"
                   >
-                    <span
-                      :data-primary-swatch="prefs.backendDefaultPrimary ?? 'builtin'"
-                      class="size-3 rounded-xs border border-black/15 shrink-0"
-                    />
+                    <Check v-if="prefs.primaryColor === 'default'" class="size-3.5 stroke-[2.5]" />
+                  </button>
+                  <span class="text-sm text-muted-foreground">
                     Default{{ prefs.backendDefaultPrimary ? ` (${RADIX_SCALES[prefs.backendDefaultPrimary].label})` : '' }}
-                  </Button>
+                  </span>
                 </div>
 
                 <div class="grid grid-cols-8 sm:grid-cols-11 gap-1.5">
@@ -219,7 +221,6 @@ function setEditorFontSize(val: number | undefined) {
                     :data-primary-swatch="scale.name"
                     :title="scale.label"
                     class="size-6 rounded-sm flex items-center justify-center border border-black/10 dark:border-white/10 transition-transform hover:scale-110 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    :class="prefs.primaryColor === scale.name ? 'ring-2 ring-foreground ring-offset-1 ring-offset-background scale-105' : ''"
                     @click="prefs.primaryColor = scale.name"
                   >
                     <Check v-if="prefs.primaryColor === scale.name" class="size-3.5 stroke-[2.5]" />
@@ -230,23 +231,22 @@ function setEditorFontSize(val: number | undefined) {
               <!-- Toolbar Color & Tone -->
               <label class="text-sm text-muted-foreground sm:pt-1">Toolbar</label>
               <div class="space-y-2.5">
-                <div class="flex flex-wrap items-center gap-1.5">
-                  <Button
-                    size="xs"
-                    :variant="prefs.toolbarColor === 'default' ? 'default' : 'outline'"
+                <div class="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    :data-toolbar-swatch="prefs.backendDefaultToolbar ?? 'builtin'"
+                    title="Default"
+                    class="size-6 rounded-sm border flex items-center justify-center transition-transform hover:scale-110 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     @click="prefs.toolbarColor = 'default'"
                   >
-                    <span
-                      :data-toolbar-swatch="prefs.backendDefaultToolbar ?? 'builtin'"
-                      class="size-3 rounded-xs border shrink-0"
-                    />
-                    Default{{ prefs.backendDefaultToolbar ? ` (${formatToolbarColorLabel(prefs.backendDefaultToolbar)})` : '' }}
-                  </Button>
+                    <Check v-if="prefs.toolbarColor === 'default'" class="size-3.5 stroke-[2.5]" />
+                  </button>
+                  <span class="text-sm text-muted-foreground">Default</span>
                 </div>
 
                 <div class="space-y-2">
                   <div class="space-y-1">
-                    <div class="text-xs text-muted-foreground">Subtle</div>
+                    <div class="text-sm text-muted-foreground">Subtle</div>
                     <div class="grid grid-cols-8 sm:grid-cols-11 gap-1.5">
                       <button
                         v-for="scale in RADIX_SCALE_LIST"
@@ -255,7 +255,6 @@ function setEditorFontSize(val: number | undefined) {
                         :data-toolbar-swatch="scale.name"
                         :title="scale.label"
                         class="size-6 rounded-sm border flex items-center justify-center transition-transform hover:scale-110 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        :class="prefs.toolbarColor === scale.name ? 'ring-2 ring-foreground ring-offset-1 ring-offset-background scale-105' : ''"
                         @click="prefs.toolbarColor = scale.name"
                       >
                         <Check v-if="prefs.toolbarColor === scale.name" class="size-3.5 stroke-[2.5]" />
@@ -264,7 +263,7 @@ function setEditorFontSize(val: number | undefined) {
                   </div>
 
                   <div class="space-y-1">
-                    <div class="text-xs text-muted-foreground">Solid</div>
+                    <div class="text-sm text-muted-foreground">Solid</div>
                     <div class="grid grid-cols-8 sm:grid-cols-11 gap-1.5">
                       <button
                         v-for="scale in RADIX_SCALE_LIST"
@@ -273,7 +272,6 @@ function setEditorFontSize(val: number | undefined) {
                         :data-toolbar-swatch="`${scale.name}-solid`"
                         :title="`${scale.label} (Solid)`"
                         class="size-6 rounded-sm border flex items-center justify-center transition-transform hover:scale-110 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        :class="prefs.toolbarColor === `${scale.name}-solid` ? 'ring-2 ring-foreground ring-offset-1 ring-offset-background scale-105' : ''"
                         @click="prefs.toolbarColor = `${scale.name}-solid`"
                       >
                         <Check v-if="prefs.toolbarColor === `${scale.name}-solid`" class="size-3.5 stroke-[2.5]" />
@@ -294,7 +292,7 @@ function setEditorFontSize(val: number | undefined) {
                 <Button
                   size="sm"
                   :variant="prefs.displayDensity === 'compact' ? 'default' : 'outline'"
-                  class="flex-1 px-1 text-xs"
+                  class="flex-1 px-1 text-sm"
                   @click="prefs.displayDensity = 'compact'"
                 >
                   Compact
@@ -302,7 +300,7 @@ function setEditorFontSize(val: number | undefined) {
                 <Button
                   size="sm"
                   :variant="prefs.displayDensity === 'default' ? 'default' : 'outline'"
-                  class="flex-1 px-1 text-xs"
+                  class="flex-1 px-1 text-sm"
                   @click="prefs.displayDensity = 'default'"
                 >
                   Default
@@ -310,7 +308,7 @@ function setEditorFontSize(val: number | undefined) {
                 <Button
                   size="sm"
                   :variant="prefs.displayDensity === 'comfortable' ? 'default' : 'outline'"
-                  class="flex-1 px-1 text-xs"
+                  class="flex-1 px-1 text-sm"
                   @click="prefs.displayDensity = 'comfortable'"
                 >
                   Cozy
@@ -324,7 +322,7 @@ function setEditorFontSize(val: number | undefined) {
                   <Button
                     size="sm"
                     :variant="!prefs.showDotFiles ? 'default' : 'outline'"
-                    class="flex-1 px-1 text-xs"
+                    class="flex-1 px-1 text-sm"
                     :disabled="prefs.dotFilesLocked"
                     @click="prefs.showDotFiles = false"
                   >
@@ -333,17 +331,17 @@ function setEditorFontSize(val: number | undefined) {
                   <Button
                     size="sm"
                     :variant="prefs.showDotFiles ? 'default' : 'outline'"
-                    class="flex-1 px-1 text-xs"
+                    class="flex-1 px-1 text-sm"
                     :disabled="prefs.dotFilesLocked"
                     @click="prefs.showDotFiles = true"
                   >
                     Shown
                   </Button>
-                  <div class="flex-1 px-1 text-xs"></div>
+                  <div class="flex-1 px-1 text-sm"></div>
                 </div>
                 <div
                   v-if="prefs.dotFilesLocked"
-                  class="flex items-start gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5 text-xs text-muted-foreground"
+                  class="flex items-start gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5 text-sm text-muted-foreground"
                 >
                   <Info class="size-3 shrink-0 mt-0.5" />
                   <span>{{ prefs.dotFilesLockedReason }}</span>
@@ -357,7 +355,7 @@ function setEditorFontSize(val: number | undefined) {
                   <Button
                     size="sm"
                     :variant="!prefs.showUnixPerm ? 'default' : 'outline'"
-                    class="flex-1 px-1 text-xs"
+                    class="flex-1 px-1 text-sm"
                     :disabled="prefs.unixPermLocked"
                     @click="prefs.showUnixPerm = false"
                   >
@@ -366,17 +364,17 @@ function setEditorFontSize(val: number | undefined) {
                   <Button
                     size="sm"
                     :variant="prefs.showUnixPerm ? 'default' : 'outline'"
-                    class="flex-1 px-1 text-xs"
+                    class="flex-1 px-1 text-sm"
                     :disabled="prefs.unixPermLocked"
                     @click="prefs.showUnixPerm = true"
                   >
                     Shown
                   </Button>
-                  <div class="flex-1 px-1 text-xs"></div>
+                  <div class="flex-1 px-1 text-sm"></div>
                 </div>
                 <div
                   v-if="prefs.unixPermLocked"
-                  class="flex items-start gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5 text-xs text-muted-foreground"
+                  class="flex items-start gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5 text-sm text-muted-foreground"
                 >
                   <Info class="size-3 shrink-0 mt-0.5" />
                   <span>{{ prefs.unixPermLockedReason }}</span>
@@ -405,7 +403,7 @@ function setEditorFontSize(val: number | undefined) {
                     <NumberFieldIncrement />
                   </NumberFieldContent>
                 </NumberField>
-                <span class="text-xs text-muted-foreground">px</span>
+                <span class="text-sm text-muted-foreground">px</span>
               </div>
             </div>
           </div>

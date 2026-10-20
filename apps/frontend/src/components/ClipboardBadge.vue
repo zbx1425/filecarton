@@ -43,11 +43,11 @@ function handleClear() {
       <div class="text-sm font-medium mb-1">
         Clipboard ({{ clipboard.mode === 'cut' ? 'Cut' : 'Copy' }})
       </div>
-      <div class="text-xs text-muted-foreground mb-2">
+      <div class="text-sm text-muted-foreground mb-2">
         From: /{{ clipboard.sourcePath || '(root)' }}
       </div>
       <Separator class="mb-2" />
-      <div class="space-y-0.5 text-xs max-h-40 overflow-auto">
+      <div class="space-y-0.5 text-sm max-h-40 overflow-auto">
         <div
           v-for="item in clipboard.items.slice(0, MAX_DISPLAY)"
           :key="item.name"

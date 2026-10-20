@@ -77,7 +77,7 @@ function handleOpenChange(open: boolean) {
       <!-- Warning banner -->
       <div
         v-if="state.warningBanner"
-        class="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive"
+        class="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
       >
         <AlertTriangle class="size-3.5 shrink-0 mt-0.5" />
         <span>{{ state.warningBanner }}</span>
@@ -87,10 +87,10 @@ function handleOpenChange(open: boolean) {
       <ScrollArea class="max-h-[50vh]">
         <!-- Single group: flat list without accordion -->
         <div v-if="isSingleGroup" class="border rounded-md p-2">
-          <div class="text-xs font-medium text-muted-foreground mb-1.5">
+          <div class="text-sm font-medium text-muted-foreground mb-1.5">
             {{ groups[0].label }} ({{ groups[0].items.length }})
           </div>
-          <div class="space-y-0.5 text-xs font-mono break-all">
+          <div class="space-y-0.5 text-sm font-mono break-all">
             <div
               v-for="name in groups[0].items"
               :key="name"
@@ -117,14 +117,14 @@ function handleOpenChange(open: boolean) {
             :key="group.reason"
             :value="group.reason"
           >
-            <AccordionTrigger class="text-xs py-2.5">
+            <AccordionTrigger class="text-sm py-2.5">
               <span>
                 {{ group.label }}
                 <span class="ml-1 text-muted-foreground">({{ group.items.length }})</span>
               </span>
             </AccordionTrigger>
             <AccordionContent class="pb-2">
-              <div class="space-y-0.5 text-xs font-mono break-all">
+              <div class="space-y-0.5 text-sm font-mono break-all">
                 <div
                   v-for="name in group.items"
                   :key="name"

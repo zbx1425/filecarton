@@ -87,7 +87,7 @@ function handleRedirect(pluginId: string) {
       <div class="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/5"></div>
       <div class="absolute top-1/3 -right-20 w-80 h-80 rounded-full bg-white/5"></div>
       <div class="absolute -bottom-16 left-1/4 w-64 h-64 rounded-full bg-white/5"></div>
-      <p class="absolute bottom-12 left-16 text-white">FileCarton by Zbx1425</p>
+      <p class="absolute bottom-12 left-16 text-white text-base">FileCarton by Zbx1425</p>
     </div>
 
     <!-- Right: login form -->
@@ -155,7 +155,7 @@ function handleRedirect(pluginId: string) {
           class="my-6 flex items-center gap-3"
         >
           <Separator class="flex-1" />
-          <span class="text-xs text-muted-foreground">or</span>
+          <span class="text-sm text-muted-foreground">or</span>
           <Separator class="flex-1" />
         </div>
 

@@ -79,7 +79,7 @@ async function handleError() {
         ></video>
       </div>
 
-      <div class="flex items-center gap-3 text-xs text-muted-foreground tabular-nums">
+      <div class="flex items-center gap-3 text-sm text-muted-foreground tabular-nums">
         <span>{{ formatSize(size) }}</span>
         <span v-if="videoWidth && videoHeight">{{ videoWidth }} × {{ videoHeight }}</span>
         <span v-if="duration > 0">{{ formatDuration(duration) }}</span>
@@ -93,7 +93,7 @@ async function handleError() {
         {{ $t('err.' + serverError.code, serverError.params ?? {}) }}
       </p>
       <template v-else>
-        <p class="text-xs text-muted-foreground">
+        <p class="text-sm text-muted-foreground">
           This video format or codec cannot be played directly in your browser ({{ formatSize(size) }}).
         </p>
         <Button variant="outline" as="a" :href="downloadUrl" target="_blank">

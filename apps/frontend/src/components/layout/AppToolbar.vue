@@ -108,7 +108,7 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
       <PanelLeft class="size-4" />
     </Button>
 
-    <span v-if="ui.branding" class="text-sm font-semibold tracking-tight shrink-0 mr-1">
+    <span v-if="ui.branding" class="text-base font-semibold tracking-tight shrink-0 mr-1">
       {{ ui.branding }}
     </span>
 
@@ -153,7 +153,7 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
         <template v-if="navigation.activeFile">
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage class="font-mono text-xs">
+            <BreadcrumbPage class="font-mono text-sm">
               {{ navigation.activeFile }}
             </BreadcrumbPage>
           </BreadcrumbItem>
@@ -169,7 +169,7 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
             <Input
               v-model="ui.searchQuery"
               placeholder="Search..."
-              class="h-8 w-48 pl-7 pr-7 text-xs"
+              class="h-8 w-48 pl-7 pr-7 text-sm"
             />
           </div>
           <DropdownMenu>
@@ -241,7 +241,7 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
             <Button
               variant="ghost"
               size="sm"
-              class="max-w-30 overflow-hidden px-2 -ms-2 font-normal text-xs text-muted-foreground"
+              class="max-w-30 overflow-hidden px-2 -ms-2 font-normal text-sm text-muted-foreground"
             >
               <span class="min-w-0 truncate">{{ auth.user?.displayName }}</span>
             </Button>
@@ -249,8 +249,8 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
           <DropdownMenuContent align="end" class="w-52">
             <DropdownMenuLabel class="font-normal">
               <div class="flex flex-col gap-0.5">
-                <span class="truncate text-xs leading-snug">{{ auth.user?.displayName }}</span>
-                <span class="truncate text-xs leading-snug text-muted-foreground" 
+                <span class="truncate text-sm leading-snug">{{ auth.user?.displayName }}</span>
+                <span class="truncate text-sm leading-snug text-muted-foreground" 
                   v-if="auth.user?.id != auth.user?.displayName">{{ auth.user?.id }}</span>
               </div>
             </DropdownMenuLabel>

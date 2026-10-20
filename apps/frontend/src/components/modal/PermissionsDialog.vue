@@ -371,19 +371,19 @@ async function applyPermissions(recursive: boolean) {
               <div class="grid grid-cols-4 gap-x-2 gap-y-2.5 items-center">
                 <!-- Header row -->
                 <div class="min-w-0">
-                  <div class="text-xs font-medium text-foreground">Owner</div>
-                  <div class="text-xs text-muted-foreground truncate" :title="headerOwnerSub">
+                  <div class="text-sm font-medium text-foreground">Owner</div>
+                  <div class="text-sm text-muted-foreground truncate" :title="headerOwnerSub">
                     {{ headerOwnerSub }}
                   </div>
                 </div>
                 <div class="min-w-0">
-                  <div class="text-xs font-medium text-foreground">Group</div>
-                  <div class="text-xs text-muted-foreground truncate" :title="headerGroupSub">
+                  <div class="text-sm font-medium text-foreground">Group</div>
+                  <div class="text-sm text-muted-foreground truncate" :title="headerGroupSub">
                     {{ headerGroupSub }}
                   </div>
                 </div>
                 <div class="min-w-0 self-start">
-                  <div class="text-xs font-medium text-foreground">Others</div>
+                  <div class="text-sm font-medium text-foreground">Others</div>
                 </div>
                 <div></div>
 
@@ -392,7 +392,7 @@ async function applyPermissions(recursive: boolean) {
                   <label
                     v-for="colKey in row.cols"
                     :key="colKey"
-                    class="flex items-center gap-1.5 text-xs cursor-pointer select-none"
+                    class="flex items-center gap-1.5 text-sm cursor-pointer select-none"
                   >
                     <Checkbox
                       :model-value="currentBits[colKey]"
@@ -401,7 +401,7 @@ async function applyPermissions(recursive: boolean) {
                     <span>{{ row.label }}</span>
                   </label>
 
-                  <label class="flex items-center gap-1.5 text-xs cursor-pointer select-none">
+                  <label class="flex items-center gap-1.5 text-sm cursor-pointer select-none">
                     <Checkbox
                       :model-value="currentBits[row.specialKey]"
                       @update:model-value="toggleBit(row.specialKey)"
@@ -415,7 +415,7 @@ async function applyPermissions(recursive: boolean) {
             <!-- Right: Octal Quick Input -->
             <div class="sm:w-32 shrink-0 rounded-md border bg-muted/15 p-3 flex flex-col justify-between gap-2">
               <div class="space-y-1.5">
-                <label class="text-xs font-medium text-foreground block">Octal</label>
+                <label class="text-sm font-medium text-foreground block">Octal</label>
                 <Input
                   :model-value="octalInput"
                   placeholder="Mixed"
@@ -427,8 +427,8 @@ async function applyPermissions(recursive: boolean) {
                 />
               </div>
               <div>
-                <div class="text-xs text-muted-foreground mb-0.5">Preview</div>
-                <div class="font-mono text-center text-xs text-foreground tracking-wider bg-background/80 border rounded px-1.5 py-0.5">
+                <div class="text-sm text-muted-foreground mb-0.5">Preview</div>
+                <div class="font-mono text-center text-sm text-foreground tracking-wider bg-background/80 border rounded px-1.5 py-0.5">
                   {{ symbolicPreview }}
                 </div>
               </div>
@@ -442,25 +442,25 @@ async function applyPermissions(recursive: boolean) {
         <div class="space-y-3">
           <div class="grid grid-cols-2 gap-3">
             <div class="space-y-1.5">
-              <label class="text-xs font-medium text-foreground block">Owner</label>
+              <label class="text-sm font-medium text-foreground block">Owner</label>
               <Input
                 v-model="ownerInput"
                 :disabled="!isRoot"
                 :placeholder="initialOwner === null ? '(Mixed)' : 'Owner'"
-                class="h-8 text-xs"
+                class="h-8 text-sm"
               />
             </div>
             <div class="space-y-1.5">
-              <label class="text-xs font-medium text-foreground block">Group</label>
+              <label class="text-sm font-medium text-foreground block">Group</label>
               <Input
                 v-model="groupInput"
                 :disabled="!isRoot"
                 :placeholder="initialGroup === null ? '(Mixed)' : 'Group'"
-                class="h-8 text-xs"
+                class="h-8 text-sm"
               />
             </div>
           </div>
-          <div class="text-xs text-muted-foreground">
+          <div class="text-sm text-muted-foreground">
             FileCarton is running as <strong class="text-foreground font-medium">{{ processUser }}</strong>.
           </div>
         </div>
