@@ -202,6 +202,10 @@ export interface FileCartonConfig {
   readonly: boolean
   repoName?: string
   branding?: string
+  theme?: {
+    primary?: string
+    toolbar?: string
+  }
   features?: FileCartonFeatures
   unixPerm?: FileCartonUnixPermConfig
   upload?: {

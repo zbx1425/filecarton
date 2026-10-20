@@ -49,6 +49,8 @@ final class RepoSettingTest extends TestCase
             'readonly'                 => false,
             'branding'                 => 'FileCarton',
             'repo_name'                => 'test',
+            'theme_primary'            => 'blue',
+            'theme_toolbar'            => 'slate',
             'feature_archive'          => true,
             'feature_unix_perm'        => false,
             'feature_unix_perm_modify' => false,
@@ -57,6 +59,8 @@ final class RepoSettingTest extends TestCase
 
         $override = RepoSetting::fromStaticRow([
             'root_path'                => '/tmp/user',
+            'theme_primary'            => 'indigo',
+            'theme_toolbar'            => 'slate-solid',
             'feature_unix_perm'        => true,
             'feature_unix_perm_modify' => true,
             'feature_remote_download'  => true,
@@ -64,6 +68,8 @@ final class RepoSettingTest extends TestCase
 
         $combined = $base->combine($override);
         self::assertSame('/tmp/user', $combined->rootPath);
+        self::assertSame('indigo', $combined->themePrimary);
+        self::assertSame('slate-solid', $combined->themeToolbar);
         self::assertTrue($combined->featureArchive);
         self::assertTrue($combined->featureUnixPerm);
         self::assertTrue($combined->featureUnixPermModify);

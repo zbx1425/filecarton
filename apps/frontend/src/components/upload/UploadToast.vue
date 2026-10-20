@@ -23,7 +23,7 @@ const latestBatchAllSuccess = computed(() => result.value != null && result.valu
 </script>
 
 <template>
-  <div class="w-[300px] select-none">
+  <div class="w-75 select-none">
     <!-- Active uploads -->
     <div v-if="upload.hasActive" class="flex items-center gap-2.5">
       <Loader2 class="size-4 animate-spin text-primary shrink-0" />
@@ -51,7 +51,7 @@ const latestBatchAllSuccess = computed(() => result.value != null && result.valu
       </div>
 
       <!-- Error detail link -->
-      <div v-if="hasErrors" class="mt-1.5 ml-[26px]">
+      <div v-if="hasErrors" class="mt-1.5 ml-6.5">
         <div
           v-if="latestBatchAllSuccess && upload.oldErrorCount > 0"
           class="text-xs text-muted-foreground"

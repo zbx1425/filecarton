@@ -55,6 +55,11 @@ feature_unix_perm_modify = false
 # WARNING: Security risk! Will allow SSRF attacks. Only enable when all users are fully trusted!
 feature_remote_download = false
 
+# Default primary theme color (e.g. "blue", "indigo", "teal", "violet", or "" for built-in default).
+theme_primary = ""
+
+# Default toolbar color (e.g. "slate", "blue", "slate-solid", "blue-solid", or "" for built-in default).
+theme_toolbar = ""
 
 
 # ─── Limits ──────────────────────────────────────────────────────────────────

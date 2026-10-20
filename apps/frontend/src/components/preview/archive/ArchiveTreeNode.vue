@@ -58,11 +58,11 @@ function handleClick() {
     <ContextMenu>
       <ContextMenuTrigger as-child>
         <div
-          class="flex items-center h-7 cursor-pointer select-none group"
+          class="flex items-center h-7 pl-1 cursor-pointer select-none group"
           :class="isActive ? 'bg-accent text-accent-foreground font-medium' : 'hover:bg-muted/50'"
-          :style="{ paddingLeft: `${depth * 16 + 4}px` }"
           @click="handleClick"
         >
+          <span v-for="i in depth" :key="i" class="w-4 shrink-0" />
           <span
             v-if="node.isDir"
             class="flex items-center justify-center w-4 h-4 shrink-0"

@@ -19,6 +19,10 @@ class RepoSetting {
     public $featureUnixPermModify;
     /** @var bool|null */
     public $featureRemoteDownload;
+    /** @var string|null */
+    public $themePrimary;
+    /** @var string|null */
+    public $themeToolbar;
 
     public function __construct() {
         $this->rootPath = null;
@@ -29,6 +33,8 @@ class RepoSetting {
         $this->featureUnixPerm = null;
         $this->featureUnixPermModify = null;
         $this->featureRemoteDownload = null;
+        $this->themePrimary = null;
+        $this->themeToolbar = null;
     }
 
     private const BOOL_MAP = [
@@ -68,6 +74,12 @@ class RepoSetting {
         if (isset($row['repo_name']) && is_string($row['repo_name'])) {
             $s->repoName = $row['repo_name'];
         }
+        if (isset($row['theme_primary']) && is_string($row['theme_primary'])) {
+            $s->themePrimary = $row['theme_primary'];
+        }
+        if (isset($row['theme_toolbar']) && is_string($row['theme_toolbar'])) {
+            $s->themeToolbar = $row['theme_toolbar'];
+        }
         foreach (self::BOOL_MAP as $k => $prop) {
             if (isset($row[$k]) && is_bool($row[$k])) {
                 $s->$prop = $row[$k];
@@ -104,6 +116,8 @@ class RepoSetting {
         if ($override->readonly !== null) $result->readonly = $override->readonly;
         if ($override->branding !== null) $result->branding = $override->branding;
         if ($override->repoName !== null) $result->repoName = $override->repoName;
+        if ($override->themePrimary !== null) $result->themePrimary = $override->themePrimary;
+        if ($override->themeToolbar !== null) $result->themeToolbar = $override->themeToolbar;
         if ($override->featureArchive !== null) $result->featureArchive = $override->featureArchive;
         if ($override->featureUnixPerm !== null) $result->featureUnixPerm = $override->featureUnixPerm;
         if ($override->featureUnixPermModify !== null) $result->featureUnixPermModify = $override->featureUnixPermModify;

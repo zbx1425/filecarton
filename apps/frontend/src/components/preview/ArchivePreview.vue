@@ -181,8 +181,7 @@ defineExpose({ canExtract })
       </ResizablePanelGroup>
 
       <div
-        class="flex items-center h-9 px-3 text-xs shrink-0 gap-2"
-        style="background: var(--statusbar-bg); color: var(--statusbar-fg); border-top: 1px solid var(--statusbar-border)"
+        class="flex items-center h-9 px-3 text-xs shrink-0 gap-2 bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
       >
         <span>
           {{ statusDirsCount }} folders, {{ statusFilesCount }} files

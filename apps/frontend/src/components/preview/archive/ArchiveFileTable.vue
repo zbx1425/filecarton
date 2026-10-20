@@ -45,12 +45,6 @@ function sortIcon(column: ArchiveSortColumn) {
   return props.sortAsc ? ArrowUp : ArrowDown
 }
 
-const constrainedStyle = computed(() => {
-  const maxW = preferences.effectiveTableMaxWidth
-  if (maxW == null) return {}
-  return { maxWidth: `${maxW}px` }
-})
-
 const resizing = ref(false)
 
 function startResize(e: MouseEvent) {
@@ -121,8 +115,7 @@ onBeforeUnmount(() => {
   <div class="flex flex-col h-full">
     <div class="border-b bg-muted/30 sticky top-0 z-10 relative shrink-0" @click="emit('update:selectedName', null)">
       <div
-        class="flex items-center px-3 text-xs font-medium text-muted-foreground"
-        :style="{ ...constrainedStyle, height: 'var(--fc-row-height, 32px)' }"
+        class="flex items-center px-3 text-xs font-medium text-muted-foreground h-(--fc-row-height) max-w-(--fc-table-max-w)"
       >
         <div
           class="flex items-center gap-1 flex-1 min-w-0 cursor-pointer hover:text-foreground"
@@ -149,9 +142,8 @@ onBeforeUnmount(() => {
 
       <div
         v-if="preferences.effectiveTableMaxWidth != null"
-        class="absolute top-0 bottom-0 w-1.5 cursor-col-resize transition-colors -translate-x-1/2 group/handle z-20"
+        class="absolute top-0 bottom-0 left-(--fc-table-resize-left) w-1.5 cursor-col-resize transition-colors -translate-x-1/2 group/handle z-20"
         :class="resizing ? 'bg-primary/40' : 'hover:bg-primary/30'"
-        :style="{ left: `${preferences.effectiveTableMaxWidth}px` }"
         @mousedown="startResize"
       >
         <div class="absolute inset-y-0 left-1/2 w-px bg-border group-hover/handle:bg-primary/50" :class="resizing ? 'bg-primary/60' : ''" />
@@ -162,9 +154,7 @@ onBeforeUnmount(() => {
       <div
         v-if="!isRoot"
         data-archive-row
-        class="flex items-center px-3 text-xs text-muted-foreground cursor-pointer hover:bg-muted/50"
-        style="height: var(--fc-row-height, 32px)"
-        :style="constrainedStyle"
+        class="flex items-center px-3 text-xs text-muted-foreground cursor-pointer hover:bg-muted/50 h-(--fc-row-height) max-w-(--fc-table-max-w)"
         @click="emit('goUp')"
       >
         <div class="flex items-center gap-2 flex-1">
@@ -183,9 +173,7 @@ onBeforeUnmount(() => {
         <ContextMenuTrigger as-child>
           <div
             data-archive-row
-            class="flex items-center px-3 text-xs group border-b border-transparent cursor-default select-none"
-            style="height: var(--fc-row-height, 32px)"
-            :style="constrainedStyle"
+            class="flex items-center px-3 text-xs group border-b border-transparent cursor-default select-none h-(--fc-row-height) max-w-(--fc-table-max-w)"
             :class="selectedName === item.name ? 'bg-selected' : 'hover:bg-muted/50'"
             @click="emit('update:selectedName', item.name)"
             @dblclick="emit('openNode', item)"
@@ -248,7 +236,7 @@ onBeforeUnmount(() => {
         <img
           :src="buildArchiveRawUrl(archivePath, hoverThumbNode.path)"
           :alt="hoverThumbNode.name"
-          class="max-w-[128px] max-h-[128px] object-contain rounded"
+          class="max-w-32 max-h-32 object-contain rounded"
         />
       </div>
     </Teleport>

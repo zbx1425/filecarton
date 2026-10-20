@@ -46,8 +46,7 @@ function handleDirClick(pathStr: string) {
       <ContextMenu v-for="item in results" :key="item.path">
         <ContextMenuTrigger as-child>
           <div
-            class="flex items-center px-3 text-xs cursor-pointer hover:bg-muted/50 gap-2"
-            style="height: var(--fc-row-height, 32px)"
+            class="flex items-center px-3 text-xs cursor-pointer hover:bg-muted/50 gap-2 h-(--fc-row-height)"
             @click="emit('openNode', item)"
           >
             <component

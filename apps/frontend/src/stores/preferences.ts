@@ -1,6 +1,17 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { useWindowSize } from '@vueuse/core'
+import {
+  type PrimaryColorPreference,
+  type ToolbarColorPreference,
+  type ToolbarSwatchId,
+  type RadixColorName,
+  isValidRadixColor,
+  isValidToolbarColor,
+  getPrimaryThemeTokens,
+  getToolbarThemeTokens,
+  ensureSwatchStyles,
+} from '@/utils/themeColors'
 
 const STORAGE_KEY = 'filecarton_preferences'
 
@@ -10,6 +21,8 @@ type TabSize = 2 | 4
 
 interface StoredPreferences {
   theme: Theme
+  primaryColor: PrimaryColorPreference
+  toolbarColor: ToolbarColorPreference
   baseFontSize: number
   editorFontSize: number
   editorWordWrap: boolean
@@ -24,7 +37,9 @@ interface StoredPreferences {
 
 const DEFAULTS: StoredPreferences = {
   theme: 'system',
-  baseFontSize: 18,
+  primaryColor: 'default',
+  toolbarColor: 'default',
+  baseFontSize: 16,
   editorFontSize: 16,
   editorWordWrap: true,
   editorTabSize: 2,
@@ -36,10 +51,10 @@ const DEFAULTS: StoredPreferences = {
   showUnixPerm: true,
 }
 
-const DENSITY_ROW_HEIGHT: Record<Density, number> = {
-  compact: 24,
-  default: 32,
-  comfortable: 40,
+const DENSITY_ROW_HEIGHT_REM: Record<Density, number> = {
+  compact: 1.5,
+  default: 2,
+  comfortable: 2.5,
 }
 
 const BREAKPOINT_DEFAULTS: Record<string, number | null> = {
@@ -53,7 +68,14 @@ function loadPreferences(): StoredPreferences {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
-      return { ...DEFAULTS, ...parsed }
+      const merged: StoredPreferences = { ...DEFAULTS, ...parsed }
+      if (merged.primaryColor !== 'default' && !isValidRadixColor(merged.primaryColor)) {
+        merged.primaryColor = 'default'
+      }
+      if (merged.toolbarColor !== 'default' && !isValidToolbarColor(merged.toolbarColor)) {
+        merged.toolbarColor = 'default'
+      }
+      return merged
     }
   } catch { /* ignore */ }
   return { ...DEFAULTS }
@@ -69,6 +91,8 @@ export const usePreferencesStore = defineStore('preferences', () => {
   const saved = loadPreferences()
 
   const theme = ref<Theme>(saved.theme)
+  const primaryColor = ref<PrimaryColorPreference>(saved.primaryColor)
+  const toolbarColor = ref<ToolbarColorPreference>(saved.toolbarColor)
   const baseFontSize = ref(saved.baseFontSize)
   const editorFontSize = ref(saved.editorFontSize)
   const editorWordWrap = ref(saved.editorWordWrap)
@@ -80,6 +104,26 @@ export const usePreferencesStore = defineStore('preferences', () => {
 
   const config = window.__FILECARTON__
   const dotfilesConfig = config.dotfiles ?? { block: false, forceVisible: false }
+
+  const backendDefaultPrimary = computed<RadixColorName | null>(() => {
+    const cfg = config.theme?.primary?.toLowerCase()
+    return isValidRadixColor(cfg) ? cfg : null
+  })
+
+  const backendDefaultToolbar = computed<ToolbarSwatchId | null>(() => {
+    const cfg = config.theme?.toolbar?.toLowerCase()
+    return isValidToolbarColor(cfg) ? cfg : null
+  })
+
+  const effectivePrimaryColor = computed<RadixColorName | null>(() => {
+    if (primaryColor.value === 'default') return backendDefaultPrimary.value
+    return isValidRadixColor(primaryColor.value) ? primaryColor.value : backendDefaultPrimary.value
+  })
+
+  const effectiveToolbarColor = computed<ToolbarSwatchId | null>(() => {
+    if (toolbarColor.value === 'default') return backendDefaultToolbar.value
+    return isValidToolbarColor(toolbarColor.value) ? toolbarColor.value : backendDefaultToolbar.value
+  })
 
   // ── Filename blocklist (precompiled) ──
   const rules = config.filenameBlocklist ?? []
@@ -156,13 +200,17 @@ export const usePreferencesStore = defineStore('preferences', () => {
     return BREAKPOINT_DEFAULTS[breakpointBracket.value]
   })
 
-  const rowHeight = computed(() => DENSITY_ROW_HEIGHT[displayDensity.value])
+  const rowHeight = computed(() =>
+    Math.round(DENSITY_ROW_HEIGHT_REM[displayDensity.value] * baseFontSize.value),
+  )
 
   let prevBracket = breakpointBracket.value
 
   function persist() {
     savePreferences({
       theme: theme.value,
+      primaryColor: primaryColor.value,
+      toolbarColor: toolbarColor.value,
       baseFontSize: baseFontSize.value,
       editorFontSize: editorFontSize.value,
       editorWordWrap: editorWordWrap.value,
@@ -211,8 +259,63 @@ export const usePreferencesStore = defineStore('preferences', () => {
     return theme.value
   })
 
+  const toolbarTokens = computed(() =>
+    getToolbarThemeTokens(effectiveToolbarColor.value, resolvedTheme.value === 'dark'),
+  )
+  const isToolbarCustom = computed(() => toolbarTokens.value !== null)
+  const toolbarTone = computed<'light' | 'dark'>(() =>
+    toolbarTokens.value ? toolbarTokens.value.tone : resolvedTheme.value,
+  )
+
   function applyTheme() {
-    document.documentElement.classList.toggle('dark', resolvedTheme.value === 'dark')
+    const isDark = resolvedTheme.value === 'dark'
+    document.documentElement.classList.toggle('dark', isDark)
+
+    const root = document.documentElement.style
+    const activePrimary = effectivePrimaryColor.value
+    if (activePrimary) {
+      const pTokens = getPrimaryThemeTokens(activePrimary, isDark)
+      root.setProperty('--primary', pTokens.primary)
+      root.setProperty('--primary-foreground', pTokens.primaryForeground)
+      root.setProperty('--ring', pTokens.ring)
+      root.setProperty('--selected', pTokens.selected)
+      root.setProperty('--sidebar-primary', pTokens.primary)
+      root.setProperty('--sidebar-primary-foreground', pTokens.primaryForeground)
+      root.setProperty('--sidebar-ring', pTokens.ring)
+      root.setProperty('--login-from', pTokens.loginFrom)
+      root.setProperty('--login-via', pTokens.loginVia)
+      root.setProperty('--login-to', pTokens.loginTo)
+    } else {
+      root.removeProperty('--primary')
+      root.removeProperty('--primary-foreground')
+      root.removeProperty('--ring')
+      root.removeProperty('--selected')
+      root.removeProperty('--sidebar-primary')
+      root.removeProperty('--sidebar-primary-foreground')
+      root.removeProperty('--sidebar-ring')
+      root.removeProperty('--login-from')
+      root.removeProperty('--login-via')
+      root.removeProperty('--login-to')
+    }
+
+    const tTokens = toolbarTokens.value
+    if (tTokens) {
+      root.setProperty('--toolbar-bg', tTokens.bg)
+      root.setProperty('--toolbar-fg', tTokens.fg)
+      root.setProperty('--toolbar-muted-fg', tTokens.mutedFg)
+      root.setProperty('--toolbar-border', tTokens.border)
+      root.setProperty('--toolbar-input', tTokens.input)
+      root.setProperty('--toolbar-accent', tTokens.accent)
+      root.setProperty('--toolbar-accent-fg', tTokens.accentFg)
+    } else {
+      root.removeProperty('--toolbar-bg')
+      root.removeProperty('--toolbar-fg')
+      root.removeProperty('--toolbar-muted-fg')
+      root.removeProperty('--toolbar-border')
+      root.removeProperty('--toolbar-input')
+      root.removeProperty('--toolbar-accent')
+      root.removeProperty('--toolbar-accent-fg')
+    }
   }
 
   function applyTypography() {
@@ -221,15 +324,25 @@ export const usePreferencesStore = defineStore('preferences', () => {
     root.setProperty('--fc-size', `${size}px`)
     const leading = Math.min(1.4 + (size - 12) * 0.02, 1.8)
     root.setProperty('--fc-leading', String(leading))
-    root.setProperty('--fc-text-sm', `${Math.round(size * 0.875 * 10) / 10}px`)
-    root.setProperty('--fc-text-xs', `${Math.round(size * 0.75 * 10) / 10}px`)
   }
 
   function applyDensity() {
     document.documentElement.style.setProperty(
       '--fc-row-height',
-      `${DENSITY_ROW_HEIGHT[displayDensity.value]}px`,
+      `${DENSITY_ROW_HEIGHT_REM[displayDensity.value]}rem`,
     )
+  }
+
+  function applyTableMaxWidth() {
+    const root = document.documentElement.style
+    const maxW = effectiveTableMaxWidth.value
+    if (maxW != null) {
+      root.setProperty('--fc-table-max-w', `${maxW}px`)
+      root.setProperty('--fc-table-resize-left', `${maxW}px`)
+    } else {
+      root.setProperty('--fc-table-max-w', 'none')
+      root.setProperty('--fc-table-resize-left', '0px')
+    }
   }
 
   function setTableMaxWidth(width: number | null) {
@@ -238,18 +351,22 @@ export const usePreferencesStore = defineStore('preferences', () => {
     } else {
       tableMaxWidth.value = width
     }
+    applyTableMaxWidth()
     persist()
   }
 
   function init() {
+    ensureSwatchStyles()
     applyTheme()
     applyTypography()
     applyDensity()
+    applyTableMaxWidth()
   }
 
-  watch(theme, () => { applyTheme(); persist() })
+  watch([theme, primaryColor, toolbarColor], () => { applyTheme(); persist() })
   watch(baseFontSize, () => { applyTypography(); persist() })
   watch(displayDensity, () => { applyDensity(); persist() })
+  watch(effectiveTableMaxWidth, () => { applyTableMaxWidth() })
   watch([editorFontSize, editorWordWrap, editorTabSize, editorLineNumbers, editorAutoDetect, _showDotFiles, _showUnixPerm], () => persist())
 
   watch(breakpointBracket, (newBracket) => {
@@ -262,6 +379,14 @@ export const usePreferencesStore = defineStore('preferences', () => {
 
   return {
     theme,
+    primaryColor,
+    toolbarColor,
+    backendDefaultPrimary,
+    backendDefaultToolbar,
+    effectivePrimaryColor,
+    effectiveToolbarColor,
+    isToolbarCustom,
+    toolbarTone,
     baseFontSize,
     editorFontSize,
     editorWordWrap,

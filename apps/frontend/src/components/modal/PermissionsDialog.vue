@@ -372,13 +372,13 @@ async function applyPermissions(recursive: boolean) {
                 <!-- Header row -->
                 <div class="min-w-0">
                   <div class="text-xs font-medium text-foreground">Owner</div>
-                  <div class="text-[11px] text-muted-foreground truncate" :title="headerOwnerSub">
+                  <div class="text-xs text-muted-foreground truncate" :title="headerOwnerSub">
                     {{ headerOwnerSub }}
                   </div>
                 </div>
                 <div class="min-w-0">
                   <div class="text-xs font-medium text-foreground">Group</div>
-                  <div class="text-[11px] text-muted-foreground truncate" :title="headerGroupSub">
+                  <div class="text-xs text-muted-foreground truncate" :title="headerGroupSub">
                     {{ headerGroupSub }}
                   </div>
                 </div>
@@ -427,7 +427,7 @@ async function applyPermissions(recursive: boolean) {
                 />
               </div>
               <div>
-                <div class="text-[11px] text-muted-foreground mb-0.5">Preview</div>
+                <div class="text-xs text-muted-foreground mb-0.5">Preview</div>
                 <div class="font-mono text-center text-xs text-foreground tracking-wider bg-background/80 border rounded px-1.5 py-0.5">
                   {{ symbolicPreview }}
                 </div>

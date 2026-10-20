@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@lucide/vue": "^1.33.0",
+    "@radix-ui/colors": "^3.0.0",
     "@tailwindcss/vite": "^4.3.3",
     "@vueuse/core": "^14.4.0",
     "class-variance-authority": "^0.7.1",

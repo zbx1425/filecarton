@@ -33,7 +33,7 @@ function handleOpenChange(open: boolean) {
         </DialogDescription>
       </DialogHeader>
 
-      <ScrollArea class="max-h-[320px] min-w-0 -mx-1 px-1 error-scroll">
+      <ScrollArea class="max-h-80 min-w-0 -mx-1 px-1 error-scroll">
         <div class="space-y-1">
           <div
             v-for="task in upload.errorTasks"

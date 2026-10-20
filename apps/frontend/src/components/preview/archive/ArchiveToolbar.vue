@@ -60,7 +60,7 @@ const ui = useUiStore()
         <BreadcrumbItem>
           <BreadcrumbPage v-if="isAtRoot" class="flex items-center gap-1.5 text-xs">
             <FileArchive class="size-3.5 text-icon-archive" />
-            <span class="font-medium truncate max-w-[180px]">{{ archiveName }}</span>
+            <span class="font-medium truncate max-w-45">{{ archiveName }}</span>
           </BreadcrumbPage>
           <BreadcrumbLink
             v-else

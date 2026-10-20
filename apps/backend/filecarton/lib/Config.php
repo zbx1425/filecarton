@@ -186,6 +186,8 @@ class Config {
             'feature_unix_perm'        => false,
             'feature_unix_perm_modify' => false,
             'feature_remote_download'  => false,
+            'theme_primary'            => '',
+            'theme_toolbar'            => '',
         ]);
 
         foreach (self::defaults($configDir) as $key => $default) {

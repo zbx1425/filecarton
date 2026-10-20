@@ -76,6 +76,16 @@ if ($repoName !== '') {
 if ($branding !== '') {
     $configData['branding'] = $branding;
 }
+$themeConfig = [];
+if (($current->themePrimary ?? '') !== '') {
+    $themeConfig['primary'] = $current->themePrimary;
+}
+if (($current->themeToolbar ?? '') !== '') {
+    $themeConfig['toolbar'] = $current->themeToolbar;
+}
+if ($themeConfig !== []) {
+    $configData['theme'] = $themeConfig;
+}
 if (!$readonly) {
     $configData['upload'] = [
         'maxFileSize' => FILECARTON_UPLOAD_MAX_FILE_SIZE,

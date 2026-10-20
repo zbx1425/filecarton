@@ -4,6 +4,7 @@ import { useNavigationStore } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
 import { useUploadStore } from '@/stores/upload'
 import { useAuthStore } from '@/stores/auth'
+import { usePreferencesStore } from '@/stores/preferences'
 import { apiPost } from '@/api/client'
 import {
   Breadcrumb,
@@ -47,6 +48,7 @@ const navigation = useNavigationStore()
 const ui = useUiStore()
 const upload = useUploadStore()
 const auth = useAuthStore()
+const prefs = usePreferencesStore()
 
 async function handleLogout() {
   if (navigation.editDirty) {
@@ -91,7 +93,12 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
 </script>
 
 <template>
-  <div class="flex items-center h-11 px-3 border-b gap-2 shrink-0 bg-background">
+  <div
+    data-slot="app-toolbar"
+    :data-toolbar-custom="prefs.isToolbarCustom ? 'true' : undefined"
+    class="flex items-center h-11 px-3 border-b gap-2 shrink-0 bg-background text-foreground transition-colors"
+    :class="prefs.isToolbarCustom ? (prefs.toolbarTone === 'dark' ? 'dark' : 'light') : ''"
+  >
     <Button
       v-if="ui.showTreeToggle"
       variant="ghost"
@@ -234,7 +241,7 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
             <Button
               variant="ghost"
               size="sm"
-              class="max-w-[120px] overflow-hidden px-2 -ms-2 font-normal text-xs text-muted-foreground"
+              class="max-w-30 overflow-hidden px-2 -ms-2 font-normal text-xs text-muted-foreground"
             >
               <span class="min-w-0 truncate">{{ auth.user?.displayName }}</span>
             </Button>

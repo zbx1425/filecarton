@@ -35,37 +35,36 @@ function handleSelectAll(checked: boolean | "indeterminate") {
 
 <template>
   <div
-    class="flex items-center h-9 px-3 gap-2 shrink-0"
-    style="background: var(--statusbar-bg); color: var(--statusbar-fg); border-top: 1px solid var(--statusbar-border)"
+    class="flex items-center h-9 px-3 gap-2 shrink-0 bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
   >
     <Checkbox
       :model-value="checkboxState"
       class="size-3.5"
       @update:model-value="handleSelectAll"
     />
-    <span class="text-xs text-muted-foreground">
+    <span class="text-sm text-muted-foreground">
       {{ fileList.selectedCount }} selected
     </span>
 
     <div class="flex-1" />
 
     <template v-if="!ui.readonly">
-      <Button variant="ghost" size="xs" @click="copySelected">
+      <Button variant="ghost" size="sm" @click="copySelected">
         <Copy class="size-3.5" />
         Copy
       </Button>
-      <Button variant="ghost" size="xs" @click="cutSelected">
+      <Button variant="ghost" size="sm" @click="cutSelected">
         <Scissors class="size-3.5" />
         Cut
       </Button>
-      <Button variant="ghost" size="xs" class="text-destructive hover:text-destructive" @click="deleteSelected">
+      <Button variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="deleteSelected">
         <Trash2 class="size-3.5" />
         Delete
       </Button>
 
       <DropdownMenu v-if="ui.features.archive">
         <DropdownMenuTrigger as-child>
-          <Button variant="ghost" size="xs">
+          <Button variant="ghost" size="sm">
             <FileArchive class="size-3.5" />
             Archive
           </Button>
@@ -79,7 +78,7 @@ function handleSelectAll(checked: boolean | "indeterminate") {
       <Button
         v-if="ui.features.unixPermModify"
         variant="ghost"
-        size="xs"
+        size="sm"
         :disabled="!canModifyPermissions"
         @click="openPermissionsSelected"
       >
@@ -88,7 +87,7 @@ function handleSelectAll(checked: boolean | "indeterminate") {
       </Button>
     </template>
 
-    <Button variant="ghost" size="xs" @click="fileList.clearSelection()">
+    <Button variant="ghost" size="sm" @click="fileList.clearSelection()">
       <X class="size-3.5" />
     </Button>
   </div>

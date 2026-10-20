@@ -23,6 +23,8 @@ final class ConfigTest extends TestCase
         self::assertFalse($repo['readonly']);
         self::assertSame('FileCarton', $repo['branding']);
         self::assertSame('', $repo['repo_name']);
+        self::assertSame('', $repo['theme_primary']);
+        self::assertSame('', $repo['theme_toolbar']);
         self::assertTrue($repo['feature_archive']);
         self::assertFalse($repo['feature_unix_perm']);
         self::assertFalse($repo['feature_unix_perm_modify']);

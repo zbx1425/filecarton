@@ -74,12 +74,6 @@ function handleListClick(e: MouseEvent) {
   fileList.clearSelection()
 }
 
-const constrainedStyle = computed(() => {
-  const maxW = preferences.effectiveTableMaxWidth
-  if (maxW == null) return {}
-  return { maxWidth: `${maxW}px` }
-})
-
 const resizing = ref(false)
 
 function startResize(e: MouseEvent) {
@@ -113,7 +107,7 @@ function startResize(e: MouseEvent) {
   <div class="flex flex-col h-full">
     <!-- Header -->
     <div class="border-b bg-muted/30 sticky top-0 z-10 relative" @click="handleEmptyClick">
-      <div class="flex items-center px-3 text-xs font-medium text-muted-foreground" :style="{ ...constrainedStyle, height: 'var(--fc-row-height, 32px)' }">
+      <div class="flex items-center px-3 text-xs font-medium text-muted-foreground h-(--fc-row-height) max-w-(--fc-table-max-w)">
         <div class="w-6 shrink-0" />
         <div
           class="flex items-center gap-1 flex-1 min-w-0 cursor-pointer hover:text-foreground"
@@ -148,9 +142,8 @@ function startResize(e: MouseEvent) {
       <!-- Resize handle on header -->
       <div
         v-if="preferences.effectiveTableMaxWidth != null"
-        class="absolute top-0 bottom-0 w-1.5 cursor-col-resize transition-colors -translate-x-1/2 group/handle z-20"
+        class="absolute top-0 bottom-0 left-(--fc-table-resize-left) w-1.5 cursor-col-resize transition-colors -translate-x-1/2 group/handle z-20"
         :class="resizing ? 'bg-primary/40' : 'hover:bg-primary/30'"
-        :style="{ left: `${preferences.effectiveTableMaxWidth}px` }"
         @mousedown="startResize"
       >
         <div class="absolute inset-y-0 left-1/2 w-px bg-border group-hover/handle:bg-primary/50" :class="resizing ? 'bg-primary/60' : ''" />
@@ -174,9 +167,7 @@ function startResize(e: MouseEvent) {
           <!-- Go up row -->
           <div
             v-if="!isRoot"
-            class="flex items-center px-3 text-xs text-muted-foreground cursor-pointer hover:bg-muted/50"
-            style="height: var(--fc-row-height, 32px)"
-            :style="constrainedStyle"
+            class="flex items-center px-3 text-xs text-muted-foreground cursor-pointer hover:bg-muted/50 h-(--fc-row-height) max-w-(--fc-table-max-w)"
             data-file-row
             @click="goUp"
           >
@@ -268,8 +259,7 @@ function startResize(e: MouseEvent) {
     <BatchActionBar v-if="fileList.hasSelection" />
     <div
       v-else-if="!fileList.loading && !fileList.error"
-      class="flex items-center h-9 px-3 text-xs shrink-0"
-      style="background: var(--statusbar-bg); color: var(--statusbar-fg); border-top: 1px solid var(--statusbar-border)"
+      class="flex items-center h-9 px-3 text-xs shrink-0 bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
     >
       {{ fileList.filteredDirs.length }} folders, {{ fileList.filteredFiles.length }} files
       <span class="ml-1">({{ formatSize(fileList.filteredTotalSize) }})</span>

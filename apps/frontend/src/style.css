@@ -1,4 +1,3 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @import url("https://fastly.jsdelivr.net/fontsource/css/inter:vf@5.3.0/wght.min.css");
@@ -6,7 +5,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is(.dark *):not(.light, .light *));
 
 :root {
   --background: oklch(1 0 0);
@@ -44,6 +43,10 @@
 
   --selected: oklch(0.94 0.04 240);
 
+  --login-from: #023456;
+  --login-via: #094168;
+  --login-to: #2B5B86;
+
   --icon-folder:      oklch(0.75 0.15 75);
   --icon-code:        oklch(0.60 0.16 250);
   --icon-data:        oklch(0.72 0.14 85);
@@ -57,11 +60,11 @@
   --icon-video:       oklch(0.60 0.20 15);
   --icon-model:       oklch(0.60 0.14 210);
 
-  --fc-size: 14px;
+  --fc-size: 16px;
   --fc-leading: 1.5;
-  --fc-text-sm: 12.3px;
-  --fc-text-xs: 10.5px;
-  --fc-row-height: 32px;
+  --fc-row-height: 2rem;
+  --fc-table-max-w: none;
+  --fc-table-resize-left: 0px;
   --fc-success: oklch(0.65 0.2 150);
 
   --statusbar-bg: #F8F8F8;
@@ -128,6 +131,16 @@
   --statusbar-hover-fg: #FFFFFF;
 }
 
+[data-slot="app-toolbar"][data-toolbar-custom="true"] {
+  --background: var(--toolbar-bg);
+  --foreground: var(--toolbar-fg);
+  --muted-foreground: var(--toolbar-muted-fg);
+  --border: var(--toolbar-border);
+  --input: var(--toolbar-input);
+  --accent: var(--toolbar-accent);
+  --accent-foreground: var(--toolbar-accent-fg);
+}
+
 @theme inline {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-sans);
@@ -166,6 +179,16 @@
   --color-selected: var(--selected);
   --color-fc-success: var(--fc-success);
 
+  --color-login-from: var(--login-from);
+  --color-login-via: var(--login-via);
+  --color-login-to: var(--login-to);
+
+  --color-statusbar: var(--statusbar-bg);
+  --color-statusbar-foreground: var(--statusbar-fg);
+  --color-statusbar-border: var(--statusbar-border);
+  --color-statusbar-hover: var(--statusbar-hover);
+  --color-statusbar-hover-foreground: var(--statusbar-hover-fg);
+
   --color-icon-folder: var(--icon-folder);
   --color-icon-code: var(--icon-code);
   --color-icon-data: var(--icon-data);
@@ -178,11 +201,6 @@
   --color-icon-font: var(--icon-font);
   --color-icon-video: var(--icon-video);
   --color-icon-model: var(--icon-model);
-
-  --text-xs: var(--fc-text-xs, 0.75rem);
-  --text-xs--line-height: var(--fc-leading, 1rem);
-  --text-sm: var(--fc-text-sm, 0.875rem);
-  --text-sm--line-height: var(--fc-leading, 1.25rem);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -197,9 +215,12 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    font-size: var(--fc-size, 16px);
+    line-height: var(--fc-leading, 1.5);
+  }
   body {
-    @apply bg-background text-foreground;
-    font-size: var(--fc-size, 14px);
+    @apply bg-background text-foreground text-sm;
     line-height: var(--fc-leading, 1.5);
   }
 }

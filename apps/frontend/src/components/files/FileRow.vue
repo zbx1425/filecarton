@@ -52,12 +52,6 @@ const preferences = usePreferencesStore()
 
 const showUnixCols = computed(() => ui.features.unixPerm && preferences.showUnixPerm)
 
-const constrainedStyle = computed(() => {
-  const maxW = preferences.effectiveTableMaxWidth
-  if (maxW == null) return {}
-  return { maxWidth: `${maxW}px` }
-})
-
 const isSelected = computed(() => fileList.selected.has(props.name))
 const isCut = computed(() => clipboard.isCutItem(navigation.currentPathStr, props.name))
 const icon = computed(() => getFileIcon(props.name, props.isDir))
@@ -218,9 +212,7 @@ const thumbnailUrl = computed(() => {
     <ContextMenuTrigger as-child>
       <div
         data-file-row
-        class="flex items-center px-3 text-xs group border-b border-transparent cursor-default select-none"
-        style="height: var(--fc-row-height, 32px)"
-        :style="constrainedStyle"
+        class="flex items-center px-3 text-sm group border-b border-transparent cursor-default select-none h-(--fc-row-height) max-w-(--fc-table-max-w)"
         :class="[
           dropHover ? 'bg-primary/10 border-primary border-dashed' :
           isSelected ? 'bg-selected' : 'hover:bg-muted/50',
@@ -346,7 +338,7 @@ const thumbnailUrl = computed(() => {
       <img
         :src="thumbnailUrl"
         :alt="name"
-        class="max-w-[128px] max-h-[128px] object-contain rounded"
+        class="max-w-32 max-h-32 object-contain rounded"
       />
     </div>
   </Teleport>

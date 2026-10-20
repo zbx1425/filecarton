@@ -145,8 +145,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div
-    class="flex items-center h-9 px-2 text-xs select-none shrink-0 gap-0.5"
-    style="background: var(--statusbar-bg); color: var(--statusbar-fg); border-top: 1px solid var(--statusbar-border)"
+    class="flex items-center h-9 px-2 text-xs select-none shrink-0 gap-0.5 bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
   >
     <span class="px-2 tabular-nums">
       Ln {{ cursorLine }}, Col {{ cursorCol }}
@@ -155,9 +154,8 @@ onBeforeUnmount(() => {
     <div class="flex-1" />
 
     <button
-      class="px-2 h-full transition-colors rounded-sm"
-      :style="{ opacity: lineNumbers ? 1 : 0.5 }"
-      :class="'hover:bg-[var(--statusbar-hover)]'"
+      class="px-2 h-full transition-colors rounded-sm hover:bg-statusbar-hover"
+      :class="lineNumbers ? 'opacity-100' : 'opacity-50'"
       title="Toggle Line Numbers"
       @click="toggleLineNumbers"
     >
@@ -165,9 +163,8 @@ onBeforeUnmount(() => {
     </button>
 
     <button
-      class="px-2 h-full transition-colors rounded-sm"
-      :style="{ opacity: wordWrap ? 1 : 0.5 }"
-      :class="'hover:bg-[var(--statusbar-hover)]'"
+      class="px-2 h-full transition-colors rounded-sm hover:bg-statusbar-hover"
+      :class="wordWrap ? 'opacity-100' : 'opacity-50'"
       title="Toggle Word Wrap"
       @click="toggleWordWrap"
     >
@@ -177,8 +174,7 @@ onBeforeUnmount(() => {
     <Popover>
       <PopoverTrigger as-child>
         <button
-          class="px-2 h-full transition-colors rounded-sm"
-          :class="'hover:bg-[var(--statusbar-hover)]'"
+          class="px-2 h-full transition-colors rounded-sm hover:bg-statusbar-hover"
         >
           {{ indentLabel }}
         </button>

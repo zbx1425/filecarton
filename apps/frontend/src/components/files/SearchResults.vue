@@ -113,8 +113,7 @@ function navigateToDir(path: string) {
       <div
         v-for="result in results"
         :key="result.path + '/' + result.name"
-        class="flex items-center px-3 text-xs cursor-pointer hover:bg-muted/50 gap-2"
-        style="height: var(--fc-row-height, 32px)"
+        class="flex items-center px-3 text-xs cursor-pointer hover:bg-muted/50 gap-2 h-(--fc-row-height)"
         @click="openResult(result)"
       >
         <component

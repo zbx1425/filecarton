@@ -24,18 +24,20 @@ import {
 } from '@/components/ui/number-field'
 import { useUiStore } from '@/stores/ui'
 import { usePreferencesStore } from '@/stores/preferences'
-import { Sun, Moon, Monitor, Settings, List, Code, Info } from '@lucide/vue'
+import { RADIX_SCALE_LIST, RADIX_SCALES, formatToolbarColorLabel } from '@/utils/themeColors'
+import { Sun, Moon, Monitor, Settings, Palette, List, Code, Info, Check } from '@lucide/vue'
 import Badge from '@/components/ui/badge/Badge.vue'
 
 const appVersion = __APP_VERSION__
 const ui = useUiStore()
 const prefs = usePreferencesStore()
 
-type Section = 'general' | 'filelist' | 'editor'
+type Section = 'general' | 'theme' | 'filelist' | 'editor'
 const activeSection = ref<Section>('general')
 
 const navItems: { id: Section; label: string; icon: typeof Settings }[] = [
   { id: 'general', label: 'General', icon: Settings },
+  { id: 'theme', label: 'Theme', icon: Palette },
   { id: 'filelist', label: 'File List', icon: List },
   { id: 'editor', label: 'Editor', icon: Code },
 ]
@@ -52,9 +54,9 @@ function setEditorFontSize(val: number | undefined) {
 <template>
   <Dialog v-model:open="ui.settingsOpen">
     <DialogContent class="sm:max-w-2xl max-h-[85vh] overflow-hidden p-0">
-      <div class="flex flex-col sm:flex-row h-full sm:min-h-[420px]">
+      <div class="flex flex-col sm:flex-row h-full sm:min-h-105 max-h-[85vh]">
         <!-- Top navigation (narrow screens) -->
-        <nav class="flex sm:hidden border-b bg-muted/30 px-3 pt-4 pb-0 gap-1 overflow-x-auto">
+        <nav class="flex sm:hidden border-b bg-muted/30 px-3 pt-4 pb-0 gap-1 overflow-x-auto shrink-0">
           <Button
             v-for="item in navItems"
             :key="item.id"
@@ -134,9 +136,34 @@ function setEditorFontSize(val: number | undefined) {
               <Badge variant="secondary">v{{ appVersion }}</Badge>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-[140px_1fr] items-start sm:items-center gap-x-4 gap-y-3 sm:gap-y-5">
-              <!-- Theme -->
-              <label class="text-sm text-muted-foreground">Theme</label>
+            <div class="grid grid-cols-1 sm:grid-cols-[8.75rem_1fr] items-start sm:items-center gap-x-4 gap-y-3 sm:gap-y-5">
+              <!-- Base Font Size -->
+              <label class="text-sm text-muted-foreground">Font Size</label>
+              <div class="flex items-center gap-2">
+                <NumberField
+                  :model-value="prefs.baseFontSize"
+                  :min="12"
+                  :max="22"
+                  :step="1"
+                  class="w-28"
+                  @update:model-value="setFontSize"
+                >
+                  <NumberFieldContent>
+                    <NumberFieldDecrement />
+                    <NumberFieldInput />
+                    <NumberFieldIncrement />
+                  </NumberFieldContent>
+                </NumberField>
+                <span class="text-xs text-muted-foreground">px</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Theme -->
+          <div v-if="activeSection === 'theme'" class="space-y-6">
+            <div class="grid grid-cols-1 sm:grid-cols-[8.75rem_1fr] items-start gap-x-4 gap-y-4 sm:gap-y-5">
+              <!-- Appearance Mode -->
+              <label class="text-sm text-muted-foreground sm:pt-1.5">Appearance</label>
               <div class="flex gap-1">
                 <Button
                   size="sm"
@@ -167,31 +194,100 @@ function setEditorFontSize(val: number | undefined) {
                 </Button>
               </div>
 
-              <!-- Base Font Size -->
-              <label class="text-sm text-muted-foreground">Font Size</label>
-              <div class="flex items-center gap-2">
-                <NumberField
-                  :model-value="prefs.baseFontSize"
-                  :min="12"
-                  :max="20"
-                  :step="1"
-                  class="w-28"
-                  @update:model-value="setFontSize"
-                >
-                  <NumberFieldContent>
-                    <NumberFieldDecrement />
-                    <NumberFieldInput />
-                    <NumberFieldIncrement />
-                  </NumberFieldContent>
-                </NumberField>
-                <span class="text-xs text-muted-foreground">px</span>
+              <!-- Primary Color -->
+              <label class="text-sm text-muted-foreground sm:pt-1">Primary Color</label>
+              <div class="space-y-2.5">
+                <div class="flex items-center gap-2">
+                  <Button
+                    size="xs"
+                    :variant="prefs.primaryColor === 'default' ? 'default' : 'outline'"
+                    @click="prefs.primaryColor = 'default'"
+                  >
+                    <span
+                      :data-primary-swatch="prefs.backendDefaultPrimary ?? 'builtin'"
+                      class="size-3 rounded-xs border border-black/15 shrink-0"
+                    />
+                    Default{{ prefs.backendDefaultPrimary ? ` (${RADIX_SCALES[prefs.backendDefaultPrimary].label})` : '' }}
+                  </Button>
+                </div>
+
+                <div class="grid grid-cols-8 sm:grid-cols-11 gap-1.5">
+                  <button
+                    v-for="scale in RADIX_SCALE_LIST"
+                    :key="scale.name"
+                    type="button"
+                    :data-primary-swatch="scale.name"
+                    :title="scale.label"
+                    class="size-6 rounded-sm flex items-center justify-center border border-black/10 dark:border-white/10 transition-transform hover:scale-110 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    :class="prefs.primaryColor === scale.name ? 'ring-2 ring-foreground ring-offset-1 ring-offset-background scale-105' : ''"
+                    @click="prefs.primaryColor = scale.name"
+                  >
+                    <Check v-if="prefs.primaryColor === scale.name" class="size-3.5 stroke-[2.5]" />
+                  </button>
+                </div>
+              </div>
+
+              <!-- Toolbar Color & Tone -->
+              <label class="text-sm text-muted-foreground sm:pt-1">Toolbar</label>
+              <div class="space-y-2.5">
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <Button
+                    size="xs"
+                    :variant="prefs.toolbarColor === 'default' ? 'default' : 'outline'"
+                    @click="prefs.toolbarColor = 'default'"
+                  >
+                    <span
+                      :data-toolbar-swatch="prefs.backendDefaultToolbar ?? 'builtin'"
+                      class="size-3 rounded-xs border shrink-0"
+                    />
+                    Default{{ prefs.backendDefaultToolbar ? ` (${formatToolbarColorLabel(prefs.backendDefaultToolbar)})` : '' }}
+                  </Button>
+                </div>
+
+                <div class="space-y-2">
+                  <div class="space-y-1">
+                    <div class="text-xs text-muted-foreground">Subtle</div>
+                    <div class="grid grid-cols-8 sm:grid-cols-11 gap-1.5">
+                      <button
+                        v-for="scale in RADIX_SCALE_LIST"
+                        :key="scale.name"
+                        type="button"
+                        :data-toolbar-swatch="scale.name"
+                        :title="scale.label"
+                        class="size-6 rounded-sm border flex items-center justify-center transition-transform hover:scale-110 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        :class="prefs.toolbarColor === scale.name ? 'ring-2 ring-foreground ring-offset-1 ring-offset-background scale-105' : ''"
+                        @click="prefs.toolbarColor = scale.name"
+                      >
+                        <Check v-if="prefs.toolbarColor === scale.name" class="size-3.5 stroke-[2.5]" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="space-y-1">
+                    <div class="text-xs text-muted-foreground">Solid</div>
+                    <div class="grid grid-cols-8 sm:grid-cols-11 gap-1.5">
+                      <button
+                        v-for="scale in RADIX_SCALE_LIST"
+                        :key="`${scale.name}-solid`"
+                        type="button"
+                        :data-toolbar-swatch="`${scale.name}-solid`"
+                        :title="`${scale.label} (Solid)`"
+                        class="size-6 rounded-sm border flex items-center justify-center transition-transform hover:scale-110 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        :class="prefs.toolbarColor === `${scale.name}-solid` ? 'ring-2 ring-foreground ring-offset-1 ring-offset-background scale-105' : ''"
+                        @click="prefs.toolbarColor = `${scale.name}-solid`"
+                      >
+                        <Check v-if="prefs.toolbarColor === `${scale.name}-solid`" class="size-3.5 stroke-[2.5]" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
           <!-- File List -->
           <div v-if="activeSection === 'filelist'" class="space-y-6">
-            <div class="grid grid-cols-1 sm:grid-cols-[140px_1fr] items-start sm:items-center gap-x-4 gap-y-3 sm:gap-y-5">
+            <div class="grid grid-cols-1 sm:grid-cols-[8.75rem_1fr] items-start sm:items-center gap-x-4 gap-y-3 sm:gap-y-5">
               <!-- Display Density -->
               <label class="text-sm text-muted-foreground">Density</label>
               <div class="flex gap-1">
@@ -243,7 +339,7 @@ function setEditorFontSize(val: number | undefined) {
                   >
                     Shown
                   </Button>
-                  <div class="flex-1 px-1 text-xs" ></div>
+                  <div class="flex-1 px-1 text-xs"></div>
                 </div>
                 <div
                   v-if="prefs.dotFilesLocked"
@@ -291,7 +387,7 @@ function setEditorFontSize(val: number | undefined) {
 
           <!-- Editor -->
           <div v-if="activeSection === 'editor'" class="space-y-6">
-            <div class="grid grid-cols-1 sm:grid-cols-[140px_1fr] items-start sm:items-center gap-x-4 gap-y-3 sm:gap-y-5">
+            <div class="grid grid-cols-1 sm:grid-cols-[8.75rem_1fr] items-start sm:items-center gap-x-4 gap-y-3 sm:gap-y-5">
               <!-- Editor Font Size -->
               <label class="text-sm text-muted-foreground">Font Size</label>
               <div class="flex items-center gap-2">

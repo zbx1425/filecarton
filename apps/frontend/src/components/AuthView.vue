@@ -83,7 +83,7 @@ function handleRedirect(pluginId: string) {
 <template>
   <div class="flex min-h-screen">
     <!-- Left: gradient background (lg+ only) -->
-    <div class="hidden lg:flex w-[55%] relative overflow-hidden bg-gradient-to-br from-[#023456] via-[#094168] to-[#2B5B86]">
+    <div class="hidden lg:flex w-[55%] relative overflow-hidden bg-gradient-to-br from-login-from via-login-via to-login-to">
       <div class="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/5"></div>
       <div class="absolute top-1/3 -right-20 w-80 h-80 rounded-full bg-white/5"></div>
       <div class="absolute -bottom-16 left-1/4 w-64 h-64 rounded-full bg-white/5"></div>
@@ -92,7 +92,7 @@ function handleRedirect(pluginId: string) {
 
     <!-- Right: login form -->
     <div class="flex-1 flex flex-col justify-center items-center px-6 py-12 bg-background">
-      <div class="w-full max-w-[380px]">
+      <div class="w-full max-w-95">
         <!-- Header -->
         <div class="mb-10">
           <div
@@ -167,7 +167,7 @@ function handleRedirect(pluginId: string) {
           <button
             v-for="plugin in auth.redirectPlugins"
             :key="plugin.id"
-            class="flex items-center gap-3 w-full h-12 px-4 bg-background border border-input rounded-md text-[15px] text-foreground transition-colors hover:bg-accent hover:border-muted-foreground/40 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+            class="flex items-center gap-3 w-full h-12 px-4 bg-background border border-input rounded-md text-sm text-foreground transition-colors hover:bg-accent hover:border-muted-foreground/40 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
             :disabled="submitting"
             @click="handleRedirect(plugin.id)"
           >
