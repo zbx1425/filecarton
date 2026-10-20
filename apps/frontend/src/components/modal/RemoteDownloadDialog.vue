@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Link, CloudDownload, Info } from '@lucide/vue'
+import { Link, Info } from '@lucide/vue'
 import { dialogState } from '@/composables/useDialogs'
 import { usePreferencesStore } from '@/stores/preferences'
 import { validateFileName } from '@/utils/path'
@@ -60,22 +60,15 @@ const urlError = computed(() => {
 
 const nameError = computed(() => {
   const custom = nameInput.value.trim()
-  const target = custom
-  if (!target) return ''
+  if (!custom) return ''
 
-  const vErr = validateFileName(target)
-  if (vErr) {
-    return custom ? vErr : `Inferred filename "${target}" is invalid. Please enter a custom filename.`
+  const vErr = validateFileName(custom)
+  if (vErr) return vErr
+  if (prefs.isDotFileBlocked(custom)) {
+    return 'Dot files (hidden files) are not allowed'
   }
-  if (prefs.isDotFileBlocked(target)) {
-    return custom
-      ? 'Dot files (hidden files) are not allowed'
-      : `Inferred filename "${target}" is a hidden file (not allowed). Please enter a custom filename.`
-  }
-  if (prefs.isFilenameBlocked(target)) {
-    return custom
-      ? 'This file type is restricted'
-      : `Inferred filename "${target}" is restricted. Please enter a custom filename.`
+  if (prefs.isFilenameBlocked(custom)) {
+    return 'This file type is restricted'
   }
   return ''
 })
@@ -91,9 +84,8 @@ function handleSubmit() {
   const targetDir = state.value.targetDir
   const url = urlInput.value.trim()
   const customName = nameInput.value.trim()
-  const hintName = customName || undefined
   closeDialog()
-  remoteDownload(targetDir, url, customName || undefined, hintName)
+  remoteDownload(targetDir, url, customName || undefined)
 }
 </script>
 

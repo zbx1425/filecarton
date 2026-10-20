@@ -275,12 +275,19 @@ function api_remote_download(PathSecurity $pathSec, FileOps $fileOps): void {
             }
         }
 
-        if ($overwrite && (file_exists($finalPath) || is_link($finalPath))) {
+        clearstatcache(true, $finalPath);
+        if (file_exists($finalPath) || is_link($finalPath)) {
             if (is_dir($finalPath)) {
                 Response::error('already_exists', 409);
             }
             $pathSec->assertNotIgnored($finalPath);
-            @unlink($finalPath);
+            if (!$overwrite) {
+                Response::ok([
+                    'completed' => false,
+                    'name'      => $resolvedName,
+                    'conflict'  => $resolvedName,
+                ]);
+            }
         }
 
         if (!@rename($tempPath, $finalPath)) {

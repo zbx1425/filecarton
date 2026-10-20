@@ -35,6 +35,13 @@ def test_readonly_grant_blocks_post(stack, tmp_path_factory, tools):
         )
         assert chmod_resp.status_code == 403
         assert error_code(chmod_resp) == "readonly"
+        remote_dl_resp = bob.api(
+            "remote_download",
+            method="POST",
+            json_body={"path": "", "url": "http://127.0.0.1:9/file.txt"},
+        )
+        assert remote_dl_resp.status_code == 403
+        assert error_code(remote_dl_resp) == "readonly"
         assert_unchanged(before, snapshot(scenario.bob_root), "bob")
     finally:
         bob.close()
@@ -54,6 +61,13 @@ def test_must_readonly_overrides_writable_grant(stack, tmp_path_factory, tools):
         )
         assert created.status_code == 403
         assert error_code(created) == "readonly"
+        remote_dl_resp = alice.api(
+            "remote_download",
+            method="POST",
+            json_body={"path": "", "url": "http://127.0.0.1:9/file.txt"},
+        )
+        assert remote_dl_resp.status_code == 403
+        assert error_code(remote_dl_resp) == "readonly"
         assert_unchanged(before, snapshot(scenario.alice_root), "alice")
     finally:
         alice.close()

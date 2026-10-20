@@ -66,12 +66,11 @@ export async function remoteDownload(
   targetDir: string,
   url: string,
   customName?: string,
-  hintName?: string,
 ) {
   const ui = useUiStore()
   if (ui.readonly || !ui.features.remoteDownload) return
 
-  const displayLabel = customName || hintName || 'remote file'
+  const displayLabel = customName || 'remote file'
   let activeToastId: string | number | undefined = toast.loading(`Downloading ${displayLabel}...`)
 
   try {
@@ -445,10 +444,7 @@ export function canModifyItemPermissions(item: { name: string; isDir: boolean; o
   const ui = useUiStore()
   if (ui.readonly || !ui.features.unixPermModify) return false
 
-  const prefs = usePreferencesStore()
-  if (!item.isDir && prefs.isFilenameBlocked(item.name)) return false
-
-  if (ui.unixPermInfo.isRoot) return true
+  if (ui.unixPermInfo.isRoot || ui.unixPermInfo.user === 'unknown') return true
   if (item.owner !== undefined && item.owner !== ui.unixPermInfo.user) return false
   return true
 }
@@ -483,21 +479,24 @@ export function openPermissionsSelected() {
   const selectedNames = Array.from(fileList.selected).filter(n => visible.has(n))
   if (selectedNames.length === 0) return
 
-  const items = selectedNames.map(name => {
-    const dir = fileList.getDirByName(name)
-    if (dir) {
-      return { name: dir.name, isDir: true, mode: dir.mode, owner: dir.owner, group: dir.group }
-    }
-    const file = fileList.getFileByName(name)
-    return {
-      name,
-      isDir: false,
-      mode: file?.mode,
-      owner: file?.owner,
-      group: file?.group,
-    }
-  })
+  const items = selectedNames
+    .map(name => {
+      const dir = fileList.getDirByName(name)
+      if (dir) {
+        return { name: dir.name, isDir: true, mode: dir.mode, owner: dir.owner, group: dir.group }
+      }
+      const file = fileList.getFileByName(name)
+      return {
+        name,
+        isDir: false,
+        mode: file?.mode,
+        owner: file?.owner,
+        group: file?.group,
+      }
+    })
+    .filter(item => canModifyItemPermissions(item))
 
+  if (items.length === 0) return
   showPermissionsDialog(navigation.currentPathStr, items)
 }
 

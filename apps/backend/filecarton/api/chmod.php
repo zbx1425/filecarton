@@ -45,7 +45,7 @@ function api_chmod(PathSecurity $pathSec, FileOps $fileOps): void {
 
     $resolvedOwner = null;
     if ($hasOwnerChange) {
-        $resolvedOwner = resolve_chown_target_user($ownerRaw);
+        $resolvedOwner = resolve_chown_target($ownerRaw, 'posix_getpwnam', 'uid');
         if ($resolvedOwner === null) {
             Response::error('perm.invalid_owner', 400, ['owner' => $ownerRaw]);
         }
@@ -53,7 +53,7 @@ function api_chmod(PathSecurity $pathSec, FileOps $fileOps): void {
 
     $resolvedGroup = null;
     if ($hasGroupChange) {
-        $resolvedGroup = resolve_chown_target_group($groupRaw);
+        $resolvedGroup = resolve_chown_target($groupRaw, 'posix_getgrnam', 'gid');
         if ($resolvedGroup === null) {
             Response::error('perm.invalid_group', 400, ['group' => $groupRaw]);
         }
@@ -67,40 +67,33 @@ function api_chmod(PathSecurity $pathSec, FileOps $fileOps): void {
     foreach ($input['items'] as $name) {
         if (!is_string($name) || $name === '') continue;
 
+        if ($name === '.' || $name === '..' || str_contains($name, "\0") || str_contains($name, '/') || str_contains($name, '\\')) {
+            $failed[] = ['name' => $name, 'error' => 'invalid_filename'];
+            continue;
+        }
+
+        $rawTarget = $basePath . '/' . $name;
+        if (is_link($rawTarget)) {
+            $failed[] = ['name' => $name, 'error' => 'access_denied'];
+            continue;
+        }
+
         try {
             $itemPath = $pathSec->resolveItemIn($basePath, $name);
+        } catch (ApiException $e) {
+            $failed[] = ['name' => $name, 'error' => $e->errorCode === 'path_traversal' ? 'path_traversal' : 'invalid_filename'];
+            continue;
         } catch (\Throwable $e) {
             $failed[] = ['name' => $name, 'error' => 'invalid_filename'];
             continue;
         }
 
-        if ($pathSec->isIgnored($itemPath) || (!file_exists($itemPath) && !is_link($itemPath))) {
+        if ($pathSec->isIgnored($itemPath) || !file_exists($itemPath)) {
             $failed[] = ['name' => $name, 'error' => 'not_found.file'];
             continue;
         }
 
-        if (is_link($itemPath)) {
-            $failed[] = ['name' => $name, 'error' => 'access_denied'];
-            continue;
-        }
-
-        $itemBaseName = basename($itemPath);
         $isDir = is_dir($itemPath);
-
-        if (!$isDir && $pathSec->isFilenameBlocked($itemBaseName)) {
-            $failed[] = ['name' => $name, 'error' => 'filename_blocked'];
-            continue;
-        }
-
-        if ($isDir && $recursive && $pathSec->hasProtectedDescendants($itemPath)) {
-            $failed[] = ['name' => $name, 'error' => 'protected_items'];
-            continue;
-        }
-
-        if (!apply_unix_perm_single($itemPath, $hasModeChange, $setMask, $clearMask, $hasOwnerChange, $resolvedOwner, $hasGroupChange, $resolvedGroup)) {
-            $failed[] = ['name' => $name, 'error' => 'io_error'];
-            continue;
-        }
 
         if ($isDir && $recursive) {
             apply_unix_perm_recursive(
@@ -114,8 +107,14 @@ function api_chmod(PathSecurity $pathSec, FileOps $fileOps): void {
                 $resolvedOwner,
                 $hasGroupChange,
                 $resolvedGroup,
+                $completed,
                 $failed
             );
+        }
+
+        if (!apply_unix_perm_single($itemPath, $hasModeChange, $setMask, $clearMask, $hasOwnerChange, $resolvedOwner, $hasGroupChange, $resolvedGroup)) {
+            $failed[] = ['name' => $name, 'error' => 'io_error'];
+            continue;
         }
 
         $completed++;
@@ -126,57 +125,23 @@ function api_chmod(PathSecurity $pathSec, FileOps $fileOps): void {
 }
 
 /**
- * Resolve an owner string to a username or numeric UID suitable for chown().
+ * Resolve an owner/group string to a name or numeric ID suitable for chown()/chgrp().
  * Returns null if invalid or non-existent.
  *
  * @return string|int|null
  */
-function resolve_chown_target_user(string $owner) {
-    if (preg_match('/[\x00-\x1F\x7F:]/', $owner)) {
+function resolve_chown_target(string $target, string $posixFn, string $idKey) {
+    if (preg_match('/[\x00-\x1F\x7F:]/', $target)) {
         return null;
     }
-    if (function_exists('posix_getpwnam')) {
-        $info = @posix_getpwnam($owner);
-        if (is_array($info) && isset($info['uid'])) {
-            return (int)$info['uid'];
+    if (function_exists($posixFn)) {
+        $info = @$posixFn($target);
+        if (is_array($info) && isset($info[$idKey])) {
+            return (int)$info[$idKey];
         }
-        if (ctype_digit($owner)) {
-            $uid = (int)$owner;
-            return $uid >= 0 ? $uid : null;
-        }
-        return null;
+        return ctype_digit($target) ? (int)$target : null;
     }
-    if (ctype_digit($owner)) {
-        return (int)$owner;
-    }
-    return $owner;
-}
-
-/**
- * Resolve a group string to a group name or numeric GID suitable for chgrp().
- * Returns null if invalid or non-existent.
- *
- * @return string|int|null
- */
-function resolve_chown_target_group(string $group) {
-    if (preg_match('/[\x00-\x1F\x7F:]/', $group)) {
-        return null;
-    }
-    if (function_exists('posix_getgrnam')) {
-        $info = @posix_getgrnam($group);
-        if (is_array($info) && isset($info['gid'])) {
-            return (int)$info['gid'];
-        }
-        if (ctype_digit($group)) {
-            $gid = (int)$group;
-            return $gid >= 0 ? $gid : null;
-        }
-        return null;
-    }
-    if (ctype_digit($group)) {
-        return (int)$group;
-    }
-    return $group;
+    return ctype_digit($target) ? (int)$target : $target;
 }
 
 /**
@@ -195,50 +160,38 @@ function apply_unix_perm_single(
     bool $hasGroupChange,
     $group
 ): bool {
-        if ($hasOwnerChange || $hasGroupChange) {
-            $origPerms = @fileperms($absPath);
-            if ($origPerms !== false) {
-                $currentMode = $origPerms & 07777;
-                if ($hasOwnerChange) {
-                    if (!function_exists('chown') || !@chown($absPath, $owner)) {
-                        return false;
-                    }
-                }
-                if ($hasGroupChange) {
-                    if (!function_exists('chgrp') || !@chgrp($absPath, $group)) {
-                        return false;
-                    }
-                }
-                if (!$hasModeChange && (($currentMode & 06000) !== 0)) {
-                    // chown/chgrp on Linux may clear SUID/SGID bits; restore original mode if mode wasn't being changed
-                    @chmod($absPath, $currentMode);
-                }
-            } else {
-                if ($hasOwnerChange && (!function_exists('chown') || !@chown($absPath, $owner))) {
-                    return false;
-                }
-                if ($hasGroupChange && (!function_exists('chgrp') || !@chgrp($absPath, $group))) {
-                    return false;
-                }
-            }
+    if ($hasOwnerChange || $hasGroupChange) {
+        $origPerms = @fileperms($absPath);
+        if ($hasOwnerChange && (!function_exists('chown') || !@chown($absPath, $owner))) {
+            return false;
         }
-        if ($hasModeChange) {
-            clearstatcache(true, $absPath);
-            $currentPerms = @fileperms($absPath);
-            if ($currentPerms === false) {
-                return false;
-            }
-            $currentMode = $currentPerms & 07777;
-            $newMode = ($currentMode | $setMask) & (~$clearMask & 07777);
-            if (!@chmod($absPath, $newMode)) {
-                return false;
-            }
+        if ($hasGroupChange && (!function_exists('chgrp') || !@chgrp($absPath, $group))) {
+            return false;
         }
-        return true;
+        if (!$hasModeChange && $origPerms !== false && (($origPerms & 06000) !== 0)) {
+            // chown/chgrp on Linux may clear SUID/SGID bits; restore original mode if mode wasn't being changed
+            @chmod($absPath, $origPerms & 07777);
+        }
+    }
+    if ($hasModeChange) {
+        clearstatcache(true, $absPath);
+        $currentPerms = @fileperms($absPath);
+        if ($currentPerms === false) {
+            return false;
+        }
+        $currentMode = $currentPerms & 07777;
+        $newMode = ($currentMode | $setMask) & (~$clearMask & 07777);
+        if (!@chmod($absPath, $newMode)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 /**
  * Recursively apply permission changes inside a directory, enforcing PathSecurity rules.
+ * Applies to children before parent directories so removing read/exec bits on directories
+ * does not block traversing their contents.
  *
  * @param string|int|null $owner
  * @param string|int|null $group
@@ -254,11 +207,12 @@ function apply_unix_perm_recursive(
     $owner,
     bool $hasGroupChange,
     $group,
+    int &$completed,
     array &$failed
 ): void {
     $entries = @scandir($dirAbs);
     if ($entries === false) {
-        $failed[] = ['name' => $relPrefix, 'error' => 'io_error'];
+        $failed[] = ['name' => $relPrefix . '/*', 'error' => 'io_error'];
         return;
     }
 
@@ -287,15 +241,6 @@ function apply_unix_perm_recursive(
         }
 
         $isDir = is_dir($normalizedChild);
-        if (!$isDir && $pathSec->isFilenameBlocked($entry)) {
-            $failed[] = ['name' => $childRel, 'error' => 'filename_blocked'];
-            continue;
-        }
-
-        if (!apply_unix_perm_single($normalizedChild, $hasModeChange, $setMask, $clearMask, $hasOwnerChange, $owner, $hasGroupChange, $group)) {
-            $failed[] = ['name' => $childRel, 'error' => 'io_error'];
-        }
-
         if ($isDir) {
             apply_unix_perm_recursive(
                 $normalizedChild,
@@ -308,8 +253,15 @@ function apply_unix_perm_recursive(
                 $owner,
                 $hasGroupChange,
                 $group,
+                $completed,
                 $failed
             );
+        }
+
+        if (apply_unix_perm_single($normalizedChild, $hasModeChange, $setMask, $clearMask, $hasOwnerChange, $owner, $hasGroupChange, $group)) {
+            $completed++;
+        } else {
+            $failed[] = ['name' => $childRel, 'error' => 'io_error'];
         }
     }
 }

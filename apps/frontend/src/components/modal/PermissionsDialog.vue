@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
-import { dialogState, showOperationReport } from '@/composables/useDialogs'
+import { dialogState, confirm, showOperationReport } from '@/composables/useDialogs'
 import { useUiStore } from '@/stores/ui'
 import { useFileListStore } from '@/stores/fileList'
 import { useTreeStore } from '@/stores/tree'
@@ -160,8 +160,12 @@ function initFromItems() {
     let allTrue = true
     let allFalse = true
     for (const item of list) {
-      const m = item.mode ?? 0o0644
-      const set = (m & def.mask) !== 0
+      if (item.mode === undefined) {
+        allTrue = false
+        allFalse = false
+        break
+      }
+      const set = (item.mode & def.mask) !== 0
       if (set) allFalse = false
       else allTrue = false
     }
@@ -271,6 +275,19 @@ function closeDialog() {
 
 async function applyPermissions(recursive: boolean) {
   if (!isAnyDirty.value || submitting.value) return
+
+  if (recursive) {
+    const dirCount = items.value.filter(i => i.isDir).length
+    const msg = dirCount === 1 && items.value.length === 1
+      ? `Apply these permission changes recursively to "${items.value[0].name}" and all items inside it? This cannot be undone.`
+      : `Apply these permission changes recursively to the selected items and all contents inside ${dirCount} folder(s)? This cannot be undone.`
+    const confirmed = await confirm('Apply Recursively', msg, {
+      actionLabel: 'Apply Recursively',
+      danger: true,
+    })
+    if (!confirmed) return
+  }
+
   submitting.value = true
 
   const dirPath = state.value.dirPath

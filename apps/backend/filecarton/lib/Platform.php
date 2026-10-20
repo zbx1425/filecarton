@@ -208,21 +208,22 @@ class Platform {
             return self::$procUser;
         }
         $euid = null;
-        $user = '';
         if (function_exists('posix_geteuid')) {
-            $euid = @posix_geteuid();
-            if (is_int($euid)) {
-                $user = self::resolveOwnerName($euid);
+            $id = @posix_geteuid();
+            if (is_int($id)) {
+                $euid = $id;
             }
         }
-        if ($user === '') {
-            $u = @get_current_user();
-            $user = (is_string($u) && $u !== '') ? $u : 'unknown';
+        if ($euid === null && @is_readable('/proc/self/status')) {
+            $status = @file_get_contents('/proc/self/status');
+            if (is_string($status) && preg_match('/^Uid:\s+\d+\s+(\d+)/m', $status, $m)) {
+                $euid = (int)$m[1];
+            }
         }
-        $isRoot = ($euid === 0) || ($euid === null && $user === 'root');
+        $user = $euid !== null ? self::resolveOwnerName($euid) : 'unknown';
         self::$procUser = [
             'user'   => $user,
-            'isRoot' => $isRoot,
+            'isRoot' => $euid === 0,
         ];
         return self::$procUser;
     }
