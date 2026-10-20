@@ -33,8 +33,8 @@ class StaticPasswordAuth extends PasswordAuth {
             $this->users = [];
             foreach (Auth::staticUserList() as $row) {
                 if (!is_array($row) || !isset($row['id']) || !is_string($row['id'])) continue;
-                if (isset($row['passwordHash']) && is_string($row['passwordHash'])) {
-                    $this->users[$row['id']] = $row['passwordHash'];
+                if (isset($row['password_hash']) && is_string($row['password_hash'])) {
+                    $this->users[$row['id']] = $row['password_hash'];
                 }
             }
         }
@@ -48,9 +48,9 @@ class StaticPasswordAuth extends PasswordAuth {
         $p = [];
         foreach (Auth::staticUserList() as $row) {
             if (!is_array($row) || !isset($row['id']) || !is_string($row['id'])) continue;
-            if (isset($row['passwordHash']) && is_string($row['passwordHash']) && $row['passwordHash'] !== '') {
-                if (!preg_match('/^(\$2[ayb]\$|\$argon2)/', $row['passwordHash'])) {
-                    $p[] = 'FILECARTON_STATIC_USER_LIST passwordHash must be password_hash().';
+            if (isset($row['password_hash']) && is_string($row['password_hash']) && $row['password_hash'] !== '') {
+                if (!preg_match('/^(\$2[ayb]\$|\$argon2)/', $row['password_hash'])) {
+                    $p[] = 'FILECARTON_STATIC_USER_LIST password_hash must be password_hash().';
                     break;
                 }
             }
@@ -73,8 +73,8 @@ class StaticPasswordAuth extends PasswordAuth {
         $display = $username;
         foreach (Auth::staticUserList() as $row) {
             if (is_array($row) && isset($row['id']) && $row['id'] === $username) {
-                if (isset($row['displayName']) && is_string($row['displayName']) && $row['displayName'] !== '') {
-                    $display = $row['displayName'];
+                if (isset($row['display_name']) && is_string($row['display_name']) && $row['display_name'] !== '') {
+                    $display = $row['display_name'];
                 }
                 break;
             }

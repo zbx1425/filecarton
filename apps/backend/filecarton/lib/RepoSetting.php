@@ -37,8 +37,8 @@ class RepoSetting {
      */
     public static function fromConfigArray(array $arr): self {
         $s = new self();
-        if (array_key_exists('rootPath', $arr) && is_string($arr['rootPath'])) {
-            $s->rootPath = $arr['rootPath'];
+        if (array_key_exists('root_path', $arr) && is_string($arr['root_path'])) {
+            $s->rootPath = $arr['root_path'];
         }
         if (array_key_exists('readonly', $arr)) {
             $s->readonly = (bool)$arr['readonly'];
@@ -46,20 +46,20 @@ class RepoSetting {
         if (array_key_exists('branding', $arr) && is_string($arr['branding'])) {
             $s->branding = $arr['branding'];
         }
-        if (array_key_exists('repoName', $arr) && is_string($arr['repoName'])) {
-            $s->repoName = $arr['repoName'];
+        if (array_key_exists('repo_name', $arr) && is_string($arr['repo_name'])) {
+            $s->repoName = $arr['repo_name'];
         }
-        $s->featureArchive = (array_key_exists('featureArchive', $arr) && is_bool($arr['featureArchive']))
-            ? $arr['featureArchive']
+        $s->featureArchive = (array_key_exists('feature_archive', $arr) && is_bool($arr['feature_archive']))
+            ? $arr['feature_archive']
             : false;
-        $s->featureUnixPerm = (array_key_exists('featureUnixPerm', $arr) && is_bool($arr['featureUnixPerm']))
-            ? $arr['featureUnixPerm']
+        $s->featureUnixPerm = (array_key_exists('feature_unix_perm', $arr) && is_bool($arr['feature_unix_perm']))
+            ? $arr['feature_unix_perm']
             : false;
-        $s->featureUnixPermModify = (array_key_exists('featureUnixPermModify', $arr) && is_bool($arr['featureUnixPermModify']))
-            ? $arr['featureUnixPermModify']
+        $s->featureUnixPermModify = (array_key_exists('feature_unix_perm_modify', $arr) && is_bool($arr['feature_unix_perm_modify']))
+            ? $arr['feature_unix_perm_modify']
             : false;
-        $s->featureRemoteDownload = (array_key_exists('featureRemoteDownload', $arr) && is_bool($arr['featureRemoteDownload']))
-            ? $arr['featureRemoteDownload']
+        $s->featureRemoteDownload = (array_key_exists('feature_remote_download', $arr) && is_bool($arr['feature_remote_download']))
+            ? $arr['feature_remote_download']
             : false;
         return $s;
     }
@@ -70,8 +70,8 @@ class RepoSetting {
      */
     public static function fromStaticRow(array $row): self {
         $s = new self();
-        if (isset($row['root']) && is_string($row['root']) && $row['root'] !== '') {
-            $s->rootPath = $row['root'];
+        if (isset($row['root_path']) && is_string($row['root_path']) && $row['root_path'] !== '') {
+            $s->rootPath = $row['root_path'];
         }
         if (array_key_exists('readonly', $row) && is_bool($row['readonly'])) {
             $s->readonly = $row['readonly'];
@@ -79,20 +79,20 @@ class RepoSetting {
         if (array_key_exists('branding', $row) && is_string($row['branding'])) {
             $s->branding = $row['branding'];
         }
-        if (array_key_exists('repoName', $row) && is_string($row['repoName'])) {
-            $s->repoName = $row['repoName'];
+        if (array_key_exists('repo_name', $row) && is_string($row['repo_name'])) {
+            $s->repoName = $row['repo_name'];
         }
-        if (array_key_exists('featureArchive', $row) && is_bool($row['featureArchive'])) {
-            $s->featureArchive = $row['featureArchive'];
+        if (array_key_exists('feature_archive', $row) && is_bool($row['feature_archive'])) {
+            $s->featureArchive = $row['feature_archive'];
         }
-        if (array_key_exists('featureUnixPerm', $row) && is_bool($row['featureUnixPerm'])) {
-            $s->featureUnixPerm = $row['featureUnixPerm'];
+        if (array_key_exists('feature_unix_perm', $row) && is_bool($row['feature_unix_perm'])) {
+            $s->featureUnixPerm = $row['feature_unix_perm'];
         }
-        if (array_key_exists('featureUnixPermModify', $row) && is_bool($row['featureUnixPermModify'])) {
-            $s->featureUnixPermModify = $row['featureUnixPermModify'];
+        if (array_key_exists('feature_unix_perm_modify', $row) && is_bool($row['feature_unix_perm_modify'])) {
+            $s->featureUnixPermModify = $row['feature_unix_perm_modify'];
         }
-        if (array_key_exists('featureRemoteDownload', $row) && is_bool($row['featureRemoteDownload'])) {
-            $s->featureRemoteDownload = $row['featureRemoteDownload'];
+        if (array_key_exists('feature_remote_download', $row) && is_bool($row['feature_remote_download'])) {
+            $s->featureRemoteDownload = $row['feature_remote_download'];
         }
         return $s;
     }

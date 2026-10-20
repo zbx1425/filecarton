@@ -124,8 +124,8 @@ class GitHubOAuth extends OAuth2Auth {
     private $clientSecret;
 
     public function __construct(array $opts = []) {
-        $this->clientId = isset($opts['clientId']) ? (string)$opts['clientId'] : '';
-        $this->clientSecret = isset($opts['clientSecret']) ? (string)$opts['clientSecret'] : '';
+        $this->clientId = isset($opts['client_id']) ? (string)$opts['client_id'] : '';
+        $this->clientSecret = isset($opts['client_secret']) ? (string)$opts['client_secret'] : '';
     }
 
     public function id(): string { return 'github'; }
@@ -134,7 +134,7 @@ class GitHubOAuth extends OAuth2Auth {
     public function validateConfig(): array {
         $p = [];
         if ($this->clientId === '' || $this->clientSecret === '') {
-            $p[] = 'GitHubOAuth clientId / clientSecret is empty.';
+            $p[] = 'GitHubOAuth client_id / client_secret is empty.';
         }
         return $p;
     }
@@ -178,8 +178,8 @@ class MicrosoftOAuth extends OAuth2Auth {
     private $tenant;
 
     public function __construct(array $opts = []) {
-        $this->clientId = isset($opts['clientId']) ? (string)$opts['clientId'] : '';
-        $this->clientSecret = isset($opts['clientSecret']) ? (string)$opts['clientSecret'] : '';
+        $this->clientId = isset($opts['client_id']) ? (string)$opts['client_id'] : '';
+        $this->clientSecret = isset($opts['client_secret']) ? (string)$opts['client_secret'] : '';
         $this->tenant = isset($opts['tenant']) ? (string)$opts['tenant'] : 'common';
     }
 
@@ -189,7 +189,7 @@ class MicrosoftOAuth extends OAuth2Auth {
     public function validateConfig(): array {
         $p = [];
         if ($this->clientId === '' || $this->clientSecret === '') {
-            $p[] = 'MicrosoftOAuth clientId / clientSecret is empty.';
+            $p[] = 'MicrosoftOAuth client_id / client_secret is empty.';
         }
         if (!preg_match('/^[A-Za-z0-9.\-]{1,64}$/', $this->tenant)) {
             $p[] = 'MicrosoftOAuth tenant is invalid (allowed: A-Z, 0-9, dot, hyphen, max 64 chars).';
@@ -231,8 +231,8 @@ class GoogleOAuth extends OAuth2Auth {
     private $clientSecret;
 
     public function __construct(array $opts = []) {
-        $this->clientId = isset($opts['clientId']) ? (string)$opts['clientId'] : '';
-        $this->clientSecret = isset($opts['clientSecret']) ? (string)$opts['clientSecret'] : '';
+        $this->clientId = isset($opts['client_id']) ? (string)$opts['client_id'] : '';
+        $this->clientSecret = isset($opts['client_secret']) ? (string)$opts['client_secret'] : '';
     }
 
     public function id(): string { return 'google'; }
@@ -241,7 +241,7 @@ class GoogleOAuth extends OAuth2Auth {
     public function validateConfig(): array {
         $p = [];
         if ($this->clientId === '' || $this->clientSecret === '') {
-            $p[] = 'GoogleOAuth clientId / clientSecret is empty.';
+            $p[] = 'GoogleOAuth client_id / client_secret is empty.';
         }
         return $p;
     }
@@ -280,8 +280,8 @@ class DiscordOAuth extends OAuth2Auth {
     private $clientSecret;
 
     public function __construct(array $opts = []) {
-        $this->clientId = isset($opts['clientId']) ? (string)$opts['clientId'] : '';
-        $this->clientSecret = isset($opts['clientSecret']) ? (string)$opts['clientSecret'] : '';
+        $this->clientId = isset($opts['client_id']) ? (string)$opts['client_id'] : '';
+        $this->clientSecret = isset($opts['client_secret']) ? (string)$opts['client_secret'] : '';
     }
 
     public function id(): string { return 'discord'; }
@@ -290,7 +290,7 @@ class DiscordOAuth extends OAuth2Auth {
     public function validateConfig(): array {
         $p = [];
         if ($this->clientId === '' || $this->clientSecret === '') {
-            $p[] = 'DiscordOAuth clientId / clientSecret is empty.';
+            $p[] = 'DiscordOAuth client_id / client_secret is empty.';
         }
         return $p;
     }
@@ -336,7 +336,7 @@ class DiscordOAuth extends OAuth2Auth {
  * Config example:
  *   ['class' => \FileCarton\LinkAuth::class,
  *    'id' => 'register', 'url' => 'https://example.com/register',
- *    'label' => ['key' => 'auth.register'], 'returnParam' => 'redirect_uri']
+ *    'label' => ['key' => 'auth.register'], 'return_param' => 'redirect_uri']
  */
 class LinkAuth extends RedirectAuth {
     /** @var string */
@@ -353,7 +353,7 @@ class LinkAuth extends RedirectAuth {
     public function __construct(array $opts = []) {
         $this->pluginId    = isset($opts['id'])    ? (string)$opts['id']    : '';
         $this->url         = isset($opts['url'])   ? (string)$opts['url']  : '';
-        $this->returnParam = isset($opts['returnParam']) ? (string)$opts['returnParam'] : 'redirect_uri';
+        $this->returnParam = isset($opts['return_param']) ? (string)$opts['return_param'] : 'redirect_uri';
 
         $this->pluginLabel = isset($opts['label']) ? $opts['label'] : '';
         if (!is_string($this->pluginLabel) && !is_array($this->pluginLabel)) {
@@ -386,7 +386,7 @@ class LinkAuth extends RedirectAuth {
             $p[] = 'LinkAuth url must start with https:// or http://.';
         }
         if ($this->returnParam === '') {
-            $p[] = 'LinkAuth returnParam is empty.';
+            $p[] = 'LinkAuth return_param is empty.';
         }
         return $p;
     }

@@ -41,11 +41,11 @@ if ($real === false || !is_string($backend) || !is_file($backend . '/filecarton.
 define('FILECARTON_EMBED', true);
 define('FILECARTON_DEV_SERVER', 'http://127.0.0.1:9');
 define('FILECARTON_REPO_SETTING', [
-    'rootPath' => str_replace('\\', '/', $real),
+    'root_path' => str_replace('\\', '/', $real),
     'readonly' => false,
     'branding' => 'FileCarton',
-    'repoName' => $repo,
-    'featureArchive' => true,
+    'repo_name' => $repo,
+    'feature_archive' => true,
 ]);
 
 require $backend . '/filecarton.php';

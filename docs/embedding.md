@@ -6,14 +6,42 @@ FileCarton can be embedded into your PHP application, with its configuration dyn
 
 ## Basic setup
 
-1. In `filecarton.config.php`, set `define_default('FILECARTON_MUST_EMBED', true);`. This makes FileCarton refuse to start when accessed directly.
+1. In `filecarton.config.toml.php`, set `must_embed = true` under `[auth]`. This makes FileCarton refuse to start when `filecarton.php` is accessed directly.
 2. In your bootstrap script, define `FILECARTON_EMBED` and `FILECARTON_REPO_SETTING` **before** including `filecarton.php`.  
-   These take precedence over the `define_default` values in `filecarton.config.php`.  
    You should set `FILECARTON_EMBED` to `true` to disable the built-in auth system, which you most likely don't want to run alongside your own authentication logic.
-   You must provide a complete `FILECARTON_REPO_SETTING` array with all 5 fields (`rootPath`, `readonly`, `branding`, `repoName`, `featureArchive`).
+   You must provide a `FILECARTON_REPO_SETTING` array with the required fields (`root_path`, `readonly`, `branding`, `repo_name`, and optional feature flags such as `feature_archive`).
 3. Include `filecarton.php` at the end of your bootstrap script. FileCarton handles routing from there.
 4. Add an early exit for `?fcres` as described below.
 5. If needed, embed the bootstrap script into your main page using an `<iframe>`.
+
+## Overriding configuration with `define()`
+
+Any `define('FILECARTON_...', ...)` executed before `require __DIR__ . '/filecarton.php'` takes precedence over the settings in `filecarton.config.toml.php` (as well as FileCarton's built-in defaults).
+
+### Naming mapping rules
+
+Settings in `filecarton.config.toml.php` map to PHP constants as follows:
+
+- **`[repo]` section → `FILECARTON_REPO_SETTING`**  
+  The entire `[repo]` table maps to a single associative array constant `FILECARTON_REPO_SETTING`, using the same `snake_case` keys.
+
+- **All other sections (`[auth]`, `[limits]`, `[security]`, `[deployment]`, `[misc]`) → `FILECARTON_<UPPERCASE_KEY>`**  
+  Each key in any section other than `[repo]` maps directly to a constant named `FILECARTON_` followed by the key name in `UPPER_SNAKE_CASE` (the section name itself is not part of the constant name). For example:
+  - `must_embed` (`[auth]`) → `FILECARTON_MUST_EMBED`
+  - `max_edit_size` (`[limits]`) → `FILECARTON_MAX_EDIT_SIZE`
+  - `upload_chunk_size` (`[limits]`) → `FILECARTON_UPLOAD_CHUNK_SIZE`
+  - `upload_max_file_size` (`[limits]`) → `FILECARTON_UPLOAD_MAX_FILE_SIZE`
+  - `must_readonly` (`[security]`) → `FILECARTON_MUST_READONLY`
+  - `filename_blocklist` (`[security]`) → `FILECARTON_FILENAME_BLOCKLIST`
+  - `ignore_pattern` (`[security]`) → `FILECARTON_IGNORE_PATTERN`
+  - `ignore_realpath` (`[security]`) → `FILECARTON_IGNORE_REALPATH`
+  - `sendfile` (`[deployment]`) → `FILECARTON_SENDFILE`
+
+  > **Note:** When overriding byte-size limits (such as `FILECARTON_MAX_EDIT_SIZE` or `FILECARTON_UPLOAD_CHUNK_SIZE`) via `define()` in PHP, pass an integer number of bytes (e.g. `4 * 1024 * 1024`) rather than a string like `"4M"`.
+
+- When embedding FileCarton, the `filecarton.config.toml.php` file is optional.  
+  You can keep it for easy changes to default configuration values.
+  Or alternatively, you can remove it and supply all the configuration via `define()` (Unsupplied entries will fall back to built-in default values). In this case the `must_embed = true` is also unneeded as FileCarton will refuse to start without `FILECARTON_EMBED` when the config file is absent.
 
 ## Early exit for serving static assets
 
@@ -63,11 +91,11 @@ $repo = $allRepos[$repoId];
 
 // --- Configure FileCarton ---
 define('FILECARTON_REPO_SETTING', [
-    'rootPath' => $repo['path'],
+    'root_path' => $repo['path'],
     'readonly' => (bool)($repo['readonly'] ?? false),
     'branding' => 'FileCarton',
-    'repoName' => $repo['name'] ?? $repoId,
-    'featureArchive' => true,
+    'repo_name' => $repo['name'] ?? $repoId,
+    'feature_archive' => true,
 ]);
 
 // --- Hand off to FileCarton ---
@@ -83,11 +111,11 @@ When embedding, you typically need to pass context into FileCarton's configurati
 
 ```php
 define('FILECARTON_REPO_SETTING', [
-    'rootPath' => '/user-contents/' . $_SESSION['user_dir_name'],
+    'root_path' => '/user-contents/' . $_SESSION['user_dir_name'],
     'readonly' => false,
     'branding' => 'FileCarton',
-    'repoName' => '',
-    'featureArchive' => true,
+    'repo_name' => '',
+    'feature_archive' => true,
 ]);
 ```
 
@@ -100,11 +128,11 @@ FileCarton's frontend automatically forwards any query parameter named `state`, 
 ```php
 $repo = $_GET['state_selected_repo'] ?? 'default';
 define('FILECARTON_REPO_SETTING', [
-    'rootPath' => '/user-contents/' . $_SESSION['user_dir_name'] . '/' . $repo,
+    'root_path' => '/user-contents/' . $_SESSION['user_dir_name'] . '/' . $repo,
     'readonly' => false,
     'branding' => 'FileCarton',
-    'repoName' => $repo,
-    'featureArchive' => true,
+    'repo_name' => $repo,
+    'feature_archive' => true,
 ]);
 ```
 
@@ -124,11 +152,11 @@ Or alternatively, you can encode context in the URL path. FileCarton preserves P
 $pathInfo = $_SERVER['PATH_INFO'] ?? '';
 $repo = explode('/', trim($pathInfo, '/'))[0] ?: 'default';
 define('FILECARTON_REPO_SETTING', [
-    'rootPath' => '/user-contents/' . $_SESSION['user_dir_name'] . '/' . $repo,
+    'root_path' => '/user-contents/' . $_SESSION['user_dir_name'] . '/' . $repo,
     'readonly' => false,
     'branding' => 'FileCarton',
-    'repoName' => $repo,
-    'featureArchive' => true,
+    'repo_name' => $repo,
+    'feature_archive' => true,
 ]);
 ```
 

@@ -2,7 +2,7 @@
 /**
  * FileCarton Single-File Compiler
  *
- * Merges all backend PHP files (except filecarton.config.php) into a single
+ * Merges all backend PHP files (except filecarton.config.toml.php) into a single
  * distributable PHP file with embedded frontend assets.
  *
  * Usage: php scripts/compile_single_file.php
@@ -38,6 +38,8 @@ if (!is_file($manifestPath)) {
 $libFiles = [
     $fcDir . '/lib/Polyfill.php',
     $fcDir . '/lib/Platform.php',
+    $fcDir . '/lib/Toml.php',
+    $fcDir . '/lib/Config.php',
     $fcDir . '/lib/PathSecurity.php',
     $fcDir . '/lib/FileOps.php',
     $fcDir . '/lib/MimeType.php',
@@ -185,7 +187,6 @@ $offsetsExport = var_export($assetOffsets, true);
 
 $phpSource = "<?php\nnamespace FileCarton;\n"
     . "define('FILECARTON_SINGLE_FILE',true);\n"
-    . "require_once __DIR__.'/filecarton.config.php';\n"
     . "define('FILECARTON_MANIFEST',{$manifestExport});\n"
     . "define('FILECARTON_CDN',{$cdnExport});\n"
     . $mergedCode . "\n"
@@ -329,6 +330,7 @@ if (!is_dir($outputDir)) {
 }
 
 file_put_contents($outputFile, $minified . $assetData);
+copy($backendDir . '/filecarton.config.toml.php', $outputDir . '/filecarton.config.toml.php');
 
 // ---------------------------------------------------------------------------
 // 8. Report

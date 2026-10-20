@@ -29,8 +29,8 @@ class NoLoginAuth implements AuthProvider {
         }
         $id = $list[0]['id'];
         $display = $id;
-        if (isset($list[0]['displayName']) && is_string($list[0]['displayName']) && $list[0]['displayName'] !== '') {
-            $display = $list[0]['displayName'];
+        if (isset($list[0]['display_name']) && is_string($list[0]['display_name']) && $list[0]['display_name'] !== '') {
+            $display = $list[0]['display_name'];
         }
         return new AuthIdentity($id, $display, $this->id());
     }

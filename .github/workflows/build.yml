@@ -58,7 +58,7 @@ jobs:
       - name: Build single-file distribution
         run: |
           php scripts/compile_single_file.php
-          cp apps/backend/filecarton.config.php dist/singlefile/
+          cp apps/backend/filecarton.config.toml.php dist/singlefile/
 
       - name: Create ZIP archives
         run: |

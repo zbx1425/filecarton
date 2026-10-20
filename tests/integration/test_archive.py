@@ -275,7 +275,7 @@ def test_feature_archive_disabled(stack, tmp_path_factory, tools):
     digest = password_hash(tools.php_exe)
     defines = _base_defines({
         "FILECARTON_STATIC_USER_LIST": [
-            {"id": "alice", "passwordHash": digest, "root": fwd(alice), "featureArchive": False},
+            {"id": "alice", "password_hash": digest, "root_path": fwd(alice), "feature_archive": False},
         ],
         "FILECARTON_AUTH_PROVIDERS": [
             {"class": r"\FileCarton\StaticPasswordAuth"},
@@ -340,7 +340,7 @@ def test_archive_limits_and_tar_restrictions(stack, tmp_path_factory, tools):
         "FILECARTON_ARCHIVE_MAX_SIZE": 128,
         "FILECARTON_ARCHIVE_MAX_FILES": 4,
         "FILECARTON_STATIC_USER_LIST": [
-            {"id": "alice", "passwordHash": digest, "root": fwd(alice)},
+            {"id": "alice", "password_hash": digest, "root_path": fwd(alice)},
         ],
         "FILECARTON_AUTH_PROVIDERS": [
             {"class": r"\FileCarton\StaticPasswordAuth"},

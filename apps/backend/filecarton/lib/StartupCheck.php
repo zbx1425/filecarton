@@ -23,7 +23,7 @@ class StartupCheck {
     public static function problems(): array {
         require_once FILECARTON_SCRIPT_DIR . '/lib/Platform.php';
         
-        $p = [];
+        $p = class_exists(__NAMESPACE__ . '\\Config', false) ? Config::problems() : [];
 
         // FILECARTON_REPO_SETTING structural validation
         $repoArr = FILECARTON_REPO_SETTING;
@@ -154,7 +154,7 @@ class StartupCheck {
             if ($rootPath === '' && class_exists(__NAMESPACE__ . '\\Auth', false)
                 && !RepoSetting::embed() && Auth::hasImplicit()) {
                 $p[] = 'Root directory is not available for the current identity. '
-                    . 'Check FILECARTON_REPO_SETTING rootPath or the per-user root in your grant configuration.';
+                    . 'Check FILECARTON_REPO_SETTING root_path or the per-user root_path in your grant configuration.';
             } elseif ($rootPath !== '') {
                 if (!is_dir($rootPath)) {
                     $p[] = 'Root directory is not a directory: ' . $rootPath;

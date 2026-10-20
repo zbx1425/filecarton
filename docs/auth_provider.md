@@ -3,19 +3,20 @@
 > For built-in password/OAuth configuration, see [config_auth.md](config_auth.md).
 > For embedding FileCarton in your own app, see [embedding.md](embedding.md).
 
-This page is for developers who need authentication other than the built-in providers, or who need to look up user permissions from somewhere other than `STATIC_USER_LIST`.
+This page is for developers who need authentication other than the built-in providers, or who need to look up user permissions from somewhere other than `static_user_list`.
 
 ## File layout
 
-Your custom class should be in a PHP file next to `filecarton.php`, and then you should reference it in `filecarton.config.php` via the `file` and `class` keys, for example:
+Your custom class should be in a PHP file next to `filecarton.php`, and then you should reference it in `filecarton.config.toml.php` via the `file` and `class` keys, for example:
 
-```php
-define_default('FILECARTON_AUTH_PROVIDERS', [
-    ['file' => __DIR__ . '/my_ldap_auth.php', 'class' => \MyApp\LdapAuth::class, 'host' => 'ldap://ldap.example.com'],
-]);
+```toml
+[auth]
+auth_providers = [
+  { file = "${CONFIG_DIR}/my_ldap_auth.php", class = "MyApp\\LdapAuth", host = "ldap://ldap.example.com" }
+]
 ```
 
-Any extra keys in the spec array (here, `host`) are passed to your constructor as `$opts`.
+Any extra keys in the spec table (here, `host`) are passed to your constructor as `$opts`.
 
 Don't `require` the file yourself as the parent classes have not been loaded yet at that point.  
 If the plugin file sits inside a directory managed by FileCarton, FileCarton will automatically hide them.
@@ -24,7 +25,7 @@ If the plugin file sits inside a directory managed by FileCarton, FileCarton wil
 ## Custom grant resolver
 
 Implement the `resolve(AuthIdentity $identity) : ?RepoSetting` method in your custom `GrantResolver` class.  
-It should return a `RepoSetting` override object if the user is allowed to access files, or `null` to deny access and pass it to the next resolver configured in `FILECARTON_GRANT_RESOLVERS`.
+It should return a `RepoSetting` override object if the user is allowed to access files, or `null` to deny access and pass it to the next resolver configured in `grant_resolvers`.
 
 You can expect those fields from the `AuthIdentity` object:
 - `pluginId` - The ID of the `AuthProvider` that authenticated this user.
@@ -59,24 +60,28 @@ class SsoWhitelistGrantResolver implements GrantResolver {
 
 To wire that into the config:
 
-```php
-define_default('FILECARTON_GRANT_RESOLVERS', [
-    ['file' => __DIR__ . '/sso_whitelist_grant.php', 'class' => \MyApp\SsoWhitelistGrantResolver::class,],
-    ['class' => \FileCarton\StaticGrantResolver::class],
-]);
+```toml
+[auth]
+grant_resolvers = [
+  { file = "${CONFIG_DIR}/sso_whitelist_grant.php", class = "MyApp\\SsoWhitelistGrantResolver" },
+  { class = "FileCarton\\StaticGrantResolver" }
+]
 ```
 
-`GRANT_RESOLVERS` are evaluated in a chained fashion. Each resolver either returns a `RepoSetting` or returns `null` to pass. The first non-null result is combined with the default `FILECARTON_REPO_SETTING` from the config file. If every resolver returns null, the user is denied access (files are closed for that user).
+`grant_resolvers` are evaluated in a chained fashion. Each resolver either returns a `RepoSetting` or returns `null` to pass. The first non-null result is combined with the default `[repo]` setting (`FILECARTON_REPO_SETTING`) from the config file. If every resolver returns null, the user is denied access (files are closed for that user).
 
-`RepoSetting` fields (when used as a grant override, `null` means inherit the default):
+`RepoSetting` PHP object properties (when used as a grant override, `null` means inherit the default):
 
-| Field | Effect of `null` | Effect of a value |
+| Property | Effect of `null` | Effect of a value |
 |---|---|---|
-| `rootPath` | Inherit `FILECARTON_REPO_SETTING['rootPath']` | Use this directory instead. Resolved via `realpath()`; if the directory does not exist, the user gets "not configured." |
+| `rootPath` | Inherit `FILECARTON_REPO_SETTING['root_path']` | Use this directory instead. Resolved via `realpath()`; if the directory does not exist, the user gets "not configured." |
 | `readonly` | Inherit `FILECARTON_REPO_SETTING['readonly']` | `true` forces read-only; `false` forces writable. Neither can override `FILECARTON_MUST_READONLY` (when it is `true`, the instance is always read-only). |
 | `branding` | Inherit `FILECARTON_REPO_SETTING['branding']` | String (including `''`) overrides. |
-| `repoName` | Inherit `FILECARTON_REPO_SETTING['repoName']` | String (including `''`) overrides. |
-| `featureArchive` | Inherit `FILECARTON_REPO_SETTING['featureArchive']` | `true` enables archive operations; `false` disables them. |
+| `repoName` | Inherit `FILECARTON_REPO_SETTING['repo_name']` | String (including `''`) overrides. |
+| `featureArchive` | Inherit `FILECARTON_REPO_SETTING['feature_archive']` | `true` enables archive operations; `false` disables them. |
+| `featureUnixPerm` | Inherit `FILECARTON_REPO_SETTING['feature_unix_perm']` | `true` enables displaying Unix permissions; `false` disables them. |
+| `featureUnixPermModify` | Inherit `FILECARTON_REPO_SETTING['feature_unix_perm_modify']` | `true` enables modifying Unix permissions; `false` disables them. |
+| `featureRemoteDownload` | Inherit `FILECARTON_REPO_SETTING['feature_remote_download']` | `true` enables remote URL downloads; `false` disables them. |
 
 An example that looks up the user's directory from a database:
 
@@ -117,11 +122,12 @@ class DbGrantResolver implements GrantResolver {
 
 To wire that into the config:
 
-```php
-define_default('FILECARTON_GRANT_RESOLVERS', [
-    ['file' => __DIR__ . '/db_grant.php', 'class' => \MyApp\DbGrantResolver::class, 'dsn' => 'sqlite:/var/db/users.db'],
-    ['class' => \FileCarton\StaticGrantResolver::class],
-]);
+```toml
+[auth]
+grant_resolvers = [
+  { file = "${CONFIG_DIR}/db_grant.php", class = "MyApp\\DbGrantResolver", dsn = "sqlite:/var/db/users.db" },
+  { class = "FileCarton\\StaticGrantResolver" }
+]
 ```
 
 
@@ -193,9 +199,9 @@ class GitLabOAuth extends OAuth2Auth {
     private $baseUrl;
 
     public function __construct(array $opts = []) {
-        $this->clientId     = isset($opts['clientId'])     ? (string)$opts['clientId']     : '';
-        $this->clientSecret = isset($opts['clientSecret']) ? (string)$opts['clientSecret'] : '';
-        $this->baseUrl      = rtrim(isset($opts['baseUrl']) ? (string)$opts['baseUrl'] : 'https://gitlab.com', '/');
+        $this->clientId     = isset($opts['client_id'])     ? (string)$opts['client_id']     : '';
+        $this->clientSecret = isset($opts['client_secret']) ? (string)$opts['client_secret'] : '';
+        $this->baseUrl      = rtrim(isset($opts['base_url']) ? (string)$opts['base_url'] : 'https://gitlab.com', '/');
     }
 
     public function id(): string { return 'gitlab'; }
@@ -226,16 +232,11 @@ class GitLabOAuth extends OAuth2Auth {
 
 Config:
 
-```php
-define_default('FILECARTON_AUTH_PROVIDERS', [
-    [
-        'file'         => __DIR__ . '/gitlab_auth.php',
-        'class'        => \MyApp\GitLabOAuth::class,
-        'clientId'     => 'app-id-from-gitlab',
-        'clientSecret' => 'app-secret-from-gitlab',
-        'baseUrl'      => 'https://gitlab.example.com',
-    ],
-]);
+```toml
+[auth]
+auth_providers = [
+  { file = "${CONFIG_DIR}/gitlab_auth.php", class = "MyApp\\GitLabOAuth", client_id = "app-id-from-gitlab", client_secret = "app-secret-from-gitlab", base_url = "https://gitlab.example.com" }
+]
 ```
 
 - `fetchIdentity()` receives the decoded JSON from the token endpoint. You should then use `HttpClient::get()` to call the provider's user-info API and `HttpClient::assertSuccess()` to verify the response status.
@@ -263,7 +264,7 @@ class TicketSsoAuth extends RedirectAuth {
     private $ssoLogin;
 
     public function __construct(array $opts = []) {
-        $this->ssoLogin = isset($opts['ssoLogin']) ? (string)$opts['ssoLogin'] : '';
+        $this->ssoLogin = isset($opts['sso_login']) ? (string)$opts['sso_login'] : '';
     }
 
     public function id(): string { return 'ticket'; }

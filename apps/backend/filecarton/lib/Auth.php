@@ -516,9 +516,9 @@ class Auth {
                 $p[] = 'FILECARTON_STATIC_USER_LIST contains a duplicate user ID.';
             }
             $ids[$key] = true;
-            if (isset($row['passwordHash']) && is_string($row['passwordHash']) && $row['passwordHash'] !== ''
+            if (isset($row['password_hash']) && is_string($row['password_hash']) && $row['password_hash'] !== ''
                 && strpos($row['id'], ':') !== false) {
-                $p[] = 'FILECARTON_STATIC_USER_LIST[' . $i . '] id must not contain ":" when passwordHash is set (reserved for OAuth provider prefixes).';
+                $p[] = 'FILECARTON_STATIC_USER_LIST[' . $i . '] id must not contain ":" when password_hash is set (reserved for OAuth provider prefixes).';
             }
         }
 
@@ -536,7 +536,7 @@ class Auth {
             $p[] = 'NoLoginAuth cannot be combined with password or redirect providers.';
         }
         if ($nImplicit === 0 && $nInteractive === 0) {
-            $p[] = 'No auth providers registered (add NoLoginAuth, passwordHash rows, or AUTH_PROVIDERS).';
+            $p[] = 'No auth providers registered (add NoLoginAuth, password_hash rows, or AUTH_PROVIDERS).';
         }
 
         // Grant resolver availability

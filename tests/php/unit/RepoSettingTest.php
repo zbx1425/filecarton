@@ -10,56 +10,56 @@ final class RepoSettingTest extends TestCase
     public function testMissingOrInvalidFeatureFlagsDefaultToFalse(): void
     {
         $s = RepoSetting::fromConfigArray([
-            'rootPath' => '/tmp/repo',
-            'readonly' => false,
-            'branding' => 'FileCarton',
-            'repoName' => 'test',
-            // featureArchive, featureUnixPerm, featureUnixPermModify omitted
+            'root_path' => '/tmp/repo',
+            'readonly'  => false,
+            'branding'  => 'FileCarton',
+            'repo_name' => 'test',
+            // feature_archive, feature_unix_perm, feature_unix_perm_modify omitted
         ]);
 
         self::assertFalse($s->featureArchive);
         self::assertFalse($s->featureUnixPerm);
         self::assertFalse($s->featureUnixPermModify);
         self::assertFalse($s->featureRemoteDownload);
-        $s->verifyAllSet();
+        self::assertSame([], $s->verifyAllSet());
 
         // Non-boolean values should also silently default to false and not fail verifyAllSet
         $s2 = RepoSetting::fromConfigArray([
-            'rootPath' => '/tmp/repo',
-            'readonly' => false,
-            'branding' => 'FileCarton',
-            'repoName' => 'test',
-            'featureArchive' => 'invalid',
-            'featureUnixPerm' => 123,
-            'featureUnixPermModify' => 'yes',
-            'featureRemoteDownload' => 1,
+            'root_path'                => '/tmp/repo',
+            'readonly'                 => false,
+            'branding'                 => 'FileCarton',
+            'repo_name'                => 'test',
+            'feature_archive'          => 'invalid',
+            'feature_unix_perm'        => 123,
+            'feature_unix_perm_modify' => 'yes',
+            'feature_remote_download'  => 1,
         ]);
 
         self::assertFalse($s2->featureArchive);
         self::assertFalse($s2->featureUnixPerm);
         self::assertFalse($s2->featureUnixPermModify);
         self::assertFalse($s2->featureRemoteDownload);
-        $s2->verifyAllSet();
+        self::assertSame([], $s2->verifyAllSet());
     }
 
     public function testCombineOverridesFeatureFlags(): void
     {
         $base = RepoSetting::fromConfigArray([
-            'rootPath' => '/tmp/repo',
-            'readonly' => false,
-            'branding' => 'FileCarton',
-            'repoName' => 'test',
-            'featureArchive' => true,
-            'featureUnixPerm' => false,
-            'featureUnixPermModify' => false,
-            'featureRemoteDownload' => false,
+            'root_path'                => '/tmp/repo',
+            'readonly'                 => false,
+            'branding'                 => 'FileCarton',
+            'repo_name'                => 'test',
+            'feature_archive'          => true,
+            'feature_unix_perm'        => false,
+            'feature_unix_perm_modify' => false,
+            'feature_remote_download'  => false,
         ]);
 
         $override = RepoSetting::fromStaticRow([
-            'root' => '/tmp/user',
-            'featureUnixPerm' => true,
-            'featureUnixPermModify' => true,
-            'featureRemoteDownload' => true,
+            'root_path'                => '/tmp/user',
+            'feature_unix_perm'        => true,
+            'feature_unix_perm_modify' => true,
+            'feature_remote_download'  => true,
         ]);
 
         $combined = $base->combine($override);
@@ -68,6 +68,6 @@ final class RepoSettingTest extends TestCase
         self::assertTrue($combined->featureUnixPerm);
         self::assertTrue($combined->featureUnixPermModify);
         self::assertTrue($combined->featureRemoteDownload);
-        $combined->verifyAllSet();
+        self::assertSame([], $combined->verifyAllSet());
     }
 }

@@ -8,7 +8,10 @@ namespace FileCarton;
 
 define("FILECARTON_SCRIPT_DIR", __DIR__ . '/filecarton');
 require_once FILECARTON_SCRIPT_DIR . '/lib/Polyfill.php';
-require_once __DIR__ . '/filecarton.config.php';
+require_once FILECARTON_SCRIPT_DIR . '/lib/Platform.php';
+require_once FILECARTON_SCRIPT_DIR . '/lib/Toml.php';
+require_once FILECARTON_SCRIPT_DIR . '/lib/Config.php';
+Config::load(__DIR__ . '/filecarton.config.toml.php');
 
 /**
  * SCRIPT_NAME only, for asset URLs so they stay globally cacheable
@@ -32,6 +35,21 @@ function dispatch(): void {
         require_once FILECARTON_SCRIPT_DIR . '/handler/asset.php';
         handle_asset($_GET['fcres']);
         exit;
+    }
+
+    if (Config::problems() !== []) {
+        if (isset($_GET['fcapi'])) {
+            require_once FILECARTON_SCRIPT_DIR . '/lib/Response.php';
+            Response::error('server_error', 500);
+            return;
+        }
+        if (isset($_GET['fcauth'])) {
+            http_response_code(500);
+            return;
+        }
+        require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
+        render_error_page(Config::problems(), 500);
+        return;
     }
 
     require_once FILECARTON_SCRIPT_DIR . '/lib/RepoSetting.php';
@@ -109,7 +127,7 @@ function dispatch(): void {
 
     if (!RepoSetting::filesOpen()) {
         require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
-        render_error_page(['rootPath is invalid.'], 403);
+        render_error_page(['root_path is invalid.'], 403);
         exit;
     }
 

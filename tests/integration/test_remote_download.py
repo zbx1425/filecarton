@@ -117,14 +117,15 @@ def test_remote_download_flows_conflict_overwrite_and_limits(stack, tmp_path_fac
 
     digest = password_hash(tools.php_exe)
     defines = _base_defines({
+        "FILECARTON_UPLOAD_CHUNK_SIZE": 64,
         "FILECARTON_UPLOAD_MAX_FILE_SIZE": 256,
         "FILECARTON_IGNORE_REALPATH": [fwd(hidden.resolve())],
         "FILECARTON_STATIC_USER_LIST": [
             {
                 "id": "alice",
-                "passwordHash": digest,
-                "root": fwd(alice),
-                "featureRemoteDownload": True,
+                "password_hash": digest,
+                "root_path": fwd(alice),
+                "feature_remote_download": True,
             },
         ],
         "FILECARTON_AUTH_PROVIDERS": [

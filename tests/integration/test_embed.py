@@ -31,7 +31,7 @@ def test_nologin_cannot_combine_with_password(stack, tmp_path_factory, tools):
         api = client.api("list", csrf=False)
         assert api.status_code == 500
         assert error_code(api) == "auth.config"
-        assert_no_secrets(api.text, ["passwordHash"])
+        assert_no_secrets(api.text, ["password_hash"])
     finally:
         client.close()
 

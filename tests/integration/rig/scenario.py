@@ -84,11 +84,11 @@ def _base_defines(extra: dict | None = None) -> dict:
     defines = {
         "FILECARTON_DEV_SERVER": "http://127.0.0.1:9",
         "FILECARTON_REPO_SETTING": {
-            "rootPath": "",
+            "root_path": "",
             "readonly": False,
             "branding": "FileCarton",
-            "repoName": "test",
-            "featureArchive": True,
+            "repo_name": "test",
+            "feature_archive": True,
         },
         "FILECARTON_GRANT_RESOLVERS": [
             {"class": r"\FileCarton\StaticGrantResolver"},
@@ -116,8 +116,8 @@ def two_users(work: Path, php_exe: str) -> Scenario:
     (alice / "shell.php").write_text("<?php echo 1;\n", encoding="utf-8")
     digest = password_hash(php_exe)
     users = [
-        {"id": "alice", "passwordHash": digest, "root": fwd(alice)},
-        {"id": "bob", "passwordHash": digest, "root": fwd(bob), "readonly": True},
+        {"id": "alice", "password_hash": digest, "root_path": fwd(alice)},
+        {"id": "bob", "password_hash": digest, "root_path": fwd(bob), "readonly": True},
     ]
     defines = _base_defines({
         "FILECARTON_STATIC_USER_LIST": users,
@@ -150,7 +150,7 @@ def must_readonly(work: Path, php_exe: str) -> Scenario:
     defines = _base_defines({
         "FILECARTON_MUST_READONLY": True,
         "FILECARTON_STATIC_USER_LIST": [
-            {"id": "alice", "passwordHash": digest, "root": fwd(alice), "readonly": False},
+            {"id": "alice", "password_hash": digest, "root_path": fwd(alice), "readonly": False},
         ],
         "FILECARTON_AUTH_PROVIDERS": [
             {"class": r"\FileCarton\StaticPasswordAuth"},
@@ -168,14 +168,14 @@ def nologin(work: Path) -> Scenario:
     _plant(outside, "secret.txt", OUTSIDE_SENTINEL)
     defines = _base_defines({
         "FILECARTON_REPO_SETTING": {
-            "rootPath": fwd(root),
+            "root_path": fwd(root),
             "readonly": False,
             "branding": "FileCarton",
-            "repoName": "open",
-            "featureArchive": True,
+            "repo_name": "open",
+            "feature_archive": True,
         },
         "FILECARTON_STATIC_USER_LIST": [
-            {"id": "local", "root": fwd(root)},
+            {"id": "local", "root_path": fwd(root)},
         ],
         "FILECARTON_AUTH_PROVIDERS": [
             {"class": r"\FileCarton\NoLoginAuth"},
@@ -190,7 +190,7 @@ def nologin_plus_password(work: Path, php_exe: str) -> Scenario:
     digest = password_hash(php_exe)
     defines = _base_defines({
         "FILECARTON_STATIC_USER_LIST": [
-            {"id": "local", "passwordHash": digest},
+            {"id": "local", "password_hash": digest},
         ],
         "FILECARTON_AUTH_PROVIDERS": [
             {"class": r"\FileCarton\NoLoginAuth"},
@@ -210,11 +210,11 @@ def must_embed(work: Path) -> Scenario:
     defines = _base_defines({
         "FILECARTON_MUST_EMBED": True,
         "FILECARTON_REPO_SETTING": {
-            "rootPath": fwd(root),
+            "root_path": fwd(root),
             "readonly": False,
             "branding": "FileCarton",
-            "repoName": "x",
-            "featureArchive": True,
+            "repo_name": "x",
+            "feature_archive": True,
         },
         "FILECARTON_STATIC_USER_LIST": [{"id": "local"}],
         "FILECARTON_AUTH_PROVIDERS": [{"class": r"\FileCarton\NoLoginAuth"}],
@@ -232,11 +232,11 @@ def embed_direct(work: Path) -> Scenario:
     defines = _base_defines({
         "FILECARTON_EMBED": True,
         "FILECARTON_REPO_SETTING": {
-            "rootPath": fwd(root),
+            "root_path": fwd(root),
             "readonly": False,
             "branding": "FileCarton",
-            "repoName": "embedded",
-            "featureArchive": True,
+            "repo_name": "embedded",
+            "feature_archive": True,
         },
     })
     php_file = work / "scenario.php"
@@ -272,13 +272,13 @@ def oauth(work: Path, php_exe: str, support: Path, idp: str) -> Scenario:
     fake = support / "FakeOAuth.php"
     defines = _base_defines({
         "FILECARTON_STATIC_USER_LIST": [
-            {"id": "fake:42", "displayName": "Octo", "root": fwd(alice)},
+            {"id": "fake:42", "display_name": "Octo", "root_path": fwd(alice)},
         ],
         "FILECARTON_AUTH_PROVIDERS": [
             {
                 "file": fwd(fake),
                 "class": r"\FileCarton\FakeOAuth",
-                "baseUrl": idp,
+                "base_url": idp,
             },
         ],
     })
@@ -304,7 +304,7 @@ def dotfiles(work: Path, php_exe: str) -> Scenario:
     defines = _base_defines({
         "FILECARTON_DOTFILES_BLOCK": True,
         "FILECARTON_STATIC_USER_LIST": [
-            {"id": "alice", "passwordHash": digest, "root": fwd(alice)},
+            {"id": "alice", "password_hash": digest, "root_path": fwd(alice)},
         ],
         "FILECARTON_AUTH_PROVIDERS": [
             {"class": r"\FileCarton\StaticPasswordAuth"},

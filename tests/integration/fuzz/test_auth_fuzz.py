@@ -36,7 +36,7 @@ def test_login_attempts_do_not_open_the_root(world, username, password, token):
         response = client.login(username, password)
         assert response.status_code != 500, response.text
         assert error_code(response) != "server_error"
-        assert_no_secrets(response.text, scenario.sentinels + ["passwordHash"])
+        assert_no_secrets(response.text, scenario.sentinels + ["password_hash"])
         if response.status_code != 200:
             listed = client.api("list", csrf=False)
             assert listed.status_code == 401

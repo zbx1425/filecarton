@@ -13,14 +13,14 @@ define('FILECARTON_PUBLIC_ORIGIN', '');
 define('FILECARTON_SESSION_NAME', 'FILECARTON');
 
 define('FILECARTON_REPO_SETTING', [
-    'rootPath' => '',
+    'root_path' => '',
     'readonly' => false,
     'branding' => '',
-    'repoName' => '',
-    'featureArchive' => true,
-    'featureUnixPerm' => false,
-    'featureUnixPermModify' => false,
-    'featureRemoteDownload' => false,
+    'repo_name' => '',
+    'feature_archive' => true,
+    'feature_unix_perm' => false,
+    'feature_unix_perm_modify' => false,
+    'feature_remote_download' => false,
 ]);
 define('FILECARTON_MUST_READONLY', false);
 define('FILECARTON_MUST_EMBED', false);
@@ -33,7 +33,7 @@ define('FILECARTON_FILENAME_BLOCKLIST', ['*.php', '.htaccess', '.user.ini', 'web
 define('FILECARTON_IGNORE_PATTERN', []);
 define('FILECARTON_IGNORE_REALPATH', [
     __DIR__ . '/filecarton.php',
-    __DIR__ . '/filecarton.config.php',
+    __DIR__ . '/filecarton.config.toml.php',
     __DIR__ . '/filecarton',
 ]);
 

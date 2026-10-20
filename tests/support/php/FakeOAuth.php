@@ -16,7 +16,7 @@ class FakeOAuth extends OAuth2Auth {
     private $clientSecret;
 
     public function __construct(array $opts = []) {
-        $this->base = rtrim(isset($opts['baseUrl']) ? (string)$opts['baseUrl'] : (string)getenv('FC_IDP'), '/');
+        $this->base = rtrim(isset($opts['base_url']) ? (string)$opts['base_url'] : (string)getenv('FC_IDP'), '/');
         $this->clientId = 'rig';
         $this->clientSecret = 'rig-secret';
     }
