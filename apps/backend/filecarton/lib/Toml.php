@@ -678,7 +678,7 @@ class Toml {
         // Float (contains '.' or exponent)
         if (strpos($raw, '.') !== false || stripos($raw, 'e') !== false) {
             if (!preg_match('/^[+-]?(?:0|[1-9](?:_?[0-9])*)(?:\.[0-9](?:_?[0-9])*)?(?:[eE][+-]?[0-9](?:_?[0-9])*)?$/', $raw)) {
-                $this->error("Invalid float literal '{$raw}'");
+                $this->error('Invalid float literal');
             }
             return (float)str_replace('_', '', $raw);
         }
@@ -688,7 +688,7 @@ class Toml {
             return (int)str_replace('_', '', $raw);
         }
 
-        $this->error("Invalid value '{$raw}'");
+        $this->error('Invalid value');
     }
 
     private function skipSpaces(): void {

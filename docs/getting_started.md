@@ -21,7 +21,7 @@ Copy `filecarton.php` and `filecarton.config.toml.php` to somewhere your web ser
 
 ### 2. Set a password
 
-Open `filecarton.config.toml.php`. Find `static_user_list` under `[auth]` and replace the default hash.
+Open `filecarton.config.toml.php` (keep the `#<?php exit;?>` first line intact, as it blocks direct access to the config file). Find `static_user_list` under `[auth]` and replace the default hash.
 
 Run this command in terminal to compute a password hash:
 

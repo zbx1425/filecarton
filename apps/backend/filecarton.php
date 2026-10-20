@@ -43,10 +43,6 @@ function dispatch(): void {
             Response::error('server_error', 500);
             return;
         }
-        if (isset($_GET['fcauth'])) {
-            http_response_code(500);
-            return;
-        }
         require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
         render_error_page(Config::problems(), 500);
         return;

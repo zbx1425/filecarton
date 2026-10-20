@@ -25,13 +25,51 @@ class Config {
     /** @var string[] */
     private static $problems = [];
 
-    /** Keys under [limits] (or top-level) that accept byte-size strings like "4M", "1G". */
-    private const SIZE_KEYS = [
-        'max_edit_size'                 => true,
-        'upload_chunk_size'             => true,
-        'upload_max_file_size'          => true,
-        'archive_max_size'              => true,
-        'archive_targz_max_access_size' => true,
+    /**
+     * Allowed non-[repo] configuration keys: key => [type, default].
+     * Types: 'bool', 'int', 'size', 'string', 'string[]', 'array', 'sendfile', 'dev_server'.
+     * A null default means the constant is not defined by applyDefaults() unless dynamically computed.
+     */
+    private const SCHEMA = [
+        // [auth]
+        'must_embed'                    => ['bool',       false],
+        'auth_providers'                => ['array',      [['class' => StaticPasswordAuth::class]]],
+        'grant_resolvers'               => ['array',      [['class' => StaticGrantResolver::class]]],
+        'static_user_list'              => ['array',      [['id' => 'admin', 'password_hash' => '']]],
+
+        // [limits]
+        'max_edit_size'                 => ['size',       4 * 1024 * 1024],
+        'upload_chunk_size'             => ['size',       4 * 1024 * 1024],
+        'upload_max_file_size'          => ['size',       1 * 1024 * 1024 * 1024],
+        'upload_max_depth'              => ['int',        50],
+        'chunk_expiry'                  => ['int',        86400],
+        'chunk_cleanup_chance'          => ['int',        10],
+        'archive_max_files'             => ['int',        10000],
+        'archive_max_size'              => ['size',       1 * 1024 * 1024 * 1024],
+        'archive_list_max_files'        => ['int',        10000],
+        'archive_tar_max_access_files'  => ['int',        1000],
+        'archive_targz_max_access_size' => ['size',       64 * 1024 * 1024],
+        'search_default_limit'          => ['int',        200],
+        'search_max_limit'              => ['int',        1000],
+        'search_max_scan'               => ['int',        100000],
+
+        // [security]
+        'must_readonly'                 => ['bool',       false],
+        'filename_blocklist'            => ['string[]',   ['*.php', '.htaccess', '.user.ini', 'web.config']],
+        'ignore_pattern'                => ['string[]',   []],
+        'ignore_realpath'               => ['string[]',   null],
+        'dotfiles_block'                => ['bool',       false],
+        'dotfiles_force_visible'        => ['bool',       false],
+
+        // [deployment]
+        'public_origin'                 => ['string',     ''],
+        'sendfile'                      => ['sendfile',   false],
+        'asset_url'                     => ['string',     ''],
+        'http_client_proxy'             => ['string',     ''],
+
+        // [misc]
+        'session_name'                  => ['string',     'FILECARTON'],
+        'dev_server'                    => ['dev_server', null],
     ];
 
     /**
@@ -97,7 +135,8 @@ class Config {
         $out = [];
 
         foreach ($interpolated as $section => $content) {
-            if ($section === 'repo') {
+            $sectionKey = strtolower((string)$section);
+            if ($sectionKey === 'repo') {
                 if (!is_array($content)) {
                     throw new \RuntimeException('TOML section [repo] must be a table.');
                 }
@@ -105,26 +144,96 @@ class Config {
                 continue;
             }
 
-            if (is_array($content)) {
-                foreach ($content as $key => $value) {
-                    $lowerKey = strtolower((string)$key);
-                    if (isset(self::SIZE_KEYS[$lowerKey]) && is_string($value)) {
-                        $value = self::parseSize($value, $key);
-                    }
-                    $constName = 'FILECARTON_' . strtoupper((string)$key);
-                    $out[$constName] = $value;
-                }
-            } else {
-                $lowerKey = strtolower((string)$section);
-                if (isset(self::SIZE_KEYS[$lowerKey]) && is_string($content)) {
-                    $content = self::parseSize($content, $section);
-                }
-                $constName = 'FILECARTON_' . strtoupper((string)$section);
-                $out[$constName] = $content;
+            if (isset(self::SCHEMA[$sectionKey])) {
+                $out['FILECARTON_' . strtoupper($sectionKey)] = self::validateValue($sectionKey, $content);
+                continue;
+            }
+
+            if (!is_array($content)) {
+                throw new \RuntimeException("Unknown configuration key '{$section}'.");
+            }
+
+            foreach ($content as $key => $value) {
+                $lowerKey = strtolower((string)$key);
+                $out['FILECARTON_' . strtoupper($lowerKey)] = self::validateValue($lowerKey, $value);
             }
         }
 
         return $out;
+    }
+
+    /**
+     * Validate a configuration key against SCHEMA and convert byte-size strings.
+     *
+     * @param string $key   Lowercase configuration key name
+     * @param mixed  $value Interpolated TOML value
+     * @return mixed
+     */
+    private static function validateValue(string $key, $value) {
+        if (!isset(self::SCHEMA[$key])) {
+            throw new \RuntimeException("Unknown configuration key '{$key}'.");
+        }
+
+        $type = self::SCHEMA[$key][0];
+        switch ($type) {
+            case 'bool':
+                if (!is_bool($value)) {
+                    throw new \RuntimeException("Configuration key '{$key}' must be a boolean.");
+                }
+                return $value;
+
+            case 'int':
+                if (!is_int($value)) {
+                    throw new \RuntimeException("Configuration key '{$key}' must be an integer.");
+                }
+                return $value;
+
+            case 'size':
+                if (is_int($value)) {
+                    return $value;
+                }
+                if (is_string($value)) {
+                    return self::parseSize($value, $key);
+                }
+                throw new \RuntimeException("Configuration key '{$key}' must be a byte-size string or integer.");
+
+            case 'string':
+                if (!is_string($value)) {
+                    throw new \RuntimeException("Configuration key '{$key}' must be a string.");
+                }
+                return $value;
+
+            case 'string[]':
+                if (!is_array($value)) {
+                    throw new \RuntimeException("Configuration key '{$key}' must be an array of strings.");
+                }
+                foreach ($value as $item) {
+                    if (!is_string($item)) {
+                        throw new \RuntimeException("Configuration key '{$key}' must be an array of strings.");
+                    }
+                }
+                return $value;
+
+            case 'array':
+                if (!is_array($value)) {
+                    throw new \RuntimeException("Configuration key '{$key}' must be an array.");
+                }
+                return $value;
+
+            case 'sendfile':
+                if ($value !== false && !is_string($value) && !is_array($value)) {
+                    throw new \RuntimeException("Configuration key '{$key}' must be false, a string, or an array.");
+                }
+                return $value;
+
+            case 'dev_server':
+                if ($value !== false && !is_string($value)) {
+                    throw new \RuntimeException("Configuration key '{$key}' must be a string or false.");
+                }
+                return $value;
+        }
+
+        return $value;
     }
 
     /**
@@ -180,17 +289,6 @@ class Config {
      * Ensure all standard FILECARTON_* constants have fallback defaults.
      */
     public static function applyDefaults(string $configDir, string $scriptDir): void {
-        define_default('FILECARTON_AUTH_PROVIDERS', [
-            ['class' => StaticPasswordAuth::class],
-        ]);
-        define_default('FILECARTON_GRANT_RESOLVERS', [
-            ['class' => StaticGrantResolver::class],
-        ]);
-        define_default('FILECARTON_STATIC_USER_LIST', [
-            ['id' => 'admin', 'password_hash' => ''],
-        ]);
-        define_default('FILECARTON_MUST_EMBED', false);
-
         define_default('FILECARTON_REPO_SETTING', [
             'root_path'                => $scriptDir,
             'readonly'                 => false,
@@ -202,43 +300,16 @@ class Config {
             'feature_remote_download'  => false,
         ]);
 
-        define_default('FILECARTON_MUST_READONLY', false);
-
-        define_default('FILECARTON_MAX_EDIT_SIZE', 4 * 1024 * 1024);
-        define_default('FILECARTON_UPLOAD_CHUNK_SIZE', 4 * 1024 * 1024);
-        define_default('FILECARTON_UPLOAD_MAX_FILE_SIZE', 1 * 1024 * 1024 * 1024);
-        define_default('FILECARTON_UPLOAD_MAX_DEPTH', 50);
-        define_default('FILECARTON_CHUNK_EXPIRY', 86400);
-        define_default('FILECARTON_CHUNK_CLEANUP_CHANCE', 10);
-        define_default('FILECARTON_ARCHIVE_MAX_FILES', 10000);
-        define_default('FILECARTON_ARCHIVE_MAX_SIZE', 1 * 1024 * 1024 * 1024);
-        define_default('FILECARTON_ARCHIVE_LIST_MAX_FILES', 10000);
-        define_default('FILECARTON_ARCHIVE_TAR_MAX_ACCESS_FILES', 1000);
-        define_default('FILECARTON_ARCHIVE_TARGZ_MAX_ACCESS_SIZE', 64 * 1024 * 1024);
-        define_default('FILECARTON_SEARCH_DEFAULT_LIMIT', 200);
-        define_default('FILECARTON_SEARCH_MAX_LIMIT', 1000);
-        define_default('FILECARTON_SEARCH_MAX_SCAN', 100000);
-
-        define_default('FILECARTON_FILENAME_BLOCKLIST', [
-            '*.php',
-            '.htaccess',
-            '.user.ini',
-            'web.config',
-        ]);
-        define_default('FILECARTON_IGNORE_PATTERN', []);
         define_default('FILECARTON_IGNORE_REALPATH', [
             $configDir . '/filecarton.php',
             $configDir . '/filecarton.config.toml.php',
             $configDir . '/filecarton',
         ]);
-        define_default('FILECARTON_DOTFILES_BLOCK', false);
-        define_default('FILECARTON_DOTFILES_FORCE_VISIBLE', false);
 
-        define_default('FILECARTON_PUBLIC_ORIGIN', '');
-        define_default('FILECARTON_SENDFILE', false);
-        define_default('FILECARTON_ASSET_URL', '');
-        define_default('FILECARTON_HTTP_CLIENT_PROXY', '');
-
-        define_default('FILECARTON_SESSION_NAME', 'FILECARTON');
+        foreach (self::SCHEMA as $key => $spec) {
+            if ($spec[1] !== null) {
+                define_default('FILECARTON_' . strtoupper($key), $spec[1]);
+            }
+        }
     }
 }

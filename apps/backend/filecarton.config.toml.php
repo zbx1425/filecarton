@@ -1,4 +1,5 @@
 #<?php exit;?>
+# DO NOT REMOVE THE FIRST LINE ABOVE. It prevents direct access to this file.
 # ─── Filecarton Configuration ────────────────────────────────────────────────
 
 # ─── Auth ────────────────────────────────────────────────────────────────────

@@ -536,7 +536,7 @@ class Auth {
             $p[] = 'NoLoginAuth cannot be combined with password or redirect providers.';
         }
         if ($nImplicit === 0 && $nInteractive === 0) {
-            $p[] = 'No auth providers registered (add NoLoginAuth, password_hash rows, or AUTH_PROVIDERS).';
+            $p[] = 'No auth providers registered (add NoLoginAuth, password_hash rows, or auth_providers).';
         }
 
         // Grant resolver availability

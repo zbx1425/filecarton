@@ -40,8 +40,8 @@ class RepoSetting {
         if (array_key_exists('root_path', $arr) && is_string($arr['root_path'])) {
             $s->rootPath = $arr['root_path'];
         }
-        if (array_key_exists('readonly', $arr)) {
-            $s->readonly = (bool)$arr['readonly'];
+        if (array_key_exists('readonly', $arr) && is_bool($arr['readonly'])) {
+            $s->readonly = $arr['readonly'];
         }
         if (array_key_exists('branding', $arr) && is_string($arr['branding'])) {
             $s->branding = $arr['branding'];

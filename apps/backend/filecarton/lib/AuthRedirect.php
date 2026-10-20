@@ -382,7 +382,7 @@ class LinkAuth extends RedirectAuth {
         }
         if ($this->url === '') {
             $p[] = 'LinkAuth url is empty.';
-        } elseif (str_starts_with($this->url, 'https://') || str_starts_with($this->url, 'http://')) {
+        } elseif (!str_starts_with($this->url, 'https://') && !str_starts_with($this->url, 'http://')) {
             $p[] = 'LinkAuth url must start with https:// or http://.';
         }
         if ($this->returnParam === '') {
