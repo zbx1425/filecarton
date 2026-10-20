@@ -45,6 +45,9 @@ export async function handleDrop(e: DragEvent, targetPath: string) {
   if (!payload) return
   if (payload.sourcePath === targetPath) return
 
+  const loadingText = `Moving ${payload.items.length} item(s)...`
+  let activeToastId: string | number | undefined = toast.loading(loadingText)
+
   try {
     const check = await apiPost<PasteResponse>('paste', {
       mode: 'cut',
@@ -57,9 +60,13 @@ export async function handleDrop(e: DragEvent, targetPath: string) {
     const hasConflicts = check.conflicts.length > 0
 
     if (hasConflicts && check.completed === 0) {
+      toast.dismiss(activeToastId)
+      activeToastId = undefined
+
       const overwrite = await showPasteConflict(check.conflicts)
       if (!overwrite) return
 
+      activeToastId = toast.loading(loadingText)
       const result = await apiPost<PasteResponse>('paste', {
         mode: 'cut',
         sourcePath: payload.sourcePath,
@@ -69,35 +76,43 @@ export async function handleDrop(e: DragEvent, targetPath: string) {
       })
 
       if (result.failed.length > 0 && result.completed === 0) {
+        toast.dismiss(activeToastId)
+        activeToastId = undefined
         await showOperationReport({
           title: 'Move Failed',
           description: 'All items failed.',
           items: result.failed.map(f => ({ name: f.name, reason: f.error })),
         })
       } else if (result.failed.length > 0) {
+        toast.dismiss(activeToastId)
+        activeToastId = undefined
         await showOperationReport({
           title: 'Partial Move',
           description: `Moved ${result.completed} item(s), ${result.failed.length} failed.`,
           items: result.failed.map(f => ({ name: f.name, reason: f.error })),
         })
       } else {
-        toast.success(`Moved ${result.completed} item(s)`)
+        toast.success(`Moved ${result.completed} item(s)`, { id: activeToastId })
       }
     } else {
       if (check.failed.length > 0 && check.completed === 0) {
+        toast.dismiss(activeToastId)
+        activeToastId = undefined
         await showOperationReport({
           title: 'Move Failed',
           description: 'All items were rejected due to restrictions.',
           items: check.failed.map(f => ({ name: f.name, reason: f.error })),
         })
       } else if (check.failed.length > 0) {
+        toast.dismiss(activeToastId)
+        activeToastId = undefined
         await showOperationReport({
           title: 'Partial Move',
           description: `Moved ${check.completed} item(s), ${check.failed.length} skipped.`,
           items: check.failed.map(f => ({ name: f.name, reason: f.error })),
         })
       } else {
-        toast.success(`Moved ${check.completed} item(s)`)
+        toast.success(`Moved ${check.completed} item(s)`, { id: activeToastId })
       }
     }
 
@@ -111,7 +126,7 @@ export async function handleDrop(e: DragEvent, targetPath: string) {
     tree.loadChildren(payload.sourcePath)
     tree.loadChildren(targetPath)
   } catch (e: unknown) {
-    toast.error(errorMessage(e))
+    toast.error(errorMessage(e), activeToastId !== undefined ? { id: activeToastId } : undefined)
   }
 }
 

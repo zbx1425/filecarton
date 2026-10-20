@@ -24,6 +24,7 @@ export async function createArchive(
   const effectiveItems = items ?? Array.from(fileList.selected)
   if (effectiveItems.length === 0) return
 
+  const toastId = toast.loading(`Creating .${format} archive...`)
   try {
     const result = await apiPost<ArchiveCreateResponse>('archive_create', {
       format,
@@ -32,19 +33,20 @@ export async function createArchive(
     })
     const archiveName = result.archivePath.split('/').pop()
     if (result.skipped && result.skipped.length > 0) {
+      toast.dismiss(toastId)
       await showOperationReport({
         title: 'Archive Created',
         description: `${archiveName} created. ${result.skipped.length} item(s) were skipped due to restrictions.`,
         items: result.skipped.map(s => ({ name: s, reason: 'blocked.ignored' })),
       })
     } else {
-      toast.success(`Archive created: ${archiveName}`)
+      toast.success(`Archive created: ${archiveName}`, { id: toastId })
     }
     fileList.fetchDir(navigation.currentPathStr)
     tree.invalidate(effectiveDirPath)
     tree.loadChildren(effectiveDirPath)
   } catch (e: unknown) {
-    toast.error(errorMessage(e))
+    toast.error(errorMessage(e), { id: toastId })
   }
 }
 
@@ -60,6 +62,7 @@ export async function extractArchive(
   const fileList = useFileListStore()
   const tree = useTreeStore()
 
+  let activeToastId: string | number | undefined = toast.loading('Inspecting archive...')
   try {
     const dryRun = await apiPost<ArchiveExtractDryRunResponse>('archive_extract', {
       path: archivePath,
@@ -67,6 +70,8 @@ export async function extractArchive(
       createSubdir,
       dryRun: true,
     })
+    toast.dismiss(activeToastId)
+    activeToastId = undefined
 
     const hasFailed = dryRun.failed && dryRun.failed.length > 0
     const hasConflicts = dryRun.conflicts.length > 0
@@ -103,24 +108,27 @@ export async function extractArchive(
       if (!confirmed) return
     }
 
+    activeToastId = toast.loading('Extracting archive...')
     const result = await apiPost<ArchiveExtractResponse>('archive_extract', {
       path: archivePath,
       targetPath: targetDir,
       createSubdir,
     })
     if (result.failed && result.failed.length > 0) {
+      toast.dismiss(activeToastId)
+      activeToastId = undefined
       await showOperationReport({
         title: 'Partial Extraction',
         description: `Extracted ${result.extracted} file(s), ${result.failed.length} skipped.`,
         items: result.failed.map(f => ({ name: f.path, reason: f.reason })),
       })
     } else {
-      toast.success(`Extracted ${result.extracted} files`)
+      toast.success(`Extracted ${result.extracted} files`, { id: activeToastId })
     }
     fileList.fetchDir(navigation.currentPathStr)
     tree.invalidateSubtree(targetDir)
     tree.loadChildren(targetDir)
   } catch (e: unknown) {
-    toast.error(errorMessage(e))
+    toast.error(errorMessage(e), activeToastId !== undefined ? { id: activeToastId } : undefined)
   }
 }

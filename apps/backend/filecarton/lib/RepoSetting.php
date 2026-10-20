@@ -17,6 +17,8 @@ class RepoSetting {
     public $featureUnixPerm;
     /** @var bool|null */
     public $featureUnixPermModify;
+    /** @var bool|null */
+    public $featureRemoteDownload;
 
     public function __construct() {
         $this->rootPath = null;
@@ -26,6 +28,7 @@ class RepoSetting {
         $this->featureArchive = null;
         $this->featureUnixPerm = null;
         $this->featureUnixPermModify = null;
+        $this->featureRemoteDownload = null;
     }
 
     /**
@@ -54,6 +57,9 @@ class RepoSetting {
             : false;
         $s->featureUnixPermModify = (array_key_exists('featureUnixPermModify', $arr) && is_bool($arr['featureUnixPermModify']))
             ? $arr['featureUnixPermModify']
+            : false;
+        $s->featureRemoteDownload = (array_key_exists('featureRemoteDownload', $arr) && is_bool($arr['featureRemoteDownload']))
+            ? $arr['featureRemoteDownload']
             : false;
         return $s;
     }
@@ -84,6 +90,9 @@ class RepoSetting {
         }
         if (array_key_exists('featureUnixPermModify', $row) && is_bool($row['featureUnixPermModify'])) {
             $s->featureUnixPermModify = $row['featureUnixPermModify'];
+        }
+        if (array_key_exists('featureRemoteDownload', $row) && is_bool($row['featureRemoteDownload'])) {
+            $s->featureRemoteDownload = $row['featureRemoteDownload'];
         }
         return $s;
     }
@@ -119,6 +128,7 @@ class RepoSetting {
         if ($override->featureArchive !== null) $result->featureArchive = $override->featureArchive;
         if ($override->featureUnixPerm !== null) $result->featureUnixPerm = $override->featureUnixPerm;
         if ($override->featureUnixPermModify !== null) $result->featureUnixPermModify = $override->featureUnixPermModify;
+        if ($override->featureRemoteDownload !== null) $result->featureRemoteDownload = $override->featureRemoteDownload;
         return $result;
     }
 
@@ -139,6 +149,13 @@ class RepoSetting {
     }
 
     /**
+     * Whether remote URL download is enabled.
+     */
+    public function remoteDownloadEnabled(): bool {
+        return (bool)$this->featureRemoteDownload && !$this->readonly;
+    }
+
+    /**
      * Build the features dictionary exposed to the frontend.
      * @return array<string, bool>
      */
@@ -147,6 +164,7 @@ class RepoSetting {
             'archive'        => (bool)$this->featureArchive,
             'unixPerm'       => $this->unixPermEnabled(),
             'unixPermModify' => $this->unixPermModifyEnabled(),
+            'remoteDownload' => $this->remoteDownloadEnabled(),
         ];
     }
 

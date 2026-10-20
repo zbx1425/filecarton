@@ -10,5 +10,5 @@ const auth = useAuthStore()
 <template>
   <AuthView v-if="auth.showLogin" />
   <AppShell v-else />
-  <Toaster position="top-center" :duration="4000" rich-colors :expand="true" />
+  <Toaster position="top-right" :duration="4000" rich-colors :expand="true" />
 </template>

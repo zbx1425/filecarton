@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input'
 import { pathWithoutExtension } from '@/utils/path'
 import OperationReportDialog from '@/components/modal/OperationReportDialog.vue'
 import PermissionsDialog from '@/components/modal/PermissionsDialog.vue'
+import RemoteDownloadDialog from '@/components/modal/RemoteDownloadDialog.vue'
 
 const promptValue = ref('')
 const promptInputRef = ref<InstanceType<typeof Input> | null>(null)
@@ -134,6 +135,9 @@ function handleEditorConflictOpenChange(open: boolean) {
 
   <!-- Unix Permissions Dialog -->
   <PermissionsDialog />
+
+  <!-- Remote Download Dialog -->
+  <RemoteDownloadDialog />
 
   <!-- Editor Conflict (Dialog) -->
   <Dialog :open="dialogState.editorConflict.open" @update:open="handleEditorConflictOpenChange">

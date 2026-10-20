@@ -53,6 +53,12 @@
   "err.perm.invalid_owner": "User not found on system",
   "err.perm.invalid_group": "Group not found on system",
 
+  "err.remote_download.disabled": "Remote download feature is disabled",
+  "err.remote_download.invalid_url": "Invalid URL (only HTTP and HTTPS are supported)",
+  "err.remote_download.failed": "Failed to download from remote URL",
+  "err.remote_download.http_error": "Remote server returned HTTP {status}",
+  "err.remote_download.too_large": "Remote file exceeds the size limit ({maxMB} MiB)",
+
   "err.auth.required": "Authentication required",
   "err.auth.allowlist": "This account is not allowed to log in. Your account ID is: {id}",
   "err.auth.bad_root": "Account root directory is missing",

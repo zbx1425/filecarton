@@ -57,6 +57,11 @@ export interface PermissionsDialogState {
   items: PermissionItemInfo[]
 }
 
+export interface RemoteDownloadDialogState {
+  open: boolean
+  targetDir: string
+}
+
 export const dialogState = reactive({
   confirm: {
     open: false, title: '', message: '', actionLabel: 'Confirm', danger: false, hideCancel: false, resolve: null,
@@ -74,6 +79,9 @@ export const dialogState = reactive({
   permissions: {
     open: false, dirPath: '', items: [],
   } as PermissionsDialogState,
+  remoteDownload: {
+    open: false, targetDir: '',
+  } as RemoteDownloadDialogState,
 })
 
 export function showPermissionsDialog(dirPath: string, items: PermissionItemInfo[]) {
@@ -81,6 +89,16 @@ export function showPermissionsDialog(dirPath: string, items: PermissionItemInfo
   dialogState.permissions.dirPath = dirPath
   dialogState.permissions.items = items
   dialogState.permissions.open = true
+}
+
+export function showRemoteDownloadDialog(targetDir?: string) {
+  let resolvedDir = targetDir
+  if (resolvedDir === undefined) {
+    const nav = useNavigationStore()
+    resolvedDir = nav.currentPathStr
+  }
+  dialogState.remoteDownload.targetDir = resolvedDir
+  dialogState.remoteDownload.open = true
 }
 
 export function confirm(

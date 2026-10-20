@@ -20,6 +20,7 @@ final class RepoSettingTest extends TestCase
         self::assertFalse($s->featureArchive);
         self::assertFalse($s->featureUnixPerm);
         self::assertFalse($s->featureUnixPermModify);
+        self::assertFalse($s->featureRemoteDownload);
         $s->verifyAllSet();
 
         // Non-boolean values should also silently default to false and not fail verifyAllSet
@@ -31,11 +32,13 @@ final class RepoSettingTest extends TestCase
             'featureArchive' => 'invalid',
             'featureUnixPerm' => 123,
             'featureUnixPermModify' => 'yes',
+            'featureRemoteDownload' => 1,
         ]);
 
         self::assertFalse($s2->featureArchive);
         self::assertFalse($s2->featureUnixPerm);
         self::assertFalse($s2->featureUnixPermModify);
+        self::assertFalse($s2->featureRemoteDownload);
         $s2->verifyAllSet();
     }
 
@@ -49,12 +52,14 @@ final class RepoSettingTest extends TestCase
             'featureArchive' => true,
             'featureUnixPerm' => false,
             'featureUnixPermModify' => false,
+            'featureRemoteDownload' => false,
         ]);
 
         $override = RepoSetting::fromStaticRow([
             'root' => '/tmp/user',
             'featureUnixPerm' => true,
             'featureUnixPermModify' => true,
+            'featureRemoteDownload' => true,
         ]);
 
         $combined = $base->combine($override);
@@ -62,6 +67,7 @@ final class RepoSettingTest extends TestCase
         self::assertTrue($combined->featureArchive);
         self::assertTrue($combined->featureUnixPerm);
         self::assertTrue($combined->featureUnixPermModify);
+        self::assertTrue($combined->featureRemoteDownload);
         $combined->verifyAllSet();
     }
 }

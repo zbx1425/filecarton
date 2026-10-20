@@ -20,6 +20,7 @@ define('FILECARTON_REPO_SETTING', [
     'featureArchive' => true,
     'featureUnixPerm' => false,
     'featureUnixPermModify' => false,
+    'featureRemoteDownload' => false,
 ]);
 define('FILECARTON_MUST_READONLY', false);
 define('FILECARTON_MUST_EMBED', false);

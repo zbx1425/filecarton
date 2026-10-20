@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { ArrowUp, ArrowDown, CornerLeftUp, Loader2, ClipboardPaste, File, Folder, CheckSquare, Square, RefreshCw } from '@lucide/vue'
+import { ArrowUp, ArrowDown, CornerLeftUp, Loader2, ClipboardPaste, File, Folder, CloudDownload, CheckSquare, Square, RefreshCw } from '@lucide/vue'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -17,6 +17,7 @@ import { useUiStore } from '@/stores/ui'
 import { usePreferencesStore } from '@/stores/preferences'
 import { formatSize } from '@/utils/format'
 import { createItem, pasteItems } from '@/composables/useFileActions'
+import { showRemoteDownloadDialog } from '@/composables/useDialogs'
 import FileRow from './FileRow.vue'
 import BatchActionBar from './BatchActionBar.vue'
 
@@ -247,6 +248,10 @@ function startResize(e: MouseEvent) {
           <ContextMenuItem @select="createItem('dir')">
             <Folder class="size-4" />
             New Folder
+          </ContextMenuItem>
+          <ContextMenuItem v-if="ui.features.remoteDownload" @select="showRemoteDownloadDialog()">
+            <CloudDownload class="size-4" />
+            Remote Download
           </ContextMenuItem>
           <ContextMenuSeparator />
         </template>

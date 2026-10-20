@@ -13,6 +13,7 @@ export const useUiStore = defineStore('ui', () => {
     archive: config.features?.archive ?? false,
     unixPerm: config.features?.unixPerm ?? false,
     unixPermModify: config.features?.unixPermModify ?? false,
+    remoteDownload: config.features?.remoteDownload ?? false,
   })
   const unixPermInfo = ref(config.unixPerm ?? { user: 'unknown', isRoot: false })
 

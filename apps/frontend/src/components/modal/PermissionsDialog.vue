@@ -293,24 +293,28 @@ async function applyPermissions(recursive: boolean) {
     payload.group = groupInput.value.trim()
   }
 
+  closeDialog()
+  const toastId = toast.loading('Updating permissions...')
+
   try {
     const result = await apiPost<ChmodResponse>('chmod', payload)
-    closeDialog()
 
     if (result.failed.length > 0 && result.completed === 0) {
+      toast.dismiss(toastId)
       await showOperationReport({
         title: 'Permissions Update Failed',
         description: 'None of the selected items could be updated.',
         items: result.failed.map(f => ({ name: f.name, reason: f.error })),
       })
     } else if (result.failed.length > 0) {
+      toast.dismiss(toastId)
       await showOperationReport({
         title: 'Partial Permissions Update',
         description: `Updated ${result.completed} item(s), ${result.failed.length} failed.`,
         items: result.failed.map(f => ({ name: f.name, reason: f.error })),
       })
     } else {
-      toast.success(`Updated permissions for ${result.completed} item(s)`)
+      toast.success(`Updated permissions for ${result.completed} item(s)`, { id: toastId })
     }
 
     // Refresh current file list and tree cache
@@ -324,7 +328,7 @@ async function applyPermissions(recursive: boolean) {
       tree.loadChildren(dirPath)
     }
   } catch (e: unknown) {
-    toast.error(errorMessage(e))
+    toast.error(errorMessage(e), { id: toastId })
   } finally {
     submitting.value = false
   }
@@ -446,6 +450,9 @@ async function applyPermissions(recursive: boolean) {
       </div>
 
       <DialogFooter class="mt-2 flex-row justify-end gap-2">
+        <Button variant="outline" type="button" @click="closeDialog">
+            Cancel
+        </Button>
         <Button
           v-if="hasDirectory"
           type="button"

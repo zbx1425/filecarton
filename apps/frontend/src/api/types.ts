@@ -143,6 +143,13 @@ export interface ChmodResponse {
   failed: Array<{ name: string; error: string }>
 }
 
+export interface RemoteDownloadResponse {
+  completed: boolean
+  name: string
+  size?: number
+  conflict?: string
+}
+
 export interface FileCartonUnixPermConfig {
   user: string
   isRoot: boolean
@@ -186,6 +193,7 @@ export interface FileCartonFeatures {
   archive: boolean
   unixPerm: boolean
   unixPermModify: boolean
+  remoteDownload: boolean
 }
 
 export interface FileCartonConfig {

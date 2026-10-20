@@ -33,11 +33,13 @@ import {
   Search,
   File,
   Folder,
+  CloudDownload,
   ChevronDown,
   Settings2,
   LogOut,
 } from '@lucide/vue'
 import { createItem } from '@/composables/useFileActions'
+import { showRemoteDownloadDialog } from '@/composables/useDialogs'
 import { isInternalDrag, handleDrop } from '@/composables/useDragDrop'
 import ClipboardBadge from '@/components/ClipboardBadge.vue'
 
@@ -205,6 +207,13 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
                 <Folder class="size-4" />
                 New Folder
               </DropdownMenuItem>
+              <template v-if="ui.features.remoteDownload">
+                <DropdownMenuSeparator />
+                <DropdownMenuItem @select="showRemoteDownloadDialog()">
+                  <CloudDownload class="size-4" />
+                  Remote Download
+                </DropdownMenuItem>
+              </template>
             </DropdownMenuContent>
           </DropdownMenu>
 

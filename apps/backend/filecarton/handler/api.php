@@ -35,14 +35,14 @@ $validActions = [
     'search', 'create', 'delete', 'rename', 'paste', 'chmod', 'upload',
     'upload_chunk', 'upload_complete', 'archive_create', 'archive_extract',
     'archive_list', 'archive_read', 'archive_raw', 'archive_download',
-    'check_upload_conflicts',
+    'check_upload_conflicts', 'remote_download',
     'auth_login', 'auth_logout',
 ];
 
 $postActions = [
     'write', 'create', 'delete', 'rename', 'paste', 'chmod', 'upload',
     'upload_chunk', 'upload_complete', 'archive_create', 'archive_extract',
-    'check_upload_conflicts',
+    'check_upload_conflicts', 'remote_download',
     'auth_login', 'auth_logout',
 ];
 
@@ -74,6 +74,10 @@ try {
 
     if ($action === 'chmod' && !RepoSetting::current()->unixPermModifyEnabled()) {
         Response::error('perm.disabled', 403);
+    }
+
+    if ($action === 'remote_download' && !RepoSetting::current()->remoteDownloadEnabled()) {
+        Response::error('remote_download.disabled', 403);
     }
 
     $pathSec = null;

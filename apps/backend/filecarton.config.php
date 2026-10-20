@@ -52,8 +52,14 @@ define_default('FILECARTON_REPO_SETTING', [
     'featureUnixPerm' => false,
 
     // Enable modifying Unix file permissions and ownership (requires featureUnixPerm).
-    // WARNING: This feature is risky. Only enable when all users of your system are people who you trust.
+    // WARNING: Security risk!
+    // Only enable when all users are fully trusted!
     'featureUnixPermModify' => false,
+
+    // Enable downloading files directly from remote URLs (HTTP/HTTPS) into the repository.
+    // WARNING: Security risk! Will allow SSRF attacks.
+    // Only enable when all users are fully trusted!
+    'featureRemoteDownload' => false,
 ]);
 
 // If set, FileCarton is forced in read-only mode, and neither FILECARTON_REPO_SETTING

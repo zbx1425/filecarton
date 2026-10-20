@@ -204,9 +204,10 @@ async function handleNewFolder() {
     toast.error('Dot files (hidden files) are not allowed')
     return
   }
+  const toastId = toast.loading(`Creating ${name}...`)
   try {
     await apiPost<CreateResponse>('create', { path: props.path, name, type: 'dir' })
-    toast.success(`Created ${name}`)
+    toast.success(`Created ${name}`, { id: toastId })
     tree.invalidate(props.path)
     tree.loadChildren(props.path)
     if (navigation.currentPathStr === props.path) {
@@ -214,7 +215,7 @@ async function handleNewFolder() {
       fileList.useFileListStore().fetchDir(props.path)
     }
   } catch (e: unknown) {
-    toast.error(errorMessage(e))
+    toast.error(errorMessage(e), { id: toastId })
   }
 }
 </script>

@@ -1,6 +1,6 @@
 import { toast } from 'vue-sonner'
 import { apiPost } from '@/api/client'
-import type { CreateResponse, DeleteResponse, RenameResponse, PasteResponse } from '@/api/types'
+import type { CreateResponse, DeleteResponse, RenameResponse, PasteResponse, RemoteDownloadResponse } from '@/api/types'
 import { useFileListStore } from '@/stores/fileList'
 import { useTreeStore } from '@/stores/tree'
 import { useNavigationStore } from '@/stores/navigation'
@@ -48,16 +48,73 @@ export async function createItem(type: 'file' | 'dir') {
     return
   }
 
+  const toastId = toast.loading(`Creating ${name}...`)
   try {
     await apiPost<CreateResponse>('create', {
       path: navigation.currentPathStr,
       name,
       type,
     })
-    toast.success(`Created ${name}`)
+    toast.success(`Created ${name}`, { id: toastId })
     refreshCurrent()
   } catch (e: unknown) {
-    toast.error(errorMessage(e))
+    toast.error(errorMessage(e), { id: toastId })
+  }
+}
+
+export async function remoteDownload(
+  targetDir: string,
+  url: string,
+  customName?: string,
+  hintName?: string,
+) {
+  const ui = useUiStore()
+  if (ui.readonly || !ui.features.remoteDownload) return
+
+  const displayLabel = customName || hintName || 'remote file'
+  let activeToastId: string | number | undefined = toast.loading(`Downloading ${displayLabel}...`)
+
+  try {
+    let result = await apiPost<RemoteDownloadResponse>('remote_download', {
+      path: targetDir,
+      url,
+      name: customName,
+      overwrite: false,
+    })
+
+    if (!result.completed && result.conflict) {
+      toast.dismiss(activeToastId)
+      activeToastId = undefined
+
+      const conflictFile = result.conflict
+      const conflictPath = targetDir ? joinPath(targetDir, conflictFile) : conflictFile
+      const overwrite = await showPasteConflict([conflictPath])
+      if (!overwrite) return
+
+      activeToastId = toast.loading(`Downloading ${conflictFile}...`)
+      result = await apiPost<RemoteDownloadResponse>('remote_download', {
+        path: targetDir,
+        url,
+        name: conflictFile,
+        overwrite: true,
+      })
+    }
+
+    toast.success(`Downloaded ${result.name}`, { id: activeToastId })
+
+    const navigation = useNavigationStore()
+    const fileList = useFileListStore()
+    const tree = useTreeStore()
+
+    if (navigation.currentPathStr === targetDir) {
+      fileList.fetchDir(targetDir)
+    }
+    tree.invalidate(targetDir)
+    if (targetDir === '' || tree.isExpanded(targetDir)) {
+      tree.loadChildren(targetDir)
+    }
+  } catch (e: unknown) {
+    toast.error(errorMessage(e), activeToastId !== undefined ? { id: activeToastId } : undefined)
   }
 }
 
@@ -105,19 +162,21 @@ export async function deleteItems(dirPath: string, itemNames: string[]) {
   })
   if (!confirmed) return
 
+  const toastId = toast.loading(`Deleting ${count} item(s)...`)
   try {
     const result = await apiPost<DeleteResponse>('delete', {
       path: dirPath,
       items: itemNames,
     })
     if (result.failed.length > 0) {
+      toast.dismiss(toastId)
       await showOperationReport({
         title: 'Delete Failed',
         description: `${result.failed.length} of ${itemNames.length} item(s) could not be deleted.`,
         items: result.failed.map(f => ({ name: f.name, reason: f.error })),
       })
     } else {
-      toast.success(`Deleted ${result.deleted} item(s)`)
+      toast.success(`Deleted ${result.deleted} item(s)`, { id: toastId })
     }
 
     const fileList = useFileListStore()
@@ -150,7 +209,7 @@ export async function deleteItems(dirPath: string, itemNames: string[]) {
 
     fileList.clearSelection()
   } catch (e: unknown) {
-    toast.error(errorMessage(e))
+    toast.error(errorMessage(e), { id: toastId })
   }
 }
 
@@ -193,13 +252,14 @@ export async function renameItem(dirPath: string, oldName: string, isDir?: boole
     return
   }
 
+  const toastId = toast.loading(`Renaming to ${newName}...`)
   try {
     await apiPost<RenameResponse>('rename', {
       path: dirPath,
       oldName,
       newName,
     })
-    toast.success(`Renamed to ${newName}`)
+    toast.success(`Renamed to ${newName}`, { id: toastId })
 
     if (isAffectingActiveFile(dirPath, [oldName])) {
       navigation.editDirty = false
@@ -217,7 +277,7 @@ export async function renameItem(dirPath: string, oldName: string, isDir?: boole
     tree.invalidate(dirPath)
     tree.loadChildren(dirPath)
   } catch (e: unknown) {
-    toast.error(errorMessage(e))
+    toast.error(errorMessage(e), { id: toastId })
   }
 }
 
@@ -227,6 +287,11 @@ export async function pasteItems(targetPath: string) {
 
   const clipboard = useClipboardStore()
   if (!clipboard.hasContent || !clipboard.mode) return
+
+  const loadingText = clipboard.mode === 'copy'
+    ? `Copying ${clipboard.items.length} item(s)...`
+    : `Moving ${clipboard.items.length} item(s)...`
+  let activeToastId: string | number | undefined = toast.loading(loadingText)
 
   try {
     const check = await apiPost<PasteResponse>('paste', {
@@ -241,9 +306,13 @@ export async function pasteItems(targetPath: string) {
     let totalCompleted = check.completed
 
     if (hasConflicts && check.completed === 0) {
+      toast.dismiss(activeToastId)
+      activeToastId = undefined
+
       const overwrite = await showPasteConflict(check.conflicts)
       if (!overwrite) return
 
+      activeToastId = toast.loading(loadingText)
       const result = await apiPost<PasteResponse>('paste', {
         mode: clipboard.mode,
         sourcePath: clipboard.sourcePath,
@@ -255,36 +324,44 @@ export async function pasteItems(targetPath: string) {
 
       const verb = clipboard.mode === 'copy' ? 'Copied' : 'Moved'
       if (result.failed.length > 0 && result.completed === 0) {
+        toast.dismiss(activeToastId)
+        activeToastId = undefined
         await showOperationReport({
           title: `${verb === 'Copied' ? 'Copy' : 'Move'} Failed`,
           description: `All items failed.`,
           items: result.failed.map(f => ({ name: f.name, reason: f.error })),
         })
       } else if (result.failed.length > 0) {
+        toast.dismiss(activeToastId)
+        activeToastId = undefined
         await showOperationReport({
           title: `Partial ${verb === 'Copied' ? 'Copy' : 'Move'}`,
           description: `${verb} ${result.completed} item(s), ${result.failed.length} failed.`,
           items: result.failed.map(f => ({ name: f.name, reason: f.error })),
         })
       } else {
-        toast.success(`${verb} ${result.completed} item(s)`)
+        toast.success(`${verb} ${result.completed} item(s)`, { id: activeToastId })
       }
     } else {
       const verb = clipboard.mode === 'copy' ? 'Copied' : 'Moved'
       if (check.failed.length > 0 && check.completed === 0) {
+        toast.dismiss(activeToastId)
+        activeToastId = undefined
         await showOperationReport({
           title: `${verb === 'Copied' ? 'Copy' : 'Move'} Failed`,
           description: 'All items were rejected due to restrictions.',
           items: check.failed.map(f => ({ name: f.name, reason: f.error })),
         })
       } else if (check.failed.length > 0) {
+        toast.dismiss(activeToastId)
+        activeToastId = undefined
         await showOperationReport({
           title: `Partial ${verb === 'Copied' ? 'Copy' : 'Move'}`,
           description: `${verb} ${check.completed} item(s), ${check.failed.length} skipped.`,
           items: check.failed.map(f => ({ name: f.name, reason: f.error })),
         })
       } else {
-        toast.success(`${verb} ${check.completed} item(s)`)
+        toast.success(`${verb} ${check.completed} item(s)`, { id: activeToastId })
       }
     }
 
@@ -304,8 +381,11 @@ export async function pasteItems(targetPath: string) {
     tree.invalidateSubtree(targetPath)
     tree.loadChildren(targetPath)
   } catch (e: unknown) {
-    if (e instanceof Error && e.message === '__cancelled__') return
-    toast.error(errorMessage(e))
+    if (e instanceof Error && e.message === '__cancelled__') {
+      if (activeToastId !== undefined) toast.dismiss(activeToastId)
+      return
+    }
+    toast.error(errorMessage(e), activeToastId !== undefined ? { id: activeToastId } : undefined)
   }
 }
 
