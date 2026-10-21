@@ -160,8 +160,10 @@ class StartupCheck {
                     $p[] = 'Root directory is not a directory: ' . $rootPath;
                 } elseif (!is_readable($rootPath)) {
                     $p[] = 'Root directory is not readable: ' . $rootPath;
-                } elseif (!$readonly && !is_writable($rootPath)) {
-                    $p[] = 'Root directory is not writable (required unless read-only mode is active): ' . $rootPath;
+
+                    // Do not check for root directory writeability:
+                    // Maybe the user only wants to manage some subdirectories,
+                    // and does not want to open up UNIX permissions for the root directory.
                 }
             }
         }
