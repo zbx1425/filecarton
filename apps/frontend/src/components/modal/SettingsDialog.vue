@@ -24,10 +24,9 @@ import {
 } from '@/components/ui/number-field'
 import { useUiStore } from '@/stores/ui'
 import { usePreferencesStore } from '@/stores/preferences'
-import { RADIX_SCALE_LIST, RADIX_SCALES, formatToolbarColorLabel } from '@/utils/themeColors'
+import { RADIX_SCALE_LIST, RADIX_SCALES } from '@/utils/themeColors'
 import { Sun, Moon, Monitor, Settings, Palette, List, Code, Info, Check } from '@lucide/vue'
 import Badge from '@/components/ui/badge/Badge.vue'
-import Checkbox from '../ui/checkbox/Checkbox.vue'
 
 const appVersion = __APP_VERSION__
 const ui = useUiStore()

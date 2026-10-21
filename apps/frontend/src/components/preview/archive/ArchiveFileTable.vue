@@ -13,7 +13,6 @@ import { usePreferencesStore } from '@/stores/preferences'
 import { getFileIcon, getFileIconColor, canPreviewImage } from '@/composables/useFileType'
 import { formatSize, formatTime, formatTimeLocalISO8601 } from '@/utils/format'
 import type { ArchiveTreeItem, ArchiveSortColumn } from '@/composables/useArchiveExplorer'
-import FileItemMenu from '@/components/FileItemMenu.vue'
 
 const props = defineProps<{
   archivePath: string
