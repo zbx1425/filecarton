@@ -39,7 +39,7 @@
   --sidebar-border: oklch(0.925 0.005 214.3);
   --sidebar-ring: oklch(0.723 0.014 214.4);
 
-  --selected: oklch(0.94 0.04 240);
+  --selected: oklch(0.951 0.026 236.824);
 
   --login-from: #023456;
   --login-via: #094168;
@@ -63,13 +63,13 @@
   --fc-row-height: 2rem;
   --fc-table-max-w: none;
   --fc-table-resize-left: 0px;
-  --fc-success: oklch(0.65 0.2 150);
+  --fc-success: oklch(62.7% 0.194 149.214);
 
-  --statusbar-bg: #F8F8F8;
-  --statusbar-fg: #3B3B3B;
-  --statusbar-border: #E5E5E5;
+  --statusbar-bg: oklch(98.5% 0 0);
+  --statusbar-fg: oklch(37.1% 0 0);
+  --statusbar-border: oklch(92.2% 0 0);
   --statusbar-hover: rgba(31, 31, 31, 0.067);
-  --statusbar-hover-fg: #000000;
+  --statusbar-hover-fg: oklch(0% 0 0);
 }
 
 .dark {
@@ -105,7 +105,7 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.56 0.021 213.5);
 
-  --selected: oklch(0.28 0.04 240);
+  --selected: oklch(29.3% 0.066 243.157);
 
   --icon-folder:      oklch(0.80 0.14 75);
   --icon-code:        oklch(0.70 0.14 250);
@@ -120,13 +120,13 @@
   --icon-video:       oklch(0.70 0.18 15);
   --icon-model:       oklch(0.70 0.12 210);
 
-  --fc-success: oklch(0.72 0.18 150);
+  --fc-success: oklch(72.3% 0.219 149.579);
 
-  --statusbar-bg: #181818;
-  --statusbar-fg: #CCCCCC;
-  --statusbar-border: #2B2B2B;
+  --statusbar-bg: oklch(20.5% 0 0);
+  --statusbar-fg: oklch(87% 0 0);
+  --statusbar-border: oklch(20.5% 0 0);
   --statusbar-hover: rgba(241, 241, 241, 0.2);
-  --statusbar-hover-fg: #FFFFFF;
+  --statusbar-hover-fg: oklch(100% 0 0);
 }
 
 [data-slot="app-toolbar"][data-toolbar-custom="true"] {

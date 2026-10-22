@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/number-field'
 import { useUiStore } from '@/stores/ui'
 import { usePreferencesStore } from '@/stores/preferences'
-import { RADIX_SCALE_LIST, RADIX_SCALES } from '@/utils/themeColors'
+import { COLOR_FAMILY_LIST, COLOR_SCALES } from '@/utils/themeColors'
 import { Sun, Moon, Monitor, Settings, Palette, List, Code, Info, Check } from '@lucide/vue'
 import Badge from '@/components/ui/badge/Badge.vue'
 
@@ -208,21 +208,21 @@ function setEditorFontSize(val: number | undefined) {
                     <Check v-if="prefs.primaryColor === 'default'" class="size-3.5 stroke-[2.5]" />
                   </button>
                   <span class="text-sm text-muted-foreground">
-                    Default{{ prefs.backendDefaultPrimary ? ` (${RADIX_SCALES[prefs.backendDefaultPrimary].label})` : '' }}
+                    Default{{ prefs.backendDefaultPrimary ? ` (${COLOR_SCALES[prefs.backendDefaultPrimary].label})` : '' }}
                   </span>
                 </div>
 
                 <div class="grid grid-cols-8 sm:grid-cols-11 gap-1.5">
                   <button
-                    v-for="scale in RADIX_SCALE_LIST"
-                    :key="scale.name"
+                    v-for="entry in COLOR_FAMILY_LIST"
+                    :key="entry.name"
                     type="button"
-                    :data-primary-swatch="scale.name"
-                    :title="scale.label"
+                    :data-primary-swatch="entry.name"
+                    :title="entry.label"
                     class="size-6 rounded-sm flex items-center justify-center border border-black/10 dark:border-white/10 transition-transform hover:scale-110 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    @click="prefs.primaryColor = scale.name"
+                    @click="prefs.primaryColor = entry.name"
                   >
-                    <Check v-if="prefs.primaryColor === scale.name" class="size-3.5 stroke-[2.5]" />
+                    <Check v-if="prefs.primaryColor === entry.name" class="size-3.5 stroke-[2.5]" />
                   </button>
                 </div>
               </div>
@@ -248,15 +248,15 @@ function setEditorFontSize(val: number | undefined) {
                     <div class="text-sm text-muted-foreground">Subtle</div>
                     <div class="grid grid-cols-8 sm:grid-cols-11 gap-1.5">
                       <button
-                        v-for="scale in RADIX_SCALE_LIST"
-                        :key="scale.name"
+                        v-for="entry in COLOR_FAMILY_LIST"
+                        :key="entry.name"
                         type="button"
-                        :data-toolbar-swatch="scale.name"
-                        :title="scale.label"
+                        :data-toolbar-swatch="entry.name"
+                        :title="entry.label"
                         class="size-6 rounded-sm border flex items-center justify-center transition-transform hover:scale-110 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        @click="prefs.toolbarColor = scale.name"
+                        @click="prefs.toolbarColor = entry.name"
                       >
-                        <Check v-if="prefs.toolbarColor === scale.name" class="size-3.5 stroke-[2.5]" />
+                        <Check v-if="prefs.toolbarColor === entry.name" class="size-3.5 stroke-[2.5]" />
                       </button>
                     </div>
                   </div>
@@ -265,15 +265,15 @@ function setEditorFontSize(val: number | undefined) {
                     <div class="text-sm text-muted-foreground">Solid</div>
                     <div class="grid grid-cols-8 sm:grid-cols-11 gap-1.5">
                       <button
-                        v-for="scale in RADIX_SCALE_LIST"
-                        :key="`${scale.name}-solid`"
+                        v-for="entry in COLOR_FAMILY_LIST"
+                        :key="`${entry.name}-solid`"
                         type="button"
-                        :data-toolbar-swatch="`${scale.name}-solid`"
-                        :title="`${scale.label} (Solid)`"
+                        :data-toolbar-swatch="`${entry.name}-solid`"
+                        :title="`${entry.label} (Solid)`"
                         class="size-6 rounded-sm border flex items-center justify-center transition-transform hover:scale-110 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        @click="prefs.toolbarColor = `${scale.name}-solid`"
+                        @click="prefs.toolbarColor = `${entry.name}-solid`"
                       >
-                        <Check v-if="prefs.toolbarColor === `${scale.name}-solid`" class="size-3.5 stroke-[2.5]" />
+                        <Check v-if="prefs.toolbarColor === `${entry.name}-solid`" class="size-3.5 stroke-[2.5]" />
                       </button>
                     </div>
                   </div>

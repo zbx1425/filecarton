@@ -5,8 +5,8 @@ import {
   type PrimaryColorPreference,
   type ToolbarColorPreference,
   type ToolbarSwatchId,
-  type RadixColorName,
-  isValidRadixColor,
+  type TailwindColorFamily,
+  isValidColorFamily,
   isValidToolbarColor,
   getPrimaryThemeTokens,
   getToolbarThemeTokens,
@@ -69,7 +69,7 @@ function loadPreferences(): StoredPreferences {
     if (raw) {
       const parsed = JSON.parse(raw)
       const merged: StoredPreferences = { ...DEFAULTS, ...parsed }
-      if (merged.primaryColor !== 'default' && !isValidRadixColor(merged.primaryColor)) {
+      if (merged.primaryColor !== 'default' && !isValidColorFamily(merged.primaryColor)) {
         merged.primaryColor = 'default'
       }
       if (merged.toolbarColor !== 'default' && !isValidToolbarColor(merged.toolbarColor)) {
@@ -105,9 +105,9 @@ export const usePreferencesStore = defineStore('preferences', () => {
   const config = window.__FILECARTON__
   const dotfilesConfig = config.dotfiles ?? { block: false, forceVisible: false }
 
-  const backendDefaultPrimary = computed<RadixColorName | null>(() => {
+  const backendDefaultPrimary = computed<TailwindColorFamily | null>(() => {
     const cfg = config.theme?.primary?.toLowerCase()
-    return isValidRadixColor(cfg) ? cfg : null
+    return isValidColorFamily(cfg) ? cfg : null
   })
 
   const backendDefaultToolbar = computed<ToolbarSwatchId | null>(() => {
@@ -115,9 +115,9 @@ export const usePreferencesStore = defineStore('preferences', () => {
     return isValidToolbarColor(cfg) ? cfg : null
   })
 
-  const effectivePrimaryColor = computed<RadixColorName | null>(() => {
+  const effectivePrimaryColor = computed<TailwindColorFamily | null>(() => {
     if (primaryColor.value === 'default') return backendDefaultPrimary.value
-    return isValidRadixColor(primaryColor.value) ? primaryColor.value : backendDefaultPrimary.value
+    return isValidColorFamily(primaryColor.value) ? primaryColor.value : backendDefaultPrimary.value
   })
 
   const effectiveToolbarColor = computed<ToolbarSwatchId | null>(() => {

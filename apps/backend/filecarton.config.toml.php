@@ -55,10 +55,14 @@ feature_unix_perm_modify = false
 # WARNING: Security risk! Will allow SSRF attacks. Only enable when all users are fully trusted!
 feature_remote_download = false
 
-# Default primary theme color (e.g. "blue", "indigo", "teal", "violet", or "" for built-in default).
+# Default primary theme color (e.g. "sky", "blue", "indigo", "violet", "rose", or "" for built-in default).
+# See Tailwind CSS color families: red, orange, amber, yellow, lime, green, emerald, teal,
+# cyan, sky, blue, indigo, violet, purple, fuchsia, pink, rose, slate, gray, zinc, neutral,
+# stone, mauve, olive, mist, taupe.
 theme_primary = ""
 
 # Default toolbar color (e.g. "slate", "blue", "slate-solid", "blue-solid", or "" for built-in default).
+# Append "-solid" for a solid-tone toolbar.
 theme_toolbar = ""
 
 
