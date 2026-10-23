@@ -576,7 +576,8 @@ export function ensureSwatchStyles(): void {
     const c = scale.colors
     const fg = scale.isBright ? c['950'] : '#ffffff'
     rules.push(
-      `[data-primary-swatch="${scale.name}"]{background-color:${c['500']};color:${fg};}`,
+      `[data-primary-swatch="${scale.name}"]{background-color:${c['700']};color:${fg};}`,
+      `.dark [data-primary-swatch="${scale.name}"]{background-color:${c['500']};color:${fg};}`,
       `[data-toolbar-swatch="${scale.name}"]{background-color:${c['100']};border-color:${c['300']};color:${c['950']};}`,
       `.dark [data-toolbar-swatch="${scale.name}"]{background-color:${c['900']};border-color:${c['700']};color:${c['50']};}`,
     )
