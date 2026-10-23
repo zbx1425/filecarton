@@ -167,26 +167,11 @@ class Response {
      * Supports X-Sendfile / X-Accel-Redirect offload via FILECARTON_SENDFILE.
      */
     public static function file(string $absPath, ?string $filename = null) {
-        self::discardOutputBuffer();
-        if (session_status() === PHP_SESSION_ACTIVE) {
-            session_write_close();
-        }
         $filename = $filename ?? basename($absPath);
-        $size = filesize($absPath);
-
         $ascii = preg_replace('/[^\x20-\x7E]/', '_', $filename);
         $encoded = rawurlencode($filename);
-        header('Content-Type: application/octet-stream');
         header("Content-Disposition: attachment; filename=\"" . addcslashes($ascii, '"\\') . "\"; filename*=UTF-8''" . $encoded);
-        header('Content-Length: ' . $size);
-        header('Cache-Control: private, no-store');
-        header('X-Content-Type-Options: nosniff');
-
-        if (self::trySendfile($absPath)) {
-            exit;
-        }
-
-        readfile($absPath);
+        self::stream($absPath, "application/octet-stream");
         exit;
     }
 

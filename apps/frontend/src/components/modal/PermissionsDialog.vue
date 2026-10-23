@@ -47,12 +47,10 @@ type BitKey = typeof BIT_DEFS[number]['key']
 const ROWS: Array<{
   label: string
   cols: [BitKey, BitKey, BitKey]
-  specialKey: BitKey
-  specialLabel: string
 }> = [
-  { label: 'Read', cols: ['ur', 'gr', 'or'], specialKey: 'suid', specialLabel: 'SUID' },
-  { label: 'Write', cols: ['uw', 'gw', 'ow'], specialKey: 'sgid', specialLabel: 'SGID' },
-  { label: 'Exec', cols: ['ux', 'gx', 'ox'], specialKey: 'sticky', specialLabel: 'Sticky' },
+  { label: 'Read', cols: ['ur', 'gr', 'or'] },
+  { label: 'Write', cols: ['uw', 'gw', 'ow'] },
+  { label: 'Exec', cols: ['ux', 'gx', 'ox'] },
 ]
 
 const ui = useUiStore()
@@ -118,7 +116,8 @@ function computeOctalFromBits(): string {
       mode |= def.mask
     }
   }
-  return mode.toString(8).padStart(4, '0')
+  if (mode & 0o7000) return mode.toString(8).padStart(4, '0')
+  return (mode & 0o777).toString(8).padStart(3, '0')
 }
 
 const symbolicPreview = computed(() => {
@@ -231,7 +230,11 @@ function handleOctalInput(e: Event) {
 function handleOctalBlur() {
   if (octalInput.value.length >= 3) {
     const parsed = parseInt(octalInput.value, 8)
-    octalInput.value = parsed.toString(8).padStart(4, '0')
+    if (parsed & 0o7000) {
+      octalInput.value = parsed.toString(8).padStart(4, '0')
+    } else {
+      octalInput.value = (parsed & 0o777).toString(8).padStart(3, '0')
+    }
   } else {
     octalInput.value = computeOctalFromBits()
   }
@@ -354,7 +357,7 @@ async function applyPermissions(recursive: boolean) {
 
 <template>
   <Dialog :open="state.open" @update:open="(v: boolean) => { if (!v) closeDialog() }">
-    <DialogContent class="sm:!max-w-xl">
+    <DialogContent>
       <DialogHeader>
         <DialogTitle class="truncate pr-6">{{ dialogTitle }}</DialogTitle>
         <DialogDescription class="sr-only">
@@ -363,12 +366,12 @@ async function applyPermissions(recursive: boolean) {
       </DialogHeader>
 
       <div class="space-y-4 py-1">
-        <!-- Section 1: File mode (left 4x4 grid + right Octal box) -->
+        <!-- Section 1: File mode (left 3x3 grid + right Octal box) -->
         <div class="space-y-2">
           <div class="flex flex-col sm:flex-row gap-4 items-stretch">
-            <!-- Left: 4x4 Checkbox Grid -->
+            <!-- Left: 3x3 Checkbox Grid -->
             <div class="flex-1 rounded-md border bg-muted/15 p-3">
-              <div class="grid grid-cols-4 gap-x-2 gap-y-2.5 items-center">
+              <div class="grid grid-cols-3 gap-x-2 gap-y-2.5 items-center">
                 <!-- Header row -->
                 <div class="min-w-0">
                   <div class="text-sm font-medium text-foreground">Owner</div>
@@ -385,7 +388,6 @@ async function applyPermissions(recursive: boolean) {
                 <div class="min-w-0 self-start">
                   <div class="text-sm font-medium text-foreground">Others</div>
                 </div>
-                <div></div>
 
                 <!-- 3 Permission rows -->
                 <template v-for="row in ROWS" :key="row.label">
@@ -399,14 +401,6 @@ async function applyPermissions(recursive: boolean) {
                       @update:model-value="toggleBit(colKey)"
                     />
                     <span>{{ row.label }}</span>
-                  </label>
-
-                  <label class="flex items-center gap-1.5 text-sm cursor-pointer select-none">
-                    <Checkbox
-                      :model-value="currentBits[row.specialKey]"
-                      @update:model-value="toggleBit(row.specialKey)"
-                    />
-                    <span>{{ row.specialLabel }}</span>
                   </label>
                 </template>
               </div>

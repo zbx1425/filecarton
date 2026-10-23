@@ -28,6 +28,7 @@ export const EDITABLE_EXTENSIONS = new Set([
   'csv', 'tsv', 'log',
   'env', 'gitignore', 'gitattributes', 'editorconfig',
   'dockerfile', 'makefile',
+  'htaccess', 'htpasswd', 'eml', 'tpl', 'twig', 'passwd',
 ])
 
 export const EXTENSION_MONACO_LANGUAGE: Record<string, string> = {
@@ -55,6 +56,7 @@ export const EXTENSION_MONACO_LANGUAGE: Record<string, string> = {
   ps1: 'powershell',
   graphql: 'graphql', gql: 'graphql',
   dockerfile: 'dockerfile',
+  toml: 'toml',
   ini: 'ini', cfg: 'ini', conf: 'ini', properties: 'ini',
 }
 

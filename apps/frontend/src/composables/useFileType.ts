@@ -60,15 +60,17 @@ const ICON_MAP: Record<string, Component> = {
 }
 
 const SPECIAL_FILE_ICONS: Record<string, Component> = {
-  Makefile: Settings,
-  Dockerfile: Settings,
-  LICENSE: FileText,
-  README: FileText,
+  makefile: Settings,
+  dockerfile: Settings,
+  license: FileText,
+  readme: FileText,
+  '.htaccess': FileText,
+  '.htpasswd': FileText,
 }
 
 export function getFileIcon(name: string, isDir: boolean, expanded = false): Component {
   if (isDir) return expanded ? FolderOpen : Folder
-  if (SPECIAL_FILE_ICONS[name]) return SPECIAL_FILE_ICONS[name]
+  if (SPECIAL_FILE_ICONS[name.toLowerCase()]) return SPECIAL_FILE_ICONS[name.toLowerCase()]
   const ext = pathExtension(name)
   return ICON_MAP[ext] ?? File
 }
@@ -95,11 +97,16 @@ export function getFileIconColor(name: string, isDir: boolean, expanded = false)
   return ICON_COLOR_MAP.get(icon) ?? 'text-muted-foreground'
 }
 
+const EDITABLE_NAMES = new Set([
+  'makefile', 'dockerfile',
+  'license', 'readme', 'authors', 'contributors', 'changelog',
+  '.htaccess', '.htpasswd',
+])
+
 export function isEditable(name: string): boolean {
   const ext = pathExtension(name)
   if (EDITABLE_EXTENSIONS.has(ext)) return true
-  const baseName = name.toLowerCase()
-  return baseName === 'makefile' || baseName === 'dockerfile'
+  return EDITABLE_NAMES.has(name.toLowerCase())
 }
 
 export function isImage(name: string): boolean {
@@ -118,11 +125,19 @@ export function isArchive(name: string): boolean {
   return ARCHIVE_EXTENSIONS.has(pathExtension(name))
 }
 
+export function isPdf(name: string): boolean {
+  return pathExtension(name) === 'pdf'
+}
+
 export function canPreviewImage(name: string, size: number): boolean {
   return isImage(name) && size <= MAX_PREVIEW_SIZE
 }
 
+const COMPOUND_EXT_RE = /\.(json|toml|ini|yaml)\.php$/i
+
 export function monacoLanguage(name: string): string {
+  const compound = name.match(COMPOUND_EXT_RE)
+  if (compound) return EXTENSION_MONACO_LANGUAGE[compound[1].toLowerCase()] ?? 'plaintext'
   const ext = pathExtension(name)
   return EXTENSION_MONACO_LANGUAGE[ext] ?? 'plaintext'
 }

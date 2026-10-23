@@ -5,7 +5,7 @@ import { useNavigationStore } from '@/stores/navigation'
 import { useFileListStore } from '@/stores/fileList'
 import { useUiStore } from '@/stores/ui'
 import { usePreferencesStore } from '@/stores/preferences'
-import { isEditable, isImage, isAudio, isVideo, isArchive } from '@/composables/useFileType'
+import { isEditable, isImage, isAudio, isVideo, isArchive, isPdf } from '@/composables/useFileType'
 import { buildDownloadUrl } from '@/api/client'
 import { ArrowLeft, Pencil, Download } from '@lucide/vue'
 import ImagePreview from './ImagePreview.vue'
@@ -14,6 +14,7 @@ import VideoPreview from './VideoPreview.vue'
 import ArchivePreview from './ArchivePreview.vue'
 import ArchiveExtractButton from './archive/ArchiveExtractButton.vue'
 import CodePreview from './CodePreview.vue'
+import PdfPreview from './PdfPreview.vue'
 import FallbackPreview from './FallbackPreview.vue'
 
 const navigation = useNavigationStore()
@@ -38,6 +39,7 @@ const previewType = computed(() => {
   if (isImage(name)) return 'image'
   if (isAudio(name)) return 'audio'
   if (isVideo(name)) return 'video'
+  if (isPdf(name)) return 'pdf'
   if (isArchive(name) && ui.features.archive) return 'archive'
   if (isEditable(name)) return 'code'
   return 'fallback'
@@ -81,6 +83,7 @@ function handleDownload() {
       <ImagePreview v-if="previewType === 'image'" :path="filePath" :name="fileName" :size="fileSize" />
       <AudioPreview v-else-if="previewType === 'audio'" :path="filePath" :name="fileName" />
       <VideoPreview v-else-if="previewType === 'video'" :path="filePath" :name="fileName" :size="fileSize" />
+      <PdfPreview v-else-if="previewType === 'pdf'" :path="filePath" :name="fileName" :size="fileSize" />
       <ArchivePreview
         v-else-if="previewType === 'archive'"
         ref="archivePreviewRef"
