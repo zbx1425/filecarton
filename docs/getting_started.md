@@ -13,7 +13,7 @@ FileCarton is primarily designed for two categories of usages:
 ### Requirements
 
 - A web server
-- PHP 7.1+ (PHP 8+ is recommended)
+- PHP 7.2+ (PHP 8+ is recommended)
 
 ### 1. Place the files
 

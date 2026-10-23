@@ -36,8 +36,8 @@ class StartupCheck {
         }
 
         // PHP version
-        if (PHP_VERSION_ID < 70100) {
-            $p[] = 'PHP 7.1 or later is required (running ' . PHP_VERSION . ').';
+        if (PHP_VERSION_ID < 70200) {
+            $p[] = 'PHP 7.2 or later is required (running ' . PHP_VERSION . ').';
         }
 
         // Required extensions
