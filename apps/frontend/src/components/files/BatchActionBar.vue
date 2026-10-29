@@ -15,10 +15,20 @@ import {
   openPermissionsSelected, canModifySelectedPermissions,
 } from '@/composables/useFileActions'
 import { createArchive } from '@/composables/useArchive'
-import { Copy, Scissors, Trash2, X, FileArchive, Shield } from '@lucide/vue'
+import { useNavigationStore } from '@/stores/navigation'
+import { buildBatchDownloadUrl } from '@/api/client'
+import { Copy, Scissors, Trash2, X, FileArchive, Shield, Download } from '@lucide/vue'
 
 const fileList = useFileListStore()
 const ui = useUiStore()
+const navigation = useNavigationStore()
+
+function downloadSelected() {
+  const items = Array.from(fileList.selected)
+  if (items.length === 0) return
+  const url = buildBatchDownloadUrl(navigation.currentPathStr, items)
+  window.location.href = url
+}
 
 const canModifyPermissions = computed(() => canModifySelectedPermissions())
 
@@ -47,6 +57,11 @@ function handleSelectAll(checked: boolean | "indeterminate") {
     </span>
 
     <div class="flex-1" />
+
+    <Button v-if="ui.features.archive" variant="ghost" size="sm" @click="downloadSelected">
+      <Download class="size-3.5" />
+      Download
+    </Button>
 
     <template v-if="!ui.readonly">
       <Button variant="ghost" size="sm" @click="copySelected">

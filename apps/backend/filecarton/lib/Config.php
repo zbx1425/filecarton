@@ -54,6 +54,7 @@ class Config {
             'public_origin'                 => '',
             'sendfile'                      => false,
             'asset_url'                     => '',
+            'temp_dir'                      => '',
             'http_client_proxy'             => '',
             'session_name'                  => 'FILECARTON',
             'dev_server'                    => false,

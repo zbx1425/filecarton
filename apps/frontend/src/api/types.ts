@@ -96,20 +96,6 @@ export interface WriteResponse {
   mtime: number
 }
 
-export interface UploadResponse {
-  uploaded: Array<{ name: string; size: number }>
-  failed: Array<{ name: string; error: string; params?: Record<string, string | number> }>
-}
-
-export interface UploadChunkResponse {
-  received: number
-}
-
-export interface UploadCompleteResponse {
-  name: string
-  size: number
-}
-
 export interface ArchiveCreateResponse {
   archivePath: string
   size: number

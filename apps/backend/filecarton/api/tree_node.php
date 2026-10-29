@@ -33,5 +33,10 @@ foreach ($children as &$child) {
 }
 unset($child);
 
+$tempDir = RepoSetting::current()->resolvedTempDir();
+if ($tempDir !== '') {
+    (new TempStorage($tempDir))->cleanup((int)FILECARTON_CHUNK_EXPIRY);
+}
+
 Response::ok(['children' => $children]);
 }

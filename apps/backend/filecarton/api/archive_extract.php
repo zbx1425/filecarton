@@ -58,10 +58,9 @@ function api_archive_extract(PathSecurity $pathSec, FileOps $fileOps): void {
         ]);
     }
 
-    $tempExtractDir = $baseTargetAbs . '/__fc_extract_' . bin2hex(random_bytes(4));
-    if (!mkdir($tempExtractDir, 0755, true)) {
-        Response::error('server_error', 500);
-    }
+    $tempStorage = new TempStorage(RepoSetting::current()->resolvedTempDir());
+    $tempExtractDir = $tempStorage->createTempDir('extract');
+    $lockFp = $tempStorage->acquireLock($tempExtractDir);
     $normalizedTemp = str_replace('\\', '/', $tempExtractDir);
 
     $extracted = 0;
@@ -78,6 +77,9 @@ function api_archive_extract(PathSecurity $pathSec, FileOps $fileOps): void {
         merge_extracted_to_target($tempExtractDir, $targetAbs, $pathSec, $failed, $extracted);
     } finally {
         Platform::deleteRecursive($tempExtractDir);
+        @unlink($tempExtractDir . '.lock');
+        @flock($lockFp, LOCK_UN);
+        @fclose($lockFp);
     }
 
     $relTarget = substr(str_replace('\\', '/', $targetAbs), strlen($pathSec->getRootPath()) + 1);

@@ -202,6 +202,18 @@ export function buildArchiveDownloadUrl(archivePath: string, entryPath: string):
   return buildUrl('archive_download', { path: archivePath, entry: entryPath })
 }
 
+export function buildBatchDownloadUrl(dirPath: string, items: string[]): string {
+  return buildUrl('batch_download', { path: dirPath, items: items.join(',') })
+}
+
+export function buildTusEndpointUrl(): string {
+  return new URL(buildUrl('tus'), window.location.href).href
+}
+
+export function getCsrfToken(): string {
+  return getConfig().csrfToken
+}
+
 export function buildAuthStartUrl(pluginId: string): string {
   const { apiBase } = getConfig()
   const url = new URL(apiBase, window.location.href)

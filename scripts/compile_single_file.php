@@ -47,6 +47,8 @@ $libFiles = [
     $fcDir . '/lib/Response.php',
     $fcDir . '/lib/ApiException.php',
     $fcDir . '/lib/ArchiveReader.php',
+    $fcDir . '/lib/TempStorage.php',
+    $fcDir . '/lib/StreamingZipWriter.php',
     $fcDir . '/lib/StartupCheck.php',
     $fcDir . '/lib/RepoSetting.php',
     $fcDir . '/lib/Auth.php',

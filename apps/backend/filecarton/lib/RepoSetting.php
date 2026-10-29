@@ -20,6 +20,8 @@ class RepoSetting {
     /** @var bool|null */
     public $featureRemoteDownload;
     /** @var string|null */
+    public $tempDir;
+    /** @var string|null */
     public $themePrimary;
     /** @var string|null */
     public $themeToolbar;
@@ -33,6 +35,7 @@ class RepoSetting {
         $this->featureUnixPerm = null;
         $this->featureUnixPermModify = null;
         $this->featureRemoteDownload = null;
+        $this->tempDir = null;
         $this->themePrimary = null;
         $this->themeToolbar = null;
     }
@@ -77,6 +80,9 @@ class RepoSetting {
         if (isset($row['theme_primary']) && is_string($row['theme_primary'])) {
             $s->themePrimary = $row['theme_primary'];
         }
+        if (isset($row['temp_dir']) && is_string($row['temp_dir'])) {
+            $s->tempDir = $row['temp_dir'];
+        }
         if (isset($row['theme_toolbar']) && is_string($row['theme_toolbar'])) {
             $s->themeToolbar = $row['theme_toolbar'];
         }
@@ -116,6 +122,7 @@ class RepoSetting {
         if ($override->readonly !== null) $result->readonly = $override->readonly;
         if ($override->branding !== null) $result->branding = $override->branding;
         if ($override->repoName !== null) $result->repoName = $override->repoName;
+        if ($override->tempDir !== null) $result->tempDir = $override->tempDir;
         if ($override->themePrimary !== null) $result->themePrimary = $override->themePrimary;
         if ($override->themeToolbar !== null) $result->themeToolbar = $override->themeToolbar;
         if ($override->featureArchive !== null) $result->featureArchive = $override->featureArchive;
@@ -123,6 +130,17 @@ class RepoSetting {
         if ($override->featureUnixPermModify !== null) $result->featureUnixPermModify = $override->featureUnixPermModify;
         if ($override->featureRemoteDownload !== null) $result->featureRemoteDownload = $override->featureRemoteDownload;
         return $result;
+    }
+
+    /**
+     * Resolve the temporary directory path, substituting ${ROOT_PATH} with the actual root.
+     * Returns empty string if rootPath is not set.
+     */
+    public function resolvedTempDir(): string {
+        if ($this->rootPath === null || $this->rootPath === '') return '';
+        $raw = $this->tempDir ?? '';
+        if ($raw === '') return rtrim(str_replace('\\', '/', $this->rootPath), '/') . '/__fc_tmp';
+        return rtrim(str_replace('\\', '/', strtr($raw, ['${ROOT_PATH}' => $this->rootPath])), '/');
     }
 
     /**

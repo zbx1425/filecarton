@@ -18,12 +18,14 @@ require_once FILECARTON_SCRIPT_DIR . '/lib/Csrf.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/Response.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/ApiException.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/ArchiveReader.php';
+require_once FILECARTON_SCRIPT_DIR . '/lib/TempStorage.php';
+require_once FILECARTON_SCRIPT_DIR . '/lib/StreamingZipWriter.php';
 
 $action = $_GET['fcapi'] ?? '';
 $authPublic = ['auth_login', 'auth_logout'];
 $isAuthAction = in_array($action, $authPublic, true);
 
-$binaryActions = ['raw', 'download', 'archive_raw', 'archive_download'];
+$binaryActions = ['raw', 'download', 'archive_raw', 'archive_download', 'batch_download', 'tus'];
 if (!in_array($action, $binaryActions, true)) {
     header('Content-Type: application/json; charset=utf-8');
 }
@@ -32,16 +34,16 @@ ob_start();
 
 $validActions = [
     'list', 'tree_node', 'read', 'write', 'raw', 'download',
-    'search', 'create', 'delete', 'rename', 'paste', 'chmod', 'upload',
-    'upload_chunk', 'upload_complete', 'archive_create', 'archive_extract',
+    'search', 'create', 'delete', 'rename', 'paste', 'chmod',
+    'tus', 'archive_create', 'archive_extract',
     'archive_list', 'archive_read', 'archive_raw', 'archive_download',
-    'check_upload_conflicts', 'remote_download',
+    'batch_download', 'check_upload_conflicts', 'remote_download',
     'auth_login', 'auth_logout',
 ];
 
 $postActions = [
-    'write', 'create', 'delete', 'rename', 'paste', 'chmod', 'upload',
-    'upload_chunk', 'upload_complete', 'archive_create', 'archive_extract',
+    'write', 'create', 'delete', 'rename', 'paste', 'chmod',
+    'tus', 'archive_create', 'archive_extract',
     'check_upload_conflicts', 'remote_download',
     'auth_login', 'auth_logout',
 ];
@@ -66,7 +68,7 @@ try {
 
     $archiveActions = [
         'archive_create', 'archive_extract', 'archive_list',
-        'archive_read', 'archive_raw', 'archive_download',
+        'archive_read', 'archive_raw', 'archive_download', 'batch_download',
     ];
     if (in_array($action, $archiveActions, true) && !RepoSetting::current()->featureArchive) {
         Response::error('archive.disabled', 403);

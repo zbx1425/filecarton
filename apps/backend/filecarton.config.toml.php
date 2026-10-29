@@ -55,6 +55,13 @@ feature_unix_perm_modify = false
 # WARNING: Security risk! Will allow SSRF attacks. Only enable when all users are fully trusted!
 feature_remote_download = false
 
+# Temporary file directory for chunked uploads, archive extraction, etc.
+# Leave empty for auto ({root_path}/__fc_tmp/).
+# Supports ${ROOT_PATH} substitution for the resolved root_path.
+# Example: temp_dir = "/mnt/fast_ssd/fc_tmp"
+# Example: temp_dir = "${ROOT_PATH}/.tmp"
+temp_dir = ""
+
 # Default primary theme color (e.g. "sky", "blue", "indigo", "violet", "rose", or "" for built-in default).
 # See Tailwind CSS color families: red, orange, amber, yellow, lime, green, emerald, teal,
 # cyan, sky, blue, indigo, violet, purple, fuchsia, pink, rose, slate, gray, zinc, neutral,

@@ -84,17 +84,14 @@ class StartupCheck {
             $postLabel    = self::formatIniLimit('post_max_size', $phpMaxPost);
             $nginxNote    = 'Note: If you are using nginx, you likely need to also increase client_max_body_size in your nginx configuration, which cannot be detected by this self-check.';
 
-            $chunkProblem = self::multipartSizeProblem(
-                'FILECARTON_UPLOAD_CHUNK_SIZE',
-                FILECARTON_UPLOAD_CHUNK_SIZE,
-                $phpMaxUpload,
-                $phpMaxPost,
-                $uploadLabel,
-                $postLabel,
-                $nginxNote
-            );
-            if ($chunkProblem !== null) {
-                $p[] = $chunkProblem;
+            // TUS uploads send raw binary via php://input, so upload_max_filesize
+            // does not apply. Only post_max_size matters for the chunk body.
+            if ($phpMaxPost > 0 && FILECARTON_UPLOAD_CHUNK_SIZE > $phpMaxPost) {
+                $p[] = 'FILECARTON_UPLOAD_CHUNK_SIZE ('
+                    . self::mb(FILECARTON_UPLOAD_CHUNK_SIZE) . ' MB) exceeds post_max_size ('
+                    . $postLabel . '). TUS uploads send raw binary as the POST body. '
+                    . 'Increase post_max_size in php.ini, or lower FILECARTON_UPLOAD_CHUNK_SIZE. '
+                    . $nginxNote;
             }
 
             $editProblem = self::multipartSizeProblem(
@@ -168,11 +165,24 @@ class StartupCheck {
             }
         }
 
-        // Temp dir (chunked uploads need a writable tmp)
-        if (!$mustReadonly) {
-            $tmp = sys_get_temp_dir();
-            if (!is_dir($tmp) || !is_writable($tmp)) {
-                $p[] = 'Temporary directory is not writable: ' . $tmp . ' (needed for chunked uploads).';
+        // Temp dir (uploads, extraction, batch downloads need a writable temp location)
+        if (!$mustReadonly && !$isLoginPage) {
+            $tempDir = RepoSetting::current()->resolvedTempDir();
+            if ($tempDir !== '') {
+                if (is_dir($tempDir)) {
+                    if (!is_writable($tempDir)) {
+                        $p[] = 'Temporary directory exists but is not writable: ' . $tempDir
+                            . '. Ensure the web server user can write to it, or configure temp_dir in [repo].';
+                    }
+                } else {
+                    $parent = dirname($tempDir);
+                    if (!is_dir($parent) || !is_writable($parent)) {
+                        $p[] = 'Cannot create temporary directory at: ' . $tempDir
+                            . ' (parent directory is not writable). '
+                            . 'Ensure the web server user can write to ' . $parent
+                            . ', or configure temp_dir in [repo].';
+                    }
+                }
             }
         }
 

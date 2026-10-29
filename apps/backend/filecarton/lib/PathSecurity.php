@@ -431,6 +431,17 @@ class PathSecurity {
         if (FILECARTON_DOTFILES_BLOCK) {
             $this->ignore->addPattern('.*');
         }
+
+        // Auto-ignore the resolved temp directory if it falls within root.
+        if (class_exists(__NAMESPACE__ . '\\RepoSetting', false)) {
+            $tempDir = RepoSetting::current()->resolvedTempDir();
+            if ($tempDir !== '') {
+                $normalizedTemp = str_replace('\\', '/', $tempDir);
+                if ($normalizedTemp === $this->rootPath || str_starts_with($normalizedTemp, $this->rootPath . '/')) {
+                    $this->ignore->addAbsolutePath($normalizedTemp);
+                }
+            }
+        }
     }
 
     public function getRootPath(): string {

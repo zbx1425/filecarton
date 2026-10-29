@@ -63,8 +63,9 @@ function api_remote_download(PathSecurity $pathSec, FileOps $fileOps): void {
     }
 
     $maxSize = (int)FILECARTON_UPLOAD_MAX_FILE_SIZE;
-    // Deliberately not use a hidden file, to allow easier cleanup for aborted downloads
-    $tempPath = $dirAbs . '/__fc_download_' . bin2hex(random_bytes(6)) . '.tmp';
+    $tempStorage = new TempStorage(RepoSetting::current()->resolvedTempDir());
+    $tempPath = $tempStorage->createTempFile('download');
+    $lockFp = $tempStorage->acquireLock($tempPath);
     $tempFp = null;
 
     $contentDisposition = '';
@@ -300,6 +301,9 @@ function api_remote_download(PathSecurity $pathSec, FileOps $fileOps): void {
         if (is_file($tempPath)) {
             @unlink($tempPath);
         }
+        @unlink($tempPath . '.lock');
+        @flock($lockFp, LOCK_UN);
+        @fclose($lockFp);
     }
 
     clearstatcache(true, $finalPath);

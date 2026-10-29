@@ -3,9 +3,11 @@ import { ref, computed, markRaw } from 'vue'
 import { toast } from 'vue-sonner'
 import { useDebounceFn } from '@vueuse/core'
 import UploadToast from '@/components/upload/UploadToast.vue'
-import { apiUpload, apiPost, toErrorInfo, ApiError } from '@/api/client'
+import { Upload as TusUpload, DetailedError } from 'tus-js-client'
+import { apiPost, toErrorInfo, ApiError, buildTusEndpointUrl, getCsrfToken } from '@/api/client'
 import type { ErrorInfo } from '@/api/client'
-import type { UploadResponse, UploadChunkResponse, UploadCompleteResponse, CheckUploadConflictsResponse } from '@/api/types'
+import type { CheckUploadConflictsResponse } from '@/api/types'
+import { createPostOnlyHttpStack } from '@/utils/tusHttpStack'
 import { showPasteConflict, confirm } from '@/composables/useDialogs'
 import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
@@ -309,13 +311,8 @@ export const useUploadStore = defineStore('upload', () => {
   }
 
   async function uploadTask(task: UploadTask) {
-    const { chunkSize } = getUploadConfig()
     try {
-      if (task.file.size > chunkSize) {
-        await uploadChunked(task)
-      } else {
-        await uploadSingle(task)
-      }
+      await uploadViaTus(task)
       task.status = 'success'
       task.progress = 100
     } catch (e: unknown) {
@@ -351,71 +348,61 @@ export const useUploadStore = defineStore('upload', () => {
     }
   }
 
-  async function uploadSingle(task: UploadTask) {
-    const formData = new FormData()
-
-    let targetPath = task.targetDir
-    if (task.relativePath) {
-      const dir = task.relativePath.split('/').slice(0, -1).join('/')
-      if (dir) targetPath = joinPath(task.targetDir, dir)
-    }
-    formData.append('path', targetPath)
-
-    formData.append('files[]', task.file)
-    const result = await apiUpload<UploadResponse>('upload', formData, (loaded, total) => {
-      task.progress = Math.round((loaded / total) * 100)
-    })
-    if (result.failed && result.failed.length > 0) {
-      const fail = result.failed[0]
-      throw new ApiError(fail.error || 'server_error', 200, fail.params)
-    }
-    task.progress = 100
-  }
-
-  async function uploadChunked(task: UploadTask) {
+  function uploadViaTus(task: UploadTask): Promise<void> {
     const { chunkSize } = getUploadConfig()
-    const uploadId = crypto.randomUUID()
-    const totalChunks = Math.ceil(task.file.size / chunkSize)
-
-    for (let i = 0; i < totalChunks; i++) {
-      const start = i * chunkSize
-      const end = Math.min(start + chunkSize, task.file.size)
-      const chunk = task.file.slice(start, end)
-
-      const formData = new FormData()
-      formData.append('uploadId', uploadId)
-      formData.append('chunkIndex', String(i))
-      formData.append('totalChunks', String(totalChunks))
-      formData.append('chunk', chunk)
-
-      let retries = 3
-      let lastError: unknown = null
-      while (retries > 0) {
-        try {
-          await apiUpload<UploadChunkResponse>('upload_chunk', formData)
-          break
-        } catch (e) {
-          lastError = e
-          if (e instanceof ApiError && (e.status === 401 || e.status === 403)) throw e
-          retries--
-          if (retries === 0) throw lastError
-        }
-      }
-
-      task.progress = Math.round(((i + 1) / totalChunks) * 95)
-    }
-
     const targetDir = task.relativePath
       ? joinPath(task.targetDir, task.relativePath.split('/').slice(0, -1).join('/'))
       : task.targetDir
 
-    await apiPost<UploadCompleteResponse>('upload_complete', {
-      uploadId,
-      targetPath: targetDir,
-      fileName: task.file.name,
-      totalChunks,
+    return new Promise<void>((resolve, reject) => {
+      const upload = new TusUpload(task.file, {
+        endpoint: buildTusEndpointUrl(),
+        chunkSize,
+        retryDelays: [0, 1000, 3000, 5000],
+        uploadDataDuringCreation: true,
+        overridePatchMethod: true,
+        httpStack: createPostOnlyHttpStack(),
+        storeFingerprintForResuming: false,
+        removeFingerprintOnSuccess: true,
+        headers: {
+          'X-CSRF-Token': getCsrfToken(),
+        },
+        metadata: {
+          filename: task.file.name,
+          targetPath: targetDir,
+        },
+        onProgress(bytesSent, bytesTotal) {
+          task.progress = Math.round((bytesSent / bytesTotal) * 100)
+        },
+        onSuccess() {
+          task.progress = 100
+          resolve()
+        },
+        onError(error) {
+          if (error instanceof DetailedError) {
+            const resp = error.originalResponse
+            if (resp) {
+              const status = resp.getStatus()
+              let body: any = null
+              try { body = JSON.parse(resp.getBody()) } catch { /* non-JSON */ }
+              const code = body?.error ?? `http_${status}`
+              reject(new ApiError(code, status, body?.params, body?.authError))
+              return
+            }
+          }
+          reject(new ApiError('network_error', 0))
+        },
+        onShouldRetry(error) {
+          const resp = error.originalResponse
+          if (resp) {
+            const status = resp.getStatus()
+            if (status === 401 || status === 403) return false
+          }
+          return true
+        },
+      })
+      upload.start()
     })
-    task.progress = 100
   }
 
   function retry(taskId: string) {
