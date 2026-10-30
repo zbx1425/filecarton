@@ -12,7 +12,7 @@ class StartupCheck {
      * dominant extra is a long `path` value (Windows long paths ~32 KB).
      * 64 KB covers wrapping + a long path. File bytes are not percent-encoded.
      */
-    private const MULTIPART_HEADROOM = 65536;
+
 
     /**
      * Collect all environment/configuration problems.
@@ -77,34 +77,16 @@ class StartupCheck {
             if (FILECARTON_UPLOAD_MAX_FILE_SIZE < FILECARTON_UPLOAD_CHUNK_SIZE) {
                 $p[] = 'FILECARTON_UPLOAD_MAX_FILE_SIZE must be at least FILECARTON_UPLOAD_CHUNK_SIZE.';
             }
+            
+            $phpMaxPost = Platform::parsePhpSize(ini_get('post_max_size') ?: '0');
+            $postLabel  = self::formatIniLimit('post_max_size', $phpMaxPost);
+            $nginxNote  = 'Note: If you are using nginx, you likely need to also increase client_max_body_size in your nginx configuration, which cannot be detected by this self-check.';
 
-            $phpMaxUpload = Platform::parsePhpSize(ini_get('upload_max_filesize') ?: '0');
-            $phpMaxPost   = Platform::parsePhpSize(ini_get('post_max_size') ?: '0');
-            $uploadLabel  = self::formatIniLimit('upload_max_filesize', $phpMaxUpload);
-            $postLabel    = self::formatIniLimit('post_max_size', $phpMaxPost);
-            $nginxNote    = 'Note: If you are using nginx, you likely need to also increase client_max_body_size in your nginx configuration, which cannot be detected by this self-check.';
-
-            // TUS uploads send raw binary via php://input, so upload_max_filesize
-            // does not apply. Only post_max_size matters for the chunk body.
-            if ($phpMaxPost > 0 && FILECARTON_UPLOAD_CHUNK_SIZE > $phpMaxPost) {
-                $p[] = 'FILECARTON_UPLOAD_CHUNK_SIZE ('
-                    . self::mb(FILECARTON_UPLOAD_CHUNK_SIZE) . ' MB) exceeds post_max_size ('
-                    . $postLabel . '). TUS uploads send raw binary as the POST body. '
-                    . 'Increase post_max_size in php.ini, or lower FILECARTON_UPLOAD_CHUNK_SIZE. '
+            $requiredPostSize = max(FILECARTON_UPLOAD_CHUNK_SIZE, FILECARTON_MAX_EDIT_SIZE);
+            if ($phpMaxPost > 0 && $requiredPostSize > $phpMaxPost) {
+                $p[] = 'post_max_size (' . $postLabel . ') is too small. '
+                    . 'post_max_size must be at least ' . self::mb($requiredPostSize) . ' MB '
                     . $nginxNote;
-            }
-
-            $editProblem = self::multipartSizeProblem(
-                'FILECARTON_MAX_EDIT_SIZE',
-                FILECARTON_MAX_EDIT_SIZE,
-                $phpMaxUpload,
-                $phpMaxPost,
-                $uploadLabel,
-                $postLabel,
-                $nginxNote
-            );
-            if ($editProblem !== null) {
-                $p[] = $editProblem;
             }
         }
         if (FILECARTON_MAX_EDIT_SIZE <= 0) {
@@ -205,37 +187,8 @@ class StartupCheck {
         return $p;
     }
 
-    /**
-     * Payload must fit upload_max_filesize; payload plus multipart headroom
-     * must fit post_max_size. Returns a problem string, or null if OK.
-     */
-    private static function multipartSizeProblem(
-        string $constantName,
-        int $payloadBytes,
-        int $phpMaxUpload,
-        int $phpMaxPost,
-        string $uploadLabel,
-        string $postLabel,
-        string $nginxNote
-    ): ?string {
-        $needPost = $payloadBytes + self::MULTIPART_HEADROOM;
-        $exceedsUpload = $phpMaxUpload > 0 && $payloadBytes > $phpMaxUpload;
-        $exceedsPost = $phpMaxPost > 0 && $needPost > $phpMaxPost;
-        if (!$exceedsUpload && !$exceedsPost) {
-            return null;
-        }
-        return $constantName . ' ('
-            . self::mb($payloadBytes) . ' MB) exceeds the PHP upload limit '
-            . '(payload must fit upload_max_filesize; payload plus '
-            . self::kb(self::MULTIPART_HEADROOM) . ' KB multipart headroom must fit post_max_size). '
-            . 'upload_max_filesize is ' . $uploadLabel
-            . '; post_max_size is ' . $postLabel . '. '
-            . 'Adjust these in php.ini, or lower ' . $constantName . '. '
-            . $nginxNote;
-    }
-
     private static function mb(int $bytes): string {
-        return number_format($bytes / 1048576, 1);
+        return number_format($bytes / 1048576, 2);
     }
 
     private static function kb(int $bytes): string {

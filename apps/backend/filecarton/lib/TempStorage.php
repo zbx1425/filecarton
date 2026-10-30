@@ -89,6 +89,21 @@ class TempStorage {
         return $path;
     }
 
+    /**
+     * Create (or reuse) a temp directory with an exact name under the base dir.
+     * Unlike createTempDir(), no random suffix is appended — the caller is
+     * responsible for name uniqueness (e.g. TUS upload IDs).
+     * Returns the absolute path.
+     */
+    public function createNamedDir(string $name): string {
+        $this->ensureDir();
+        $path = $this->baseDir . '/' . $name;
+        if (!@mkdir($path, 0755, true) && !is_dir($path)) {
+            throw new \RuntimeException('Cannot create temp directory: ' . $path);
+        }
+        return $path;
+    }
+
     // ------------------------------------------------------------------
     // Locking (for single-request operations)
     // ------------------------------------------------------------------

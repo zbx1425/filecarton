@@ -291,7 +291,7 @@ function api_remote_download(PathSecurity $pathSec, FileOps $fileOps): void {
             }
         }
 
-        if (!@rename($tempPath, $finalPath)) {
+        if (!Platform::safePublish($tempPath, $finalPath)) {
             Response::error('server_error', 500);
         }
     } finally {

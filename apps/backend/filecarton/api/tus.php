@@ -96,19 +96,19 @@ function tus_create(PathSecurity $pathSec): void {
     $bodyLen = strlen($body);
     $offset = $bodyLen;
 
-    // Small file optimization: if we got the entire file in the creation request,
-    // write directly to the final path without creating a temp directory.
-    if ($uploadLength > 0 && $bodyLen === $uploadLength) {
+    // Small file / zero-byte optimization: if we got the entire file in the
+    // creation request, write to a sibling temp and rename to the final path.
+    // This avoids creating a TUS temp directory for complete uploads.
+    if ($bodyLen === $uploadLength) {
         $tempOutputPath = $finalPath . '.' . bin2hex(random_bytes(4)) . '.tmp';
         if (@file_put_contents($tempOutputPath, $body) === false) {
             Response::error('server_error', 500);
         }
-        if (!@rename($tempOutputPath, $finalPath)) {
+        if (!Platform::safePublish($tempOutputPath, $finalPath)) {
             @unlink($tempOutputPath);
             Response::error('server_error', 500);
         }
 
-        // Return completed upload
         $uploadId = bin2hex(random_bytes(16));
         header('Location: ' . tus_upload_url($uploadId));
         header('Upload-Offset: ' . $uploadLength);
@@ -116,22 +116,10 @@ function tus_create(PathSecurity $pathSec): void {
         exit;
     }
 
-    // Zero-byte file
-    if ($uploadLength === 0) {
-        if (@file_put_contents($finalPath, '') === false) {
-            Response::error('server_error', 500);
-        }
-        $uploadId = bin2hex(random_bytes(16));
-        header('Location: ' . tus_upload_url($uploadId));
-        header('Upload-Offset: 0');
-        http_response_code(201);
-        exit;
-    }
-
     // Large file: create TUS temp directory
     $tempStorage = new TempStorage(RepoSetting::current()->resolvedTempDir());
     $uploadId = bin2hex(random_bytes(16));
-    $tusDir = $tempStorage->createTempDir('tus_' . $uploadId);
+    $tusDir = $tempStorage->createNamedDir('tus_' . $uploadId);
 
     $meta = [
         'uploadLength' => $uploadLength,
@@ -187,13 +175,9 @@ function tus_head(string $uploadId): void {
 
 function tus_patch(PathSecurity $pathSec, string $uploadId): void {
     $tusDir = tus_resolve_dir($uploadId);
-    $meta = tus_read_meta($tusDir);
-
     $clientOffset = tus_parse_header_int('Upload-Offset');
-    if ($clientOffset === null || $clientOffset !== $meta['offset']) {
-        http_response_code(409);
-        header('Upload-Offset: ' . $meta['offset']);
-        exit;
+    if ($clientOffset === null) {
+        Response::error('missing_fields', 400, ['fields' => 'Upload-Offset header']);
     }
 
     $dataPath = $tusDir . '/data';
@@ -208,6 +192,17 @@ function tus_patch(PathSecurity $pathSec, string $uploadId): void {
     }
 
     try {
+        // Re-read meta under lock to prevent race conditions
+        $meta = tus_read_meta($tusDir);
+
+        if ($clientOffset !== $meta['offset']) {
+            http_response_code(409);
+            header('Upload-Offset: ' . $meta['offset']);
+            exit;
+        }
+
+        $remaining = $meta['uploadLength'] - $meta['offset'];
+
         $fp = @fopen($dataPath, 'c+b');
         if ($fp === false) {
             Response::error('server_error', 500);
@@ -219,6 +214,11 @@ function tus_patch(PathSecurity $pathSec, string $uploadId): void {
         while (!feof($input)) {
             $chunk = fread($input, 65536);
             if ($chunk === false || $chunk === '') break;
+            if ($written + strlen($chunk) > $remaining) {
+                fclose($fp);
+                fclose($input);
+                Response::error('upload.content_too_large', 413);
+            }
             $w = fwrite($fp, $chunk);
             if ($w === false) {
                 fclose($fp);
@@ -233,25 +233,19 @@ function tus_patch(PathSecurity $pathSec, string $uploadId): void {
 
         $newOffset = $meta['offset'] + $written;
 
-        if ($newOffset > $meta['uploadLength']) {
-            Response::error('upload.content_too_large', 413);
-        }
-
-        // Update meta
-        $meta['offset'] = $newOffset;
-        @file_put_contents($tusDir . '/meta.json', json_encode($meta));
-
         $tempStorage = new TempStorage(RepoSetting::current()->resolvedTempDir());
         $tempStorage->touchActivity($tusDir);
 
         // Check if upload is complete
         if ($newOffset === $meta['uploadLength']) {
-            // Move to final destination
             $finalPath = $meta['finalPath'];
-            if (!@rename($dataPath, $finalPath)) {
+            if (!Platform::safePublish($dataPath, $finalPath)) {
                 Response::error('server_error', 500);
             }
-            // Clean up TUS temp directory
+            // Update meta only after successful publish
+            $meta['offset'] = $newOffset;
+            @file_put_contents($tusDir . '/meta.json', json_encode($meta));
+
             flock($lockFp, LOCK_UN);
             fclose($lockFp);
             Platform::deleteRecursive($tusDir);
@@ -260,6 +254,10 @@ function tus_patch(PathSecurity $pathSec, string $uploadId): void {
             http_response_code(204);
             exit;
         }
+
+        // Partial upload — update meta
+        $meta['offset'] = $newOffset;
+        @file_put_contents($tusDir . '/meta.json', json_encode($meta));
 
         header('Upload-Offset: ' . $newOffset);
         http_response_code(204);

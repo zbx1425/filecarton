@@ -311,4 +311,26 @@ class Platform {
 
         return true;
     }
+
+    /**
+     * Atomically publish a temp file to its final destination.
+     * Handles cross-filesystem moves with copy+unlink fallback,
+     * and avoids following symlinks at the destination.
+     *
+     * @return bool True on success
+     */
+    public static function safePublish(string $src, string $dst): bool {
+        if (is_link($dst)) {
+            @unlink($dst);
+        }
+        if (@rename($src, $dst)) {
+            return true;
+        }
+        // Cross-filesystem fallback: copy then unlink
+        if (@copy($src, $dst)) {
+            @unlink($src);
+            return true;
+        }
+        return false;
+    }
 }

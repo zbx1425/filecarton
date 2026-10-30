@@ -193,7 +193,7 @@ function merge_extracted_to_target(
         $entryPath = $prefix === '' ? $entry : $prefix . '/' . $entry;
 
         if (is_dir($src)) {
-            if (!file_exists($dst) && !is_link($dst) && @rename($src, $dst)) {
+            if (!file_exists($dst) && !is_link($dst) && Platform::safePublish($src, $dst)) {
                 continue;
             }
             if (file_exists($dst) && !is_dir($dst)) {
@@ -227,7 +227,7 @@ function merge_extracted_to_target(
                     continue;
                 }
             }
-            if (!@rename($src, $dst)) {
+            if (!Platform::safePublish($src, $dst)) {
                 $extracted--;
                 $failed[] = ['path' => $entryPath, 'reason' => 'io_error'];
             }

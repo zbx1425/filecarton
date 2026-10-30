@@ -4,27 +4,30 @@ namespace FileCarton;
 
 /**
  * API: batch_download — Download selected files/folders as a streaming ZIP.
- * GET ?fcapi=batch_download&path={dirPath}&items=name1,name2,...
+ * POST ?fcapi=batch_download
+ * Body: { path: string, items: string[] }
  *
  * Streams a ZIP archive directly to the client without creating a temporary file.
  * Does not use X-Sendfile / X-Accel-Redirect.
  */
 
 function api_batch_download(PathSecurity $pathSec, FileOps $fileOps): void {
-    $path = $_GET['path'] ?? '';
-    $itemsParam = $_GET['items'] ?? '';
+    $input = json_decode(file_get_contents('php://input'), true);
 
-    if ($itemsParam === '') {
+    $path = $input['path'] ?? '';
+    $items = $input['items'] ?? [];
+
+    if (!is_array($items) || empty($items)) {
+        Response::error('missing_fields', 400, ['fields' => 'path, items']);
+    }
+    $items = array_values(array_filter($items, function ($s) {
+        return is_string($s) && $s !== '';
+    }));
+    if (empty($items)) {
         Response::error('missing_fields', 400, ['fields' => 'items']);
     }
 
     $dirAbs = $pathSec->resolveExistingDir($path);
-    $items = explode(',', $itemsParam);
-    $items = array_filter(array_map('trim', $items), function ($s) { return $s !== ''; });
-
-    if (empty($items)) {
-        Response::error('missing_fields', 400, ['fields' => 'items']);
-    }
 
     // Pre-scan: count files and total size to enforce limits
     $fileCount = 0;
@@ -49,12 +52,12 @@ function api_batch_download(PathSecurity $pathSec, FileOps $fileOps): void {
 
     // Determine archive filename
     if (count($items) === 1) {
-        $archiveName = preg_replace('/[^\w\-.]/', '_', $items[0]) . '.zip';
+        $baseName = preg_replace('/[\x00-\x1F\x7F"\\\\]/', '_', $items[0]) . '.zip';
     } else {
-        $archiveName = 'download_' . date('ymd_His') . '.zip';
+        $baseName = 'download_' . date('ymd_His') . '.zip';
     }
-    $ascii = preg_replace('/[^\x20-\x7E]/', '_', $archiveName);
-    $encoded = rawurlencode($archiveName);
+    $ascii = preg_replace('/[^\x20-\x7E]/', '_', $baseName);
+    $encoded = rawurlencode($baseName);
 
     // Release session lock before streaming
     if (session_status() === PHP_SESSION_ACTIVE) {

@@ -350,9 +350,11 @@ export const useUploadStore = defineStore('upload', () => {
 
   function uploadViaTus(task: UploadTask): Promise<void> {
     const { chunkSize } = getUploadConfig()
-    const targetDir = task.relativePath
-      ? joinPath(task.targetDir, task.relativePath.split('/').slice(0, -1).join('/'))
-      : task.targetDir
+    let targetDir = task.targetDir
+    if (task.relativePath) {
+      const dir = task.relativePath.split('/').slice(0, -1).join('/')
+      if (dir) targetDir = joinPath(task.targetDir, dir)
+    }
 
     return new Promise<void>((resolve, reject) => {
       const upload = new TusUpload(task.file, {
@@ -372,7 +374,7 @@ export const useUploadStore = defineStore('upload', () => {
           targetPath: targetDir,
         },
         onProgress(bytesSent, bytesTotal) {
-          task.progress = Math.round((bytesSent / bytesTotal) * 100)
+          task.progress = bytesTotal === 0 ? 100 : Math.round((bytesSent / bytesTotal) * 100)
         },
         onSuccess() {
           task.progress = 100
@@ -394,11 +396,9 @@ export const useUploadStore = defineStore('upload', () => {
         },
         onShouldRetry(error) {
           const resp = error.originalResponse
-          if (resp) {
-            const status = resp.getStatus()
-            if (status === 401 || status === 403) return false
-          }
-          return true
+          if (!resp) return true
+          const status = resp.getStatus()
+          return status === 409 || status === 423 || status === 429 || status >= 500
         },
       })
       upload.start()

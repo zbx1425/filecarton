@@ -49,6 +49,7 @@ $libFiles = [
     $fcDir . '/lib/ArchiveReader.php',
     $fcDir . '/lib/TempStorage.php',
     $fcDir . '/lib/StreamingZipWriter.php',
+    $fcDir . '/lib/ArchiveEntries.php',
     $fcDir . '/lib/StartupCheck.php',
     $fcDir . '/lib/RepoSetting.php',
     $fcDir . '/lib/Auth.php',

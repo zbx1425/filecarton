@@ -92,9 +92,6 @@ upload_max_depth = 50
 # Chunk upload temporary directory expiry time (seconds).
 chunk_expiry = 86400
 
-# Probability of running cleanup on each chunk upload request (1 in N).
-chunk_cleanup_chance = 10
-
 # Maximum number of entries allowed when creating or extracting an archive.
 archive_max_files = 10000
 

@@ -16,18 +16,28 @@ import {
 } from '@/composables/useFileActions'
 import { createArchive } from '@/composables/useArchive'
 import { useNavigationStore } from '@/stores/navigation'
-import { buildBatchDownloadUrl } from '@/api/client'
+import { fetchBatchDownload } from '@/api/client'
+import { errorMessage } from '@/utils/errorMessage'
+import { toast } from 'vue-sonner'
+import { ref } from 'vue'
 import { Copy, Scissors, Trash2, X, FileArchive, Shield, Download } from '@lucide/vue'
 
 const fileList = useFileListStore()
 const ui = useUiStore()
 const navigation = useNavigationStore()
+const downloading = ref(false)
 
-function downloadSelected() {
+async function downloadSelected() {
   const items = Array.from(fileList.selected)
   if (items.length === 0) return
-  const url = buildBatchDownloadUrl(navigation.currentPathStr, items)
-  window.location.href = url
+  downloading.value = true
+  try {
+    await fetchBatchDownload(navigation.currentPathStr, items)
+  } catch (e) {
+    toast.error(errorMessage(e))
+  } finally {
+    downloading.value = false
+  }
 }
 
 const canModifyPermissions = computed(() => canModifySelectedPermissions())
@@ -58,7 +68,7 @@ function handleSelectAll(checked: boolean | "indeterminate") {
 
     <div class="flex-1" />
 
-    <Button v-if="ui.features.archive" variant="ghost" size="sm" @click="downloadSelected">
+    <Button v-if="ui.features.archive" variant="ghost" size="sm" :disabled="downloading" @click="downloadSelected">
       <Download class="size-3.5" />
       Download
     </Button>

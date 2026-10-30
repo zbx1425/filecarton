@@ -81,14 +81,26 @@ class StreamingZipWriter {
         $uncompressedSize = 0;
         $compressedSize = 0;
 
+        $finished = false;
         while (!feof($fp)) {
             $chunk = fread($fp, 65536);
             if ($chunk === false || $chunk === '') break;
             hash_update($crcCtx, $chunk);
             $uncompressedSize += strlen($chunk);
 
-            $isLast = feof($fp);
-            $compressed = deflate_add($deflateCtx, $chunk, $isLast ? ZLIB_FINISH : ZLIB_NO_FLUSH);
+            if (feof($fp)) {
+                $compressed = deflate_add($deflateCtx, $chunk, ZLIB_FINISH);
+                $finished = true;
+            } else {
+                $compressed = deflate_add($deflateCtx, $chunk, ZLIB_NO_FLUSH);
+            }
+            if ($compressed !== false && $compressed !== '') {
+                $this->write($compressed);
+                $compressedSize += strlen($compressed);
+            }
+        }
+        if (!$finished) {
+            $compressed = deflate_add($deflateCtx, '', ZLIB_FINISH);
             if ($compressed !== false && $compressed !== '') {
                 $this->write($compressed);
                 $compressedSize += strlen($compressed);

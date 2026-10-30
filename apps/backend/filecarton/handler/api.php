@@ -20,12 +20,13 @@ require_once FILECARTON_SCRIPT_DIR . '/lib/ApiException.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/ArchiveReader.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/TempStorage.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/StreamingZipWriter.php';
+require_once FILECARTON_SCRIPT_DIR . '/lib/ArchiveEntries.php';
 
 $action = $_GET['fcapi'] ?? '';
 $authPublic = ['auth_login', 'auth_logout'];
 $isAuthAction = in_array($action, $authPublic, true);
 
-$binaryActions = ['raw', 'download', 'archive_raw', 'archive_download', 'batch_download', 'tus'];
+$binaryActions = ['raw', 'download', 'archive_raw', 'archive_download', 'tus'];
 if (!in_array($action, $binaryActions, true)) {
     header('Content-Type: application/json; charset=utf-8');
 }
@@ -44,7 +45,7 @@ $validActions = [
 $postActions = [
     'write', 'create', 'delete', 'rename', 'paste', 'chmod',
     'tus', 'archive_create', 'archive_extract',
-    'check_upload_conflicts', 'remote_download',
+    'batch_download', 'check_upload_conflicts', 'remote_download',
     'auth_login', 'auth_logout',
 ];
 
@@ -61,7 +62,8 @@ try {
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         Csrf::validate();
-        if (!$isAuthAction && RepoSetting::current()->readonly) {
+        $readonlyPostActions = ['batch_download'];
+        if (!$isAuthAction && !in_array($action, $readonlyPostActions, true) && RepoSetting::current()->readonly) {
             Response::error('readonly', 403);
         }
     }

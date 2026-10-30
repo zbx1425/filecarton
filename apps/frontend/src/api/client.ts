@@ -122,68 +122,31 @@ export async function apiPost<T>(action: string, body: unknown): Promise<T> {
   }
 }
 
-export function apiUpload<T>(
-  action: string,
-  formData: FormData,
-  onProgress?: (loaded: number, total: number) => void,
-): Promise<T> {
-  const { csrfToken } = getConfig()
-  const url = buildUrl(action)
-
-  return new Promise<T>((resolve, reject) => {
-    const xhr = new XMLHttpRequest()
-    xhr.open('POST', url)
-    xhr.setRequestHeader('X-CSRF-Token', csrfToken)
-
-    if (onProgress) {
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) onProgress(e.loaded, e.total)
-      })
-    }
-
-    xhr.addEventListener('load', () => {
-      try {
-        const body = JSON.parse(xhr.responseText)
-        if (xhr.status < 200 || xhr.status >= 300) {
-          const err = new ApiError(body?.error ?? `http_${xhr.status}`, xhr.status, body?.params, body?.authError)
-          maybeUnauthorized(action, err)
-          reject(err)
-          return
-        }
-        if (!body.ok) {
-          reject(new ApiError(body.error ?? 'unknown', xhr.status, body.params))
-          return
-        }
-        resolve(body.data as T)
-      } catch {
-        reject(new ApiError(`http_${xhr.status}`, xhr.status))
-      }
-    })
-
-    xhr.addEventListener('error', () => {
-      reject(new ApiError('network_error', 0))
-    })
-
-    xhr.send(formData)
-  })
-}
-
-export function apiWrite(
+export async function apiWrite(
   path: string,
   content: string,
   expectedMtime?: number,
 ): Promise<{ size: number; mtime: number }> {
-  const formData = new FormData()
-  formData.append('path', path)
-  formData.append(
-    'content',
-    new Blob([content], { type: 'application/octet-stream' }),
-    'content',
-  )
+  const { csrfToken } = getConfig()
+  const params: Record<string, string> = { path }
   if (expectedMtime !== undefined) {
-    formData.append('expectedMtime', String(expectedMtime))
+    params.expectedMtime = String(expectedMtime)
   }
-  return apiUpload('write', formData)
+  const url = buildUrl('write', params)
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/octet-stream',
+      'X-CSRF-Token': csrfToken,
+    },
+    body: content,
+  })
+  try {
+    return await handleResponse<{ size: number; mtime: number }>(response)
+  } catch (e) {
+    if (e instanceof ApiError) maybeUnauthorized('write', e)
+    throw e
+  }
 }
 
 export function buildRawUrl(filePath: string): string {
@@ -202,8 +165,38 @@ export function buildArchiveDownloadUrl(archivePath: string, entryPath: string):
   return buildUrl('archive_download', { path: archivePath, entry: entryPath })
 }
 
-export function buildBatchDownloadUrl(dirPath: string, items: string[]): string {
-  return buildUrl('batch_download', { path: dirPath, items: items.join(',') })
+export async function fetchBatchDownload(dirPath: string, items: string[]): Promise<void> {
+  const { csrfToken } = getConfig()
+  const url = buildUrl('batch_download')
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': csrfToken,
+    },
+    body: JSON.stringify({ path: dirPath, items }),
+  })
+  if (!response.ok || response.headers.get('Content-Type')?.includes('application/json')) {
+    let code = 'server_error'
+    let params: Record<string, string | number> | undefined
+    try {
+      const body = await response.json()
+      if (body?.error) { code = body.error; params = body.params }
+    } catch { /* non-JSON body */ }
+    throw new ApiError(code, response.status, params)
+  }
+  const blob = await response.blob()
+  const disposition = response.headers.get('Content-Disposition') || ''
+  let fileName = 'download.zip'
+  const match = disposition.match(/filename\*=UTF-8''([^;]+)/)
+    || disposition.match(/filename="?([^";]+)"?/)
+  if (match) fileName = decodeURIComponent(match[1])
+
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = fileName
+  a.click()
+  URL.revokeObjectURL(a.href)
 }
 
 export function buildTusEndpointUrl(): string {
