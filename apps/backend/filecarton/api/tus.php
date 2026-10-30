@@ -19,6 +19,10 @@ namespace FileCarton;
  */
 
 function api_tus(PathSecurity $pathSec, FileOps $fileOps): void {
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
+
     $logicalMethod = strtoupper(
         $_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE']
             ?? ($_SERVER['REQUEST_METHOD'] ?? 'POST')
@@ -94,6 +98,9 @@ function tus_create(PathSecurity $pathSec): void {
     // Read creation-with-upload body (may be empty)
     $body = file_get_contents('php://input');
     $bodyLen = strlen($body);
+    if ($bodyLen > $uploadLength) {
+        Response::error('upload.content_too_large', 413);
+    }
     $offset = $bodyLen;
 
     // Small file / zero-byte optimization: if we got the entire file in the
@@ -184,7 +191,7 @@ function tus_patch(PathSecurity $pathSec, string $uploadId): void {
     }
 
     $dataPath = $tusDir . '/data';
-    $lockPath = $tusDir . '/.lock';
+    $lockPath = $tusDir . '.lock';
     $lockFp = @fopen($lockPath, 'c');
     if ($lockFp === false) {
         Response::error('server_error', 500);
@@ -255,6 +262,7 @@ function tus_patch(PathSecurity $pathSec, string $uploadId): void {
             flock($lockFp, LOCK_UN);
             fclose($lockFp);
             Platform::deleteRecursive($tusDir);
+            @unlink($tusDir . '.lock');
 
             header('Upload-Offset: ' . $newOffset);
             http_response_code(204);
@@ -282,7 +290,7 @@ function tus_delete(string $uploadId): void {
     $tusDir = tus_resolve_dir($uploadId);
 
     // Ensure no PATCH is in progress (same lock PATCH uses)
-    $lockPath = $tusDir . '/.lock';
+    $lockPath = $tusDir . '.lock';
     if (is_file($lockPath)) {
         $lockFp = @fopen($lockPath, 'c');
         if ($lockFp !== false) {
@@ -298,6 +306,7 @@ function tus_delete(string $uploadId): void {
     if (!Platform::deleteRecursive($tusDir)) {
         Response::error('server_error', 500);
     }
+    @unlink($tusDir . '.lock');
 
     http_response_code(204);
     exit;

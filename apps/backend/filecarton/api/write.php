@@ -22,7 +22,11 @@ function api_write(PathSecurity $pathSec, FileOps $fileOps): void {
         throw new ApiException('server_error', 500);
     }
 
+    $declaredLength = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
     $size = strlen($content);
+    if ($declaredLength > 0 && $size < $declaredLength) {
+        Response::error('upload.content_too_large', 413, ['maxMB' => round(FILECARTON_MAX_EDIT_SIZE / 1024 / 1024)]);
+    }
     if ($size > FILECARTON_MAX_EDIT_SIZE) {
         Response::error('upload.content_too_large', 413, ['maxMB' => round(FILECARTON_MAX_EDIT_SIZE / 1024 / 1024)]);
     }

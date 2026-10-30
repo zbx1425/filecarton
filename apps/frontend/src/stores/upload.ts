@@ -4,7 +4,7 @@ import { toast } from 'vue-sonner'
 import { useDebounceFn } from '@vueuse/core'
 import UploadToast from '@/components/upload/UploadToast.vue'
 import { Upload as TusUpload, DetailedError } from 'tus-js-client'
-import { apiPost, toErrorInfo, ApiError, buildTusEndpointUrl, getCsrfToken } from '@/api/client'
+import { apiPost, toErrorInfo, ApiError, maybeUnauthorized, buildTusEndpointUrl, getCsrfToken } from '@/api/client'
 import type { ErrorInfo } from '@/api/client'
 import type { CheckUploadConflictsResponse } from '@/api/types'
 import { createPostOnlyHttpStack } from '@/utils/tusHttpStack'
@@ -322,6 +322,7 @@ export const useUploadStore = defineStore('upload', () => {
       if (task.status !== 'cancelled') {
         task.status = 'error'
         task.error = toErrorInfo(e)
+        if (e instanceof ApiError) maybeUnauthorized('tus', e)
       }
     }
     processQueue()
@@ -410,7 +411,14 @@ export const useUploadStore = defineStore('upload', () => {
           const resp = error.originalResponse
           if (!resp) return true
           const status = resp.getStatus()
-          return status === 409 || status === 423 || status === 429 || status >= 500
+          if (status === 409) {
+            try {
+              const body = JSON.parse(resp.getBody())
+              if (body?.error) return false
+            } catch { /* non-JSON body = offset mismatch, retryable */ }
+            return true
+          }
+          return status === 423 || status === 429 || status >= 500
         },
       })
       task.tusUpload = markRaw(upload)

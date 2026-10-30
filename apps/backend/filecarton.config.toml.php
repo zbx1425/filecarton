@@ -74,8 +74,8 @@ theme_toolbar = ""
 
 
 # ─── Limits ──────────────────────────────────────────────────────────────────
-# max_edit_size and upload_chunk_size should be less than PHP's upload_max_filesize
-# and post_max_size, and your web server (e.g. Nginx)'s body size limit.
+# max_edit_size and upload_chunk_size should be less than PHP's post_max_size
+# and your web server (e.g. Nginx)'s body size limit.
 [limits]
 # Maximum file size for text read/write API.
 max_edit_size = "4M"
@@ -89,7 +89,8 @@ upload_max_file_size = "1G"
 # Maximum directory nesting depth for folder upload relative paths.
 upload_max_depth = 50
 
-# Chunk upload temporary directory expiry time (seconds).
+# Temporary directory expiry time (seconds).
+# Applies to TUS chunked uploads, archive extraction, and remote downloads.
 chunk_expiry = 86400
 
 # Maximum number of entries allowed when creating or extracting an archive.

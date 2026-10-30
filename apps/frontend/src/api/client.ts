@@ -37,7 +37,7 @@ export function onUnauthorized(handler: (action: string, authError: string) => v
   unauthorizedHandler = handler
 }
 
-function maybeUnauthorized(action: string, error: ApiError) {
+export function maybeUnauthorized(action: string, error: ApiError) {
   if (!error.authError) return
   if (!window.__FILECARTON__.auth?.enabled) return
   if (action === 'auth_login' || action === 'auth_logout') return

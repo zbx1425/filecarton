@@ -217,7 +217,7 @@ class TempStorage {
             if ($mtime !== false && ($now - $mtime) < $expiry) return;
         }
 
-        $lockPath = $dirPath . '/.lock';
+        $lockPath = $dirPath . '.lock';
         if (is_file($lockPath)) {
             $fp = @fopen($lockPath, 'c');
             if ($fp === false) return;
@@ -230,5 +230,6 @@ class TempStorage {
         }
 
         Platform::deleteRecursive($dirPath);
+        @unlink($dirPath . '.lock');
     }
 }

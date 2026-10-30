@@ -142,11 +142,19 @@ function batch_download_stream(PathSecurity $pathSec, string $token): void {
     $zip = new StreamingZipWriter($out);
 
     $skipped = [];
+    $fileCount = 0;
+    $totalSize = 0;
     foreach (enumerate_archive_entries($dirAbs, $items, $pathSec, $skipped) as $entry) {
         if (connection_aborted()) break;
         if ($entry['isDir']) {
             $zip->addDirectory($entry['entryName']);
         } else {
+            $size = (int)@filesize($entry['fullPath']);
+            if ($fileCount >= FILECARTON_ARCHIVE_MAX_FILES || $totalSize + $size > FILECARTON_ARCHIVE_MAX_SIZE) {
+                break;
+            }
+            $fileCount++;
+            $totalSize += $size;
             $zip->addFileFromPath($entry['entryName'], $entry['fullPath']);
         }
     }
