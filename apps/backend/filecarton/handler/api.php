@@ -26,11 +26,6 @@ $action = $_GET['fcapi'] ?? '';
 $authPublic = ['auth_login', 'auth_logout'];
 $isAuthAction = in_array($action, $authPublic, true);
 
-$binaryActions = ['raw', 'download', 'archive_raw', 'archive_download', 'tus'];
-if (!in_array($action, $binaryActions, true)) {
-    header('Content-Type: application/json; charset=utf-8');
-}
-
 ob_start();
 
 $validActions = [
@@ -45,7 +40,7 @@ $validActions = [
 $postActions = [
     'write', 'create', 'delete', 'rename', 'paste', 'chmod',
     'tus', 'archive_create', 'archive_extract',
-    'batch_download', 'check_upload_conflicts', 'remote_download',
+    'check_upload_conflicts', 'remote_download',
     'auth_login', 'auth_logout',
 ];
 

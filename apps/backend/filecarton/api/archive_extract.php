@@ -221,11 +221,6 @@ function merge_extracted_to_target(
                     $failed[] = ['path' => $entryPath, 'reason' => 'blocked.ignored'];
                     continue;
                 }
-                if (!@unlink($dst)) {
-                    $extracted--;
-                    $failed[] = ['path' => $entryPath, 'reason' => 'io_error'];
-                    continue;
-                }
             }
             if (!Platform::safePublish($src, $dst)) {
                 $extracted--;

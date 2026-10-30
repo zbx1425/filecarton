@@ -15,6 +15,7 @@
   "err.path_traversal": "Path traversal denied",
   "err.path_too_deep": "Path too deep (max {max} levels)",
   "err.not_found.path": "Path not found",
+  "err.not_found.download": "Download session expired or not found",
   "err.invalid_input": "Invalid input: {field}",
 
   "err.file_too_large": "File too large to edit ({maxMB} MiB limit). Please download instead.",
@@ -27,6 +28,8 @@
   "err.upload.missing_chunk": "Missing chunk: {index}",
   "err.upload.session_not_found": "Upload session not found",
   "err.upload.merge_in_progress": "Merge already in progress for this upload",
+  "err.upload.target_is_directory": "A directory with the same name already exists",
+  "err.upload.in_progress": "Upload is currently in progress",
   "err.upload.too_many_chunks": "Too many chunks (max: {max})",
   "err.upload.server_misconfigured": "Server upload configuration error",
   "err.upload.chunk_failed": "Chunk upload failed",

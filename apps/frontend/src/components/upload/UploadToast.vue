@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Progress } from '@/components/ui/progress'
+import { Button } from '@/components/ui/button'
 import { useUploadStore } from '@/stores/upload'
 import {
-  Loader2, CheckCircle2, AlertTriangle, Upload,
+  Loader2, CheckCircle2, AlertTriangle, Upload, X,
 } from '@lucide/vue'
 
 const upload = useUploadStore()
@@ -32,6 +33,15 @@ const latestBatchAllSuccess = computed(() => result.value != null && result.valu
         <Progress :model-value="totalProgress" class="h-1.5 mt-1" />
       </div>
       <span class="text-sm tabular-nums text-muted-foreground shrink-0 w-8 text-right">{{ totalProgress }}%</span>
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        class="size-6 shrink-0 text-muted-foreground hover:text-destructive"
+        title="Cancel all"
+        @click="upload.cancelAll()"
+      >
+        <X class="size-3.5" />
+      </Button>
     </div>
 
     <!-- Done: show latest batch result -->

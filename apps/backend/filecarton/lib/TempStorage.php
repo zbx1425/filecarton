@@ -164,9 +164,18 @@ class TempStorage {
         $now = time();
 
         foreach ($entries as $entry) {
-            if ($entry === '.' || $entry === '..' || str_ends_with($entry, '.lock')) continue;
+            if ($entry === '.' || $entry === '..') continue;
 
             $fullPath = $this->baseDir . '/' . $entry;
+
+            if (str_ends_with($entry, '.lock')) {
+                // Remove orphaned sibling .lock files whose companion no longer exists
+                $companion = substr($fullPath, 0, -5);
+                if (!file_exists($companion) && !is_dir($companion)) {
+                    @unlink($fullPath);
+                }
+                continue;
+            }
 
             if (is_dir($fullPath)) {
                 $this->cleanupDir($fullPath, $expiry, $now);

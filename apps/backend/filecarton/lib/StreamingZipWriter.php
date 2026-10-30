@@ -225,8 +225,8 @@ class StreamingZipWriter {
     private function write(string $data): void {
         $len = strlen($data);
         if ($len === 0) return;
-        fwrite($this->out, $data);
-        $this->offset += $len;
+        $written = @fwrite($this->out, $data);
+        $this->offset += ($written !== false) ? $written : 0;
     }
 
     /**

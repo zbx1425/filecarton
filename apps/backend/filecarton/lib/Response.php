@@ -15,6 +15,7 @@ class Response {
 
     public static function ok($data = null) {
         self::discardOutputBuffer();
+        header('Content-Type: application/json; charset=utf-8');
         http_response_code(200);
         echo json_encode(
             ['ok' => true, 'data' => $data],
@@ -25,6 +26,7 @@ class Response {
 
     public static function error(string $code, int $httpStatus = 400, array $params = [], ?string $authError = null) {
         self::discardOutputBuffer();
+        header('Content-Type: application/json; charset=utf-8');
         http_response_code($httpStatus);
         $body = ['ok' => false, 'error' => $code];
         if (!empty($params)) {

@@ -166,37 +166,17 @@ export function buildArchiveDownloadUrl(archivePath: string, entryPath: string):
 }
 
 export async function fetchBatchDownload(dirPath: string, items: string[]): Promise<void> {
-  const { csrfToken } = getConfig()
-  const url = buildUrl('batch_download')
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRF-Token': csrfToken,
-    },
-    body: JSON.stringify({ path: dirPath, items }),
-  })
-  if (!response.ok || response.headers.get('Content-Type')?.includes('application/json')) {
-    let code = 'server_error'
-    let params: Record<string, string | number> | undefined
-    try {
-      const body = await response.json()
-      if (body?.error) { code = body.error; params = body.params }
-    } catch { /* non-JSON body */ }
-    throw new ApiError(code, response.status, params)
-  }
-  const blob = await response.blob()
-  const disposition = response.headers.get('Content-Disposition') || ''
-  let fileName = 'download.zip'
-  const match = disposition.match(/filename\*=UTF-8''([^;]+)/)
-    || disposition.match(/filename="?([^";]+)"?/)
-  if (match) fileName = decodeURIComponent(match[1])
+  // Step 1: POST to validate and obtain a one-time download token
+  const { token } = await apiPost<{ token: string }>('batch_download', { path: dirPath, items })
 
+  // Step 2: Trigger browser-native download via GET with the token
+  const downloadUrl = buildUrl('batch_download', { token })
   const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = fileName
+  a.href = downloadUrl
+  a.download = ''
+  document.body.appendChild(a)
   a.click()
-  URL.revokeObjectURL(a.href)
+  document.body.removeChild(a)
 }
 
 export function buildTusEndpointUrl(): string {

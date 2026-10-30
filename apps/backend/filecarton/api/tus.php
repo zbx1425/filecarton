@@ -100,6 +100,9 @@ function tus_create(PathSecurity $pathSec): void {
     // creation request, write to a sibling temp and rename to the final path.
     // This avoids creating a TUS temp directory for complete uploads.
     if ($bodyLen === $uploadLength) {
+        if (is_dir($finalPath)) {
+            Response::error('upload.target_is_directory', 409);
+        }
         $tempOutputPath = $finalPath . '.' . bin2hex(random_bytes(4)) . '.tmp';
         if (@file_put_contents($tempOutputPath, $body) === false) {
             Response::error('server_error', 500);
@@ -239,6 +242,9 @@ function tus_patch(PathSecurity $pathSec, string $uploadId): void {
         // Check if upload is complete
         if ($newOffset === $meta['uploadLength']) {
             $finalPath = $meta['finalPath'];
+            if (is_dir($finalPath)) {
+                Response::error('upload.target_is_directory', 409);
+            }
             if (!Platform::safePublish($dataPath, $finalPath)) {
                 Response::error('server_error', 500);
             }
@@ -274,7 +280,25 @@ function tus_patch(PathSecurity $pathSec, string $uploadId): void {
 
 function tus_delete(string $uploadId): void {
     $tusDir = tus_resolve_dir($uploadId);
-    Platform::deleteRecursive($tusDir);
+
+    // Ensure no PATCH is in progress (same lock PATCH uses)
+    $lockPath = $tusDir . '/.lock';
+    if (is_file($lockPath)) {
+        $lockFp = @fopen($lockPath, 'c');
+        if ($lockFp !== false) {
+            if (!flock($lockFp, LOCK_EX | LOCK_NB)) {
+                fclose($lockFp);
+                Response::error('upload.in_progress', 409);
+            }
+            flock($lockFp, LOCK_UN);
+            fclose($lockFp);
+        }
+    }
+
+    if (!Platform::deleteRecursive($tusDir)) {
+        Response::error('server_error', 500);
+    }
+
     http_response_code(204);
     exit;
 }

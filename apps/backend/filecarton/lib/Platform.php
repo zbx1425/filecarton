@@ -314,8 +314,8 @@ class Platform {
 
     /**
      * Atomically publish a temp file to its final destination.
-     * Handles cross-filesystem moves with copy+unlink fallback,
-     * and avoids following symlinks at the destination.
+     * Handles cross-filesystem moves via copy-to-sibling-temp + rename,
+     * so the destination is never left in a half-written state.
      *
      * @return bool True on success
      */
@@ -326,11 +326,18 @@ class Platform {
         if (@rename($src, $dst)) {
             return true;
         }
-        // Cross-filesystem fallback: copy then unlink
-        if (@copy($src, $dst)) {
-            @unlink($src);
-            return true;
+        // Cross-filesystem: copy to a temp file in the destination directory
+        // (same filesystem), then rename to the final path (atomic).
+        $tmpDst = $dst . '.fc_' . bin2hex(random_bytes(4)) . '.tmp';
+        if (!@copy($src, $tmpDst)) {
+            @unlink($tmpDst);
+            return false;
         }
-        return false;
+        if (!@rename($tmpDst, $dst)) {
+            @unlink($tmpDst);
+            return false;
+        }
+        @unlink($src);
+        return true;
     }
 }

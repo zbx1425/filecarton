@@ -24,8 +24,9 @@ export interface UploadTask {
   relativePath: string
   targetDir: string
   progress: number
-  status: 'pending' | 'uploading' | 'success' | 'error'
+  status: 'pending' | 'uploading' | 'success' | 'error' | 'cancelled'
   error?: ErrorInfo
+  tusUpload?: TusUpload
 }
 
 export interface BatchResult {
@@ -313,11 +314,15 @@ export const useUploadStore = defineStore('upload', () => {
   async function uploadTask(task: UploadTask) {
     try {
       await uploadViaTus(task)
-      task.status = 'success'
-      task.progress = 100
+      if (task.status !== 'cancelled') {
+        task.status = 'success'
+        task.progress = 100
+      }
     } catch (e: unknown) {
-      task.status = 'error'
-      task.error = toErrorInfo(e)
+      if (task.status !== 'cancelled') {
+        task.status = 'error'
+        task.error = toErrorInfo(e)
+      }
     }
     processQueue()
     refreshAfterUpload(task.targetDir)
@@ -377,10 +382,16 @@ export const useUploadStore = defineStore('upload', () => {
           task.progress = bytesTotal === 0 ? 100 : Math.round((bytesSent / bytesTotal) * 100)
         },
         onSuccess() {
+          task.tusUpload = undefined
           task.progress = 100
           resolve()
         },
         onError(error) {
+          task.tusUpload = undefined
+          if (task.status === 'cancelled') {
+            resolve()
+            return
+          }
           if (error instanceof DetailedError) {
             const resp = error.originalResponse
             if (resp) {
@@ -395,12 +406,14 @@ export const useUploadStore = defineStore('upload', () => {
           reject(new ApiError('network_error', 0))
         },
         onShouldRetry(error) {
+          if (task.status === 'cancelled') return false
           const resp = error.originalResponse
           if (!resp) return true
           const status = resp.getStatus()
           return status === 409 || status === 423 || status === 429 || status >= 500
         },
       })
+      task.tusUpload = markRaw(upload)
       upload.start()
     })
   }
@@ -464,6 +477,34 @@ export const useUploadStore = defineStore('upload', () => {
     }
   }
 
+  function cancelAll() {
+    for (const task of tasks.value) {
+      if (task.status === 'pending') {
+        task.status = 'cancelled'
+      } else if (task.status === 'uploading') {
+        task.status = 'cancelled'
+        if (task.tusUpload) {
+          task.tusUpload.abort(true).catch(() => {})
+          task.tusUpload = undefined
+        }
+      }
+    }
+    tasks.value = tasks.value.filter(t => t.status !== 'cancelled')
+    if (!hasActive.value) {
+      snapshotLatestBatch()
+      remeasureToast()
+      dismissUploadToast()
+    }
+  }
+
+  // Warn before closing the page while uploads are in progress
+  function onBeforeUnload(e: BeforeUnloadEvent) {
+    if (hasActive.value) {
+      e.preventDefault()
+    }
+  }
+  window.addEventListener('beforeunload', onBeforeUnload)
+
   const uploadDialogOpen = ref(false)
   function openUploadDialog() { uploadDialogOpen.value = true }
   function closeUploadDialog() { uploadDialogOpen.value = false }
@@ -524,6 +565,7 @@ export const useUploadStore = defineStore('upload', () => {
     retryAllErrors,
     remove,
     clearErrors,
+    cancelAll,
     openUploadDialog,
     closeUploadDialog,
     openErrorDialog,

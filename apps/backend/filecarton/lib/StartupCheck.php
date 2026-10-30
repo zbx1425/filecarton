@@ -3,16 +3,6 @@
 namespace FileCarton;
 
 class StartupCheck {
-    /**
-     * Extra bytes so a multipart POST of a given payload still fits post_max_size.
-     *
-     * RFC 2046 caps the boundary at 70 chars. FileCarton sends a few parts
-     * (path + content for writes; uploadId/chunkIndex/totalChunks + chunk
-     * for uploads). Wrapping is ~1–2 KB even with a long filename. The
-     * dominant extra is a long `path` value (Windows long paths ~32 KB).
-     * 64 KB covers wrapping + a long path. File bytes are not percent-encoded.
-     */
-
 
     /**
      * Collect all environment/configuration problems.
@@ -36,8 +26,8 @@ class StartupCheck {
         }
 
         // PHP version
-        if (PHP_VERSION_ID < 70200) {
-            $p[] = 'PHP 7.2 or later is required (running ' . PHP_VERSION . ').';
+        if (PHP_VERSION_ID < 70400) {
+            $p[] = 'PHP 7.4 or later is required (running ' . PHP_VERSION . ').';
         }
 
         // Required extensions
