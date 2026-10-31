@@ -14,6 +14,7 @@ import { usePreferencesStore } from '@/stores/preferences'
 const props = defineProps<{
   editor: Monaco.editor.IStandaloneCodeEditor | null
   language: string
+  readonly?: boolean
 }>()
 
 const prefs = usePreferencesStore()
@@ -171,7 +172,7 @@ onBeforeUnmount(() => {
       Wrap
     </button>
 
-    <Popover>
+    <Popover v-if="!readonly">
       <PopoverTrigger as-child>
         <button
           class="px-2 h-full transition-colors rounded-sm hover:bg-statusbar-hover"

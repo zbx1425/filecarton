@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useNavigationStore } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
+import { isEditable } from '@/composables/useFileType'
 import FileTable from '@/components/files/FileTable.vue'
 import SearchResults from '@/components/files/SearchResults.vue'
 import PreviewShell from '@/components/preview/PreviewShell.vue'
@@ -13,6 +14,10 @@ const ui = useUiStore()
 const showRecursiveSearch = computed(
   () => navigation.viewMode === 'list' && ui.searchRecursive && ui.searchQuery.trim().length > 0,
 )
+
+const isCodeFile = computed(
+  () => !!navigation.activeFile && isEditable(navigation.activeFile),
+)
 </script>
 
 <template>
@@ -22,11 +27,11 @@ const showRecursiveSearch = computed(
         <SearchResults v-if="showRecursiveSearch" />
         <FileTable v-else />
       </template>
-      <PreviewShell v-else-if="navigation.viewMode === 'preview'" />
       <EditorView
-        v-else-if="navigation.viewMode === 'editor'"
+        v-else-if="navigation.viewMode === 'editor' || (navigation.viewMode === 'preview' && isCodeFile)"
         :key="navigation.activeFilePath ?? ''"
       />
+      <PreviewShell v-else-if="navigation.viewMode === 'preview'" />
     </div>
   </div>
 </template>

@@ -18,7 +18,9 @@ import {
   copySelected, cutSelected, deleteItems, renameItem, pasteItems,
   openPermissionsSelected, canModifyItemPermissions, canModifySelectedPermissions,
 } from '@/composables/useFileActions'
-import { buildDownloadUrl, buildRawUrl } from '@/api/client'
+import { buildDownloadUrl, buildRawUrl, fetchBatchDownload } from '@/api/client'
+import { errorMessage } from '@/utils/errorMessage'
+import { toast } from 'vue-sonner'
 import { joinPath, archiveSubdirName } from '@/utils/path'
 import { PackageOpen, FileArchive, Shield } from '@lucide/vue'
 import {
@@ -129,9 +131,32 @@ async function handleDelete() {
   await deleteItems(navigation.currentPathStr, items)
 }
 
-function handleDownload() {
-  const filePath = joinPath(navigation.currentPathStr, props.name)
-  window.open(buildDownloadUrl(filePath), '_blank')
+const isBulkDownload = computed(() => {
+  if (fileList.selectedCount > 1) return true
+  if (fileList.selectedCount === 1) {
+    const name = Array.from(fileList.selected)[0]
+    return !fileList.getFileByName(name)
+  }
+  return props.isDir
+})
+
+async function handleDownload() {
+  if (isBulkDownload.value) {
+    const items = fileList.selectedCount > 0
+      ? Array.from(fileList.selected)
+      : [props.name]
+    try {
+      await fetchBatchDownload(navigation.currentPathStr, items)
+    } catch (e) {
+      toast.error(errorMessage(e))
+    }
+  } else {
+    const name = fileList.selectedCount === 1
+      ? Array.from(fileList.selected)[0]
+      : props.name
+    const filePath = joinPath(navigation.currentPathStr, name)
+    window.open(buildDownloadUrl(filePath), '_blank')
+  }
 }
 
 function handlePermissions() {
@@ -274,7 +299,8 @@ const thumbnailUrl = computed(() => {
         :can-paste="clipboard.hasContent"
         :show-open="fileList.selectedCount <= 1"
         :show-rename="fileList.selectedCount <= 1"
-        :show-download="fileList.selectedCount <= 1"
+        :show-download="true"
+        :download-label="isBulkDownload ? 'Download All' : 'Download'"
         :has-hotkey="true"
         @open="handleOpen"
         @copy="handleCopy"

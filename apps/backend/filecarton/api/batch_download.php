@@ -136,6 +136,7 @@ function batch_download_stream(PathSecurity $pathSec, string $token): void {
     header("Content-Disposition: attachment; filename=\"" . addcslashes($ascii, '"\\') . "\"; filename*=UTF-8''" . $encoded);
     header('Cache-Control: private, no-store');
     header('X-Content-Type-Options: nosniff');
+    header('X-Accel-Buffering: no');
     http_response_code(200);
 
     $out = fopen('php://output', 'wb');
@@ -157,6 +158,7 @@ function batch_download_stream(PathSecurity $pathSec, string $token): void {
             $totalSize += $size;
             $zip->addFileFromPath($entry['entryName'], $entry['fullPath']);
         }
+        flush();
     }
 
     $zip->finish();

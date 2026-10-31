@@ -8,19 +8,11 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-  DropdownMenuCheckboxItem,
-} from '@/components/ui/dropdown-menu'
 import {
   FileArchive,
   PanelLeft,
-  Search,
-  ChevronDown,
 } from '@lucide/vue'
+import SearchBox from '@/components/SearchBox.vue'
 import { useUiStore } from '@/stores/ui'
 
 defineProps<{
@@ -98,39 +90,23 @@ const ui = useUiStore()
 
     <div class="flex items-center gap-2 min-w-0 shrink">
       <template v-if="viewMode === 'list'">
-        <div class="flex items-center min-w-0">
-          <div class="relative min-w-0">
-            <Search class="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-            <Input
-              :model-value="searchQuery"
-              data-archive-search
-              placeholder="Search in archive..."
-              class="h-7 w-64 max-w-full pl-7 pr-7 text-sm"
-              @update:model-value="emit('update:searchQuery', String($event))"
-            />
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger as-child>
-              <Button variant="ghost" size="icon-xs" class="-ml-7 relative z-10">
-                <ChevronDown class="size-3" />
+        <SearchBox
+          :model-value="searchQuery"
+          placeholder="Search in archive..."
+          input-class="w-64 max-w-full h-7"
+          @update:model-value="emit('update:searchQuery', $event)"
+        >
+          <template #panel>
+            <div class="flex justify-end gap-1">
+              <Button :variant="!searchRecursive ? 'default' : 'ghost'" size="sm" @click="emit('update:searchRecursive', false)">
+                Here
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuCheckboxItem
-                :model-value="!searchRecursive"
-                @update:model-value="emit('update:searchRecursive', false)"
-              >
-                Current directory
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                :model-value="searchRecursive"
-                @update:model-value="emit('update:searchRecursive', true)"
-              >
-                All subfolders
-              </DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+              <Button :variant="searchRecursive ? 'default' : 'ghost'" size="sm" @click="emit('update:searchRecursive', true)">
+                & Subfolders
+              </Button>
+            </div>
+          </template>
+        </SearchBox>
       </template>
     </div>
   </div>

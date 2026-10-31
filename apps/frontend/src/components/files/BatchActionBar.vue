@@ -16,7 +16,8 @@ import {
 } from '@/composables/useFileActions'
 import { createArchive } from '@/composables/useArchive'
 import { useNavigationStore } from '@/stores/navigation'
-import { fetchBatchDownload } from '@/api/client'
+import { fetchBatchDownload, buildDownloadUrl } from '@/api/client'
+import { joinPath } from '@/utils/path'
 import { errorMessage } from '@/utils/errorMessage'
 import { toast } from 'vue-sonner'
 import { ref } from 'vue'
@@ -27,9 +28,20 @@ const ui = useUiStore()
 const navigation = useNavigationStore()
 const downloading = ref(false)
 
+const isSingleFile = computed(() => {
+  if (fileList.selectedCount !== 1) return false
+  const name = Array.from(fileList.selected)[0]
+  return !!fileList.getFileByName(name)
+})
+
 async function downloadSelected() {
   const items = Array.from(fileList.selected)
   if (items.length === 0) return
+  if (isSingleFile.value) {
+    const filePath = joinPath(navigation.currentPathStr, items[0])
+    window.open(buildDownloadUrl(filePath), '_blank')
+    return
+  }
   downloading.value = true
   try {
     await fetchBatchDownload(navigation.currentPathStr, items)
@@ -70,7 +82,7 @@ function handleSelectAll(checked: boolean | "indeterminate") {
 
     <Button v-if="ui.features.archive" variant="ghost" size="sm" :disabled="downloading" @click="downloadSelected">
       <Download class="size-3.5" />
-      Download
+      {{ isSingleFile ? 'Download' : 'Download All' }}
     </Button>
 
     <template v-if="!ui.readonly">

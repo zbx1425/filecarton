@@ -68,7 +68,7 @@ watch(() => ui.searchRecursive, (recursive) => {
   if (recursive && ui.searchQuery) {
     doSearch(ui.searchQuery)
   }
-})
+}, { immediate: true })
 
 async function openResult(result: SearchResult) {
   const dirSegments = result.path ? splitPath(result.path) : []

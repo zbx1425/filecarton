@@ -11,9 +11,9 @@ import type { ReadResponse } from '@/api/types'
 import { useNavigationStore } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
 import { loadMonaco } from '@/composables/useMonaco'
-import { monacoLanguage } from '@/composables/useFileType'
+import { monacoLanguage, isEditable } from '@/composables/useFileType'
 import { showEditorConflict } from '@/composables/useDialogs'
-import { ArrowLeft, Save, Loader2, ClipboardCopy, Download } from '@lucide/vue'
+import { ArrowLeft, Save, Loader2, ClipboardCopy, Download, Pencil } from '@lucide/vue'
 import { buildDownloadUrl } from '@/api/client'
 import { usePreferencesStore } from '@/stores/preferences'
 import EditorStatusBar from './EditorStatusBar.vue'
@@ -36,6 +36,15 @@ let currentMtime = 0
 const filePath = computed(() => navigation.activeFilePath ?? '')
 const fileName = computed(() => navigation.activeFile ?? '')
 
+const isReadonly = computed(() => ui.readonly || navigation.viewMode === 'preview')
+const canEdit = computed(
+  () => !ui.readonly && isEditable(fileName.value) && !prefs.isFilenameBlocked(fileName.value),
+)
+
+watch(isReadonly, (val) => {
+  editor?.updateOptions({ readOnly: val })
+})
+
 async function copyAll() {
   if (!editor) return
   try {
@@ -47,7 +56,7 @@ async function copyAll() {
 }
 
 async function save() {
-  if (!editor || saving.value || ui.readonly) return
+  if (!editor || saving.value || isReadonly.value) return
 
   saving.value = true
   try {
@@ -118,7 +127,7 @@ onMounted(async () => {
       value: fileData.content,
       language: monacoLanguage(fileName.value),
       theme: prefs.resolvedTheme === 'dark' ? 'vs-dark' : 'vs',
-      readOnly: ui.readonly,
+      readOnly: isReadonly.value,
       minimap: { enabled: false },
       wordWrap: prefs.editorWordWrap ? 'on' : 'off',
       fontSize: prefs.editorFontSize,
@@ -132,7 +141,9 @@ onMounted(async () => {
     editorInstance.value = editor
 
     editor.onDidChangeModelContent(() => {
-      navigation.editDirty = true
+      if (!isReadonly.value) {
+        navigation.editDirty = true
+      }
     })
 
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
@@ -169,8 +180,13 @@ onBeforeUnmount(() => {
 
       <span class="text-sm font-mono truncate flex-1 text-muted-foreground">
         {{ fileName }}
-        <span v-if="navigation.editDirty" class="text-foreground ml-1">*</span>
+        <span v-if="navigation.editDirty && !isReadonly" class="text-foreground ml-1">*</span>
       </span>
+
+      <Button v-if="isReadonly && canEdit" variant="outline" size="sm" @click="navigation.openEditor()">
+        <Pencil class="size-4" />
+        Edit
+      </Button>
 
       <Button variant="ghost" size="sm" @click="copyAll">
         <ClipboardCopy class="size-4" />
@@ -181,7 +197,7 @@ onBeforeUnmount(() => {
         Download
       </Button>
       <Button
-        v-if="!ui.readonly"
+        v-if="!isReadonly"
         size="sm"
         :disabled="!navigation.editDirty || saving"
         @click="save"
@@ -206,6 +222,7 @@ onBeforeUnmount(() => {
       v-if="!loading && !error"
       :editor="editorInstance"
       :language="monacoLanguage(fileName)"
+      :readonly="isReadonly"
     />
   </div>
 </template>

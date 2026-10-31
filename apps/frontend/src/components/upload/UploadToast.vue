@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 import { useUploadStore } from '@/stores/upload'
+import { formatSize } from '@/utils/format'
 import {
   Loader2, CheckCircle2, AlertTriangle, Upload, X,
 } from '@lucide/vue'
@@ -21,27 +22,60 @@ const totalProgress = computed(() => {
 const result = computed(() => upload.latestBatchResult)
 const hasErrors = computed(() => upload.errorTasks.length > 0)
 const latestBatchAllSuccess = computed(() => result.value != null && result.value.failed === 0)
+
+function safeFmtSize(bytes: number): string {
+  if (!isFinite(bytes) || bytes < 1) return '0 B'
+  return formatSize(bytes)
+}
+
+const sizeProgress = computed(() => {
+  return `${safeFmtSize(upload.bytesSent)} / ${safeFmtSize(upload.totalBytes)}`
+})
+
+const speedText = computed(() => {
+  const s = upload.speed
+  if (!(s > 0)) return '—'
+  return `${formatSize(s)}/s`
+})
+
+const etaText = computed(() => {
+  const s = upload.eta
+  if (!(s > 0) || !isFinite(s)) return '—'
+  const sec = Math.ceil(s)
+  if (sec < 60) return `~${sec}s`
+  const m = Math.floor(sec / 60)
+  const r = sec % 60
+  return `~${m}:${String(r).padStart(2, '0')}`
+})
 </script>
 
 <template>
-  <div class="w-75 select-none">
+  <div class="select-none min-w-75 w-full">
     <!-- Active uploads -->
-    <div v-if="upload.hasActive" class="flex items-center gap-2.5">
-      <Loader2 class="size-4 animate-spin text-primary shrink-0" />
-      <div class="flex-1 min-w-0">
-        <div class="text-sm font-medium">Uploading {{ upload.activeTotal }} file(s)...</div>
-        <Progress :model-value="totalProgress" class="h-1.5 mt-1" />
+    <div v-if="upload.hasActive" class="space-y-1.5">
+      <div class="flex items-center gap-2.5">
+        <Loader2 class="size-4 animate-spin text-primary shrink-0" />
+        <div class="flex-1 min-w-0 text-sm font-medium">
+          Uploading files
+          <span class="tabular-nums">({{ upload.completedCount }}/{{ upload.activeTotal }})</span>
+        </div>
+        <span class="text-sm tabular-nums text-muted-foreground shrink-0 w-10 text-right">{{ totalProgress }}%</span>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          class="size-6 shrink-0 text-muted-foreground hover:text-destructive"
+          title="Cancel all"
+          @click="upload.cancelAll()"
+        >
+          <X class="size-3.5" />
+        </Button>
       </div>
-      <span class="text-sm tabular-nums text-muted-foreground shrink-0 w-8 text-right">{{ totalProgress }}%</span>
-      <Button
-        variant="ghost"
-        size="icon-xs"
-        class="size-6 shrink-0 text-muted-foreground hover:text-destructive"
-        title="Cancel all"
-        @click="upload.cancelAll()"
-      >
-        <X class="size-3.5" />
-      </Button>
+      <Progress :model-value="totalProgress" class="h-1.5" />
+      <div class="grid grid-cols-4 text-xs text-muted-foreground tabular-nums">
+        <span class="col-span-2">{{ sizeProgress }}</span>
+        <span class="text-center">{{ speedText }}</span>
+        <span class="text-right">{{ etaText }}</span>
+      </div>
     </div>
 
     <!-- Done: show latest batch result -->

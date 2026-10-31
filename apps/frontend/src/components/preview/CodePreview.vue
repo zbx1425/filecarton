@@ -8,6 +8,7 @@ import { loadMonaco } from '@/composables/useMonaco'
 import { monacoLanguage } from '@/composables/useFileType'
 import { Loader2 } from '@lucide/vue'
 import { usePreferencesStore } from '@/stores/preferences'
+import EditorStatusBar from '@/components/editor/EditorStatusBar.vue'
 
 const props = defineProps<{
   path: string
@@ -19,6 +20,7 @@ const props = defineProps<{
 const prefs = usePreferencesStore()
 
 const containerRef = ref<HTMLElement | null>(null)
+const editorInstance = ref<Monaco.editor.IStandaloneCodeEditor | null>(null)
 const loading = ref(true)
 const error = ref<ErrorInfo | null>(null)
 let editor: Monaco.editor.IStandaloneCodeEditor | null = null
@@ -46,6 +48,7 @@ onMounted(async () => {
       automaticLayout: false,
       mouseWheelZoom: true,
     })
+    editorInstance.value = editor
 
     resizeObserver = new ResizeObserver(() => editor?.layout())
     resizeObserver.observe(containerRef.value)
@@ -70,13 +73,21 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="h-full relative">
-    <div v-if="loading" class="absolute inset-0 flex items-center justify-center">
-      <Loader2 class="size-5 animate-spin text-muted-foreground" />
+  <div class="flex flex-col h-full">
+    <div class="flex-1 min-h-0 relative">
+      <div v-if="loading" class="absolute inset-0 flex items-center justify-center">
+        <Loader2 class="size-5 animate-spin text-muted-foreground" />
+      </div>
+      <div v-if="error" class="absolute inset-0 flex items-center justify-center text-sm text-destructive">
+        {{ $t('err.' + error.code, error.params ?? {}) }}
+      </div>
+      <div ref="containerRef" class="h-full" />
     </div>
-    <div v-if="error" class="absolute inset-0 flex items-center justify-center text-sm text-destructive">
-      {{ $t('err.' + error.code, error.params ?? {}) }}
-    </div>
-    <div ref="containerRef" class="h-full" />
+    <EditorStatusBar
+      v-if="!loading && !error"
+      :editor="editorInstance"
+      :language="monacoLanguage(name)"
+      readonly
+    />
   </div>
 </template>

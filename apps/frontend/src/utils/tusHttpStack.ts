@@ -1,5 +1,5 @@
 import { DefaultHttpStack } from 'tus-js-client'
-import type { HttpStack, HttpRequest, HttpResponse } from 'tus-js-client'
+import type { HttpStack, HttpRequest } from 'tus-js-client'
 
 /**
  * POST-only TUS HTTP stack.

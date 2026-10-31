@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
 import { useNavigationStore } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
 import { useUploadStore } from '@/stores/upload'
@@ -15,7 +15,6 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +22,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -31,14 +29,13 @@ import {
   PanelLeft,
   Plus,
   Upload,
-  Search,
   File,
   Folder,
   CloudDownload,
-  ChevronDown,
   Settings2,
   LogOut,
 } from '@lucide/vue'
+import SearchBox from '@/components/SearchBox.vue'
 import { createItem } from '@/composables/useFileActions'
 import { showRemoteDownloadDialog } from '@/composables/useDialogs'
 import { isInternalDrag, handleDrop } from '@/composables/useDragDrop'
@@ -90,6 +87,17 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
   const targetPath = index === -1 ? '' : segmentPath(index)
   await handleDrop(e, targetPath)
 }
+
+const breadcrumbNav = ref<HTMLElement | null>(null)
+
+watch(
+  () => [navigation.currentPath, navigation.activeFile],
+  () => nextTick(() => {
+    const el = breadcrumbNav.value
+    if (el) el.scrollLeft = el.scrollWidth
+  }),
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -112,9 +120,9 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
       {{ ui.branding }}
     </span>
 
-    <Breadcrumb class="flex-1 min-w-0">
-      <BreadcrumbList>
-        <BreadcrumbItem>
+    <Breadcrumb class="flex-1 min-w-0 overflow-x-auto scrollbar-none" :ref="(el: any) => breadcrumbNav = el?.$el ?? el">
+      <BreadcrumbList class="flex-nowrap w-max">
+        <BreadcrumbItem class="shrink-0">
           <BreadcrumbPage v-if="isAtRoot" class="flex items-center gap-1.5">
             <Home class="size-4" />
             <span v-if="ui.repoName">{{ ui.repoName }}</span>
@@ -133,12 +141,13 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
         </BreadcrumbItem>
 
         <template v-for="(segment, i) in pathSegments" :key="i">
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
+          <BreadcrumbSeparator class="shrink-0" />
+          <BreadcrumbItem class="shrink-0">
             <BreadcrumbLink
               v-if="i < pathSegments.length - 1 || navigation.activeFile"
-              class="cursor-pointer"
+              class="cursor-pointer max-w-40 truncate block"
               :class="dropHoverSegment === i ? 'bg-primary/10 rounded px-1' : ''"
+              :title="segment"
               @click="navigateToSegment(i)"
               @dragover="handleBreadcrumbDragOver($event, i)"
               @dragleave="handleBreadcrumbDragLeave"
@@ -146,14 +155,14 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
             >
               {{ segment }}
             </BreadcrumbLink>
-            <BreadcrumbPage v-else>{{ segment }}</BreadcrumbPage>
+            <BreadcrumbPage v-else class="max-w-40 truncate block" :title="segment">{{ segment }}</BreadcrumbPage>
           </BreadcrumbItem>
         </template>
 
         <template v-if="navigation.activeFile">
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage class="font-mono text-sm">
+          <BreadcrumbSeparator class="shrink-0" />
+          <BreadcrumbItem class="shrink-0">
+            <BreadcrumbPage class="font-mono text-sm max-w-48 truncate block" :title="navigation.activeFile">
               {{ navigation.activeFile }}
             </BreadcrumbPage>
           </BreadcrumbItem>
@@ -163,37 +172,23 @@ async function handleBreadcrumbDrop(e: DragEvent, index: number) {
 
     <div class="flex items-center gap-2">
       <template v-if="navigation.viewMode === 'list'">
-        <div class="flex items-center me-1">
-          <div class="relative">
-            <Search class="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-            <Input
-              v-model="ui.searchQuery"
-              placeholder="Search..."
-              class="h-8 w-48 pl-7 pr-7 text-sm"
-            />
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger as-child>
-              <Button variant="ghost" size="icon-xs" class="-ml-7 relative z-10">
-                <ChevronDown class="size-3" />
+        <SearchBox
+          v-model="ui.searchQuery"
+          placeholder="Search..."
+          input-class="w-60 max-w-full"
+          class="me-1"
+        >
+          <template #panel>
+            <div class="flex justify-end gap-0">
+              <Button :variant="!ui.searchRecursive ? 'default' : 'ghost'" size="sm" @click="ui.searchRecursive = false">
+                Here
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuCheckboxItem
-                :model-value="!ui.searchRecursive"
-                @update:model-value="ui.searchRecursive = false"
-              >
-                Current directory
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                :model-value="ui.searchRecursive"
-                @update:model-value="ui.searchRecursive = true"
-              >
-                All subfolders
-              </DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+              <Button :variant="ui.searchRecursive ? 'default' : 'ghost'" size="sm" @click="ui.searchRecursive = true">
+                & Subfolders
+              </Button>
+            </div>
+          </template>
+        </SearchBox>
 
         <ClipboardBadge />
 

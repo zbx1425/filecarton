@@ -16,6 +16,7 @@ defineProps<{
   showOpen?: boolean
   showRename?: boolean
   showDownload?: boolean
+  downloadLabel?: string
   hasHotkey?: boolean
 }>()
 
@@ -73,7 +74,7 @@ defineEmits<{
     <ContextMenuSeparator />
     <ContextMenuItem @select="$emit('download')">
       <Download class="size-4" />
-      Download
+      {{ downloadLabel ?? 'Download' }}
     </ContextMenuItem>
   </template>
 

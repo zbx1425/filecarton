@@ -59,6 +59,64 @@ export const useUploadStore = defineStore('upload', () => {
     errorTasks.value.filter(t => t.batchId !== latestBatchId.value).length,
   )
 
+  const totalBytes = computed(() =>
+    tasks.value
+      .filter(t => t.status !== 'error' && t.status !== 'cancelled')
+      .reduce((s, t) => s + t.file.size, 0),
+  )
+
+  const bytesSent = computed(() =>
+    tasks.value
+      .filter(t => t.status !== 'error' && t.status !== 'cancelled')
+      .reduce((s, t) => s + t.file.size * t.progress / 100, 0),
+  )
+
+  const completedCount = computed(() =>
+    tasks.value.filter(t => t.status === 'success').length,
+  )
+
+  const speed = ref(0)
+  const eta = ref(-1)
+  let speedSamples: { time: number; bytes: number }[] = []
+  let speedInterval: ReturnType<typeof setInterval> | null = null
+
+  function startSpeedSampling() {
+    if (speedInterval) return
+    speedSamples = [{ time: Date.now(), bytes: bytesSent.value }]
+    speed.value = 0
+    eta.value = -1
+    speedInterval = setInterval(() => {
+      const now = Date.now()
+      const sent = bytesSent.value
+      speedSamples.push({ time: now, bytes: sent })
+      const cutoff = now - 5000
+      while (speedSamples.length > 1 && speedSamples[0].time < cutoff) {
+        speedSamples.shift()
+      }
+      if (speedSamples.length >= 2) {
+        const first = speedSamples[0]
+        const last = speedSamples[speedSamples.length - 1]
+        const dt = (last.time - first.time) / 1000
+        if (dt > 0) {
+          speed.value = (last.bytes - first.bytes) / dt
+          const remaining = totalBytes.value - sent
+          eta.value = speed.value > 0 ? remaining / speed.value : -1
+        }
+      }
+      if (!hasActive.value) stopSpeedSampling()
+    }, 500)
+  }
+
+  function stopSpeedSampling() {
+    if (speedInterval) {
+      clearInterval(speedInterval)
+      speedInterval = null
+    }
+    speedSamples = []
+    speed.value = 0
+    eta.value = -1
+  }
+
   function show() { visible.value = true }
   function hide() { visible.value = false }
 
@@ -153,7 +211,8 @@ export const useUploadStore = defineStore('upload', () => {
   function enqueueTasks(batchId: string, newTasks: UploadTask[]) {
     latestBatchId.value = batchId
     latestBatchResult.value = null
-    if (!hasActive.value) {
+    const wasFresh = !hasActive.value
+    if (wasFresh) {
       activeTotal.value = newTasks.length
     } else {
       activeTotal.value += newTasks.length
@@ -162,13 +221,16 @@ export const useUploadStore = defineStore('upload', () => {
       newTasks.map(t => computeTargetPath(t.targetDir, t.relativePath, t.file.name)),
     )
     tasks.value = [
-      ...tasks.value.filter(t =>
-        t.status !== 'error' || !newPaths.has(computeTargetPath(t.targetDir, t.relativePath, t.file.name)),
-      ),
+      ...tasks.value.filter(t => {
+        if (wasFresh && t.status === 'success') return false
+        if (t.status === 'error' && newPaths.has(computeTargetPath(t.targetDir, t.relativePath, t.file.name))) return false
+        return true
+      }),
       ...newTasks,
     ]
     visible.value = true
     showUploadToast()
+    startSpeedSampling()
     processQueue()
   }
 
@@ -560,6 +622,11 @@ export const useUploadStore = defineStore('upload', () => {
     hasActive,
     errorTasks,
     oldErrorCount,
+    totalBytes,
+    bytesSent,
+    completedCount,
+    speed,
+    eta,
     latestBatchId,
     latestBatchResult,
     errorDialogOpen,
