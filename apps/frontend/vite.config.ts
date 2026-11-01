@@ -17,6 +17,9 @@ const cdnExternals = [
   '@vueuse/shared',
   '@vueuse/metadata',
   'vue-sonner',
+  'markdown-it',
+  'dompurify',
+  'highlight.js',
 ]
 
 export default defineConfig({

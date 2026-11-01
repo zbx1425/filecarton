@@ -2,11 +2,12 @@
 import { computed } from 'vue'
 import { useNavigationStore } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
-import { isEditable } from '@/composables/useFileType'
+import { isEditable, isMarkdown } from '@/composables/useFileType'
 import FileTable from '@/components/files/FileTable.vue'
 import SearchResults from '@/components/files/SearchResults.vue'
 import PreviewShell from '@/components/preview/PreviewShell.vue'
 import EditorView from '@/components/editor/EditorView.vue'
+import MarkdownEditorView from '@/components/editor/MarkdownEditorView.vue'
 
 const navigation = useNavigationStore()
 const ui = useUiStore()
@@ -18,6 +19,10 @@ const showRecursiveSearch = computed(
 const isCodeFile = computed(
   () => !!navigation.activeFile && isEditable(navigation.activeFile),
 )
+
+const isMarkdownFile = computed(
+  () => !!navigation.activeFile && isMarkdown(navigation.activeFile),
+)
 </script>
 
 <template>
@@ -27,6 +32,10 @@ const isCodeFile = computed(
         <SearchResults v-if="showRecursiveSearch" />
         <FileTable v-else />
       </template>
+      <MarkdownEditorView
+        v-else-if="isMarkdownFile && (navigation.viewMode === 'editor' || navigation.viewMode === 'preview')"
+        :key="navigation.activeFilePath ?? ''"
+      />
       <EditorView
         v-else-if="navigation.viewMode === 'editor' || (navigation.viewMode === 'preview' && isCodeFile)"
         :key="navigation.activeFilePath ?? ''"

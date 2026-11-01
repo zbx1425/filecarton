@@ -20,6 +20,8 @@ import { createItem, pasteItems } from '@/composables/useFileActions'
 import { showRemoteDownloadDialog } from '@/composables/useDialogs'
 import FileRow from './FileRow.vue'
 import BatchActionBar from './BatchActionBar.vue'
+import ReadmePane from './ReadmePane.vue'
+import { joinPath } from '@/utils/path'
 
 const fileList = useFileListStore()
 const navigation = useNavigationStore()
@@ -61,6 +63,21 @@ function sortIcon(column: string) {
   if (fileList.sortBy !== column) return null
   return fileList.sortAsc ? ArrowUp : ArrowDown
 }
+
+const readmeFile = computed(() => {
+  let readme: string | null = null
+  for (const f of fileList.files) {
+    const lower = f.name.toLowerCase()
+    if (lower === 'readme.md') return f.name
+    if (lower === 'readme' && !readme) readme = f.name
+  }
+  return readme
+})
+
+const readmePath = computed(() => {
+  if (!readmeFile.value) return ''
+  return joinPath(navigation.currentPathStr, readmeFile.value)
+})
 
 function handleEmptyClick(e: MouseEvent) {
   if (e.target === e.currentTarget) {
@@ -150,110 +167,120 @@ function startResize(e: MouseEvent) {
       </div>
     </div>
 
-    <!-- Loading -->
-    <div v-if="fileList.loading" class="flex-1 flex items-center justify-center">
-      <Loader2 class="size-5 animate-spin text-muted-foreground" />
-    </div>
+    <!-- Main content area: file list + optional readme pane -->
+    <div class="flex-1 min-h-0 flex flex-col">
+      <!-- Loading -->
+      <div v-if="fileList.loading" class="flex-1 flex items-center justify-center">
+        <Loader2 class="size-5 animate-spin text-muted-foreground" />
+      </div>
 
-    <!-- Error -->
-    <div v-else-if="fileList.error" class="flex-1 flex flex-col items-center justify-center gap-2 text-sm text-destructive">
-      <p>{{ $t('err.' + fileList.error.code, fileList.error.params ?? {}) }}</p>
-    </div>
+      <!-- Error -->
+      <div v-else-if="fileList.error" class="flex-1 flex flex-col items-center justify-center gap-2 text-sm text-destructive">
+        <p>{{ $t('err.' + fileList.error.code, fileList.error.params ?? {}) }}</p>
+      </div>
 
-    <!-- File list with context menu on empty area -->
-    <ContextMenu v-else>
-      <ContextMenuTrigger as-child>
-        <div class="flex-1 overflow-auto relative" @click="handleListClick">
-          <!-- Go up row -->
-          <div
-            v-if="!isRoot"
-            class="flex items-center px-3 text-sm text-muted-foreground cursor-pointer hover:bg-muted/50 h-(--fc-row-height) max-w-(--fc-table-max-w)"
-            data-file-row
-            @click="goUp"
-          >
-            <div class="w-6 shrink-0" />
-            <div class="flex items-center gap-2 flex-1">
-              <CornerLeftUp class="size-4" />
-              <span>..</span>
-            </div>
-            <div class="w-20" />
-            <div class="w-24" />
-            <template v-if="showUnixCols">
+      <!-- File list with context menu on empty area -->
+      <ContextMenu v-else>
+        <ContextMenuTrigger as-child>
+          <div class="flex-1 min-h-48 overflow-auto relative" @click="handleListClick">
+            <!-- Go up row -->
+            <div
+              v-if="!isRoot"
+              class="flex items-center px-3 text-sm text-muted-foreground cursor-pointer hover:bg-muted/50 h-(--fc-row-height) max-w-(--fc-table-max-w)"
+              data-file-row
+              @click="goUp"
+            >
+              <div class="w-6 shrink-0" />
+              <div class="flex items-center gap-2 flex-1">
+                <CornerLeftUp class="size-4" />
+                <span>..</span>
+              </div>
+              <div class="w-20" />
               <div class="w-24" />
-              <div class="w-32" />
-            </template>
+              <template v-if="showUnixCols">
+                <div class="w-24" />
+                <div class="w-32" />
+              </template>
+            </div>
+
+            <FileRow
+              v-for="d in fileList.filteredDirs"
+              :key="'d-' + d.name"
+              :name="d.name"
+              :is-dir="true"
+              :mtime="d.mtime"
+              :mode="d.mode"
+              :owner="d.owner"
+              :group="d.group"
+            />
+            <FileRow
+              v-for="f in fileList.filteredFiles"
+              :key="'f-' + f.name"
+              :name="f.name"
+              :is-dir="false"
+              :size="f.size"
+              :mtime="f.mtime"
+              :mode="f.mode"
+              :owner="f.owner"
+              :group="f.group"
+            />
+
+            <!-- Empty state -->
+            <div v-if="isFilteredEmpty" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <p v-if="ui.searchQuery.trim()" class="text-sm">No matches for "{{ ui.searchQuery }}"</p>
+              <p v-else class="text-sm">All files under this directory are hidden files</p>
+            </div>
+            <div v-else-if="isActuallyEmpty" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <p class="text-sm">This folder is empty</p>
+              <p v-if="!ui.readonly" class="text-sm mt-1">Drag files here to upload</p>
+            </div>
+
           </div>
+        </ContextMenuTrigger>
 
-          <FileRow
-            v-for="d in fileList.filteredDirs"
-            :key="'d-' + d.name"
-            :name="d.name"
-            :is-dir="true"
-            :mtime="d.mtime"
-            :mode="d.mode"
-            :owner="d.owner"
-            :group="d.group"
-          />
-          <FileRow
-            v-for="f in fileList.filteredFiles"
-            :key="'f-' + f.name"
-            :name="f.name"
-            :is-dir="false"
-            :size="f.size"
-            :mtime="f.mtime"
-            :mode="f.mode"
-            :owner="f.owner"
-            :group="f.group"
-          />
-
-          <!-- Empty state -->
-          <div v-if="isFilteredEmpty" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
-            <p v-if="ui.searchQuery.trim()" class="text-sm">No matches for "{{ ui.searchQuery }}"</p>
-            <p v-else class="text-sm">All files under this directory are hidden files</p>
-          </div>
-          <div v-else-if="isActuallyEmpty" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
-            <p class="text-sm">This folder is empty</p>
-            <p v-if="!ui.readonly" class="text-sm mt-1">Drag files here to upload</p>
-          </div>
-
-        </div>
-      </ContextMenuTrigger>
-
-      <ContextMenuContent class="w-52">
-        <ContextMenuItem @select="handleRefresh">
-          <RefreshCw class="size-4" />
-          Refresh
-        </ContextMenuItem>
-        <ContextMenuSeparator />
-        <template v-if="!ui.readonly">
-          <ContextMenuItem v-if="clipboard.hasContent" @select="pasteItems(navigation.currentPathStr)">
-            <ClipboardPaste class="size-4" />
-            Paste
-            <ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
-          </ContextMenuItem>
-          <ContextMenuSeparator v-if="clipboard.hasContent" />
-          <ContextMenuItem @select="createItem('file')">
-            <File class="size-4" />
-            New File
-          </ContextMenuItem>
-          <ContextMenuItem @select="createItem('dir')">
-            <Folder class="size-4" />
-            New Folder
-          </ContextMenuItem>
-          <ContextMenuItem v-if="ui.features.remoteDownload" @select="showRemoteDownloadDialog()">
-            <CloudDownload class="size-4" />
-            Remote Download
+        <ContextMenuContent class="w-52">
+          <ContextMenuItem @select="handleRefresh">
+            <RefreshCw class="size-4" />
+            Refresh
           </ContextMenuItem>
           <ContextMenuSeparator />
-        </template>
-        <ContextMenuItem @select="fileList.toggleSelectAll()">
-          <CheckSquare v-if="!fileList.isAllSelected" class="size-4" />
-          <Square v-else class="size-4" />
-          {{ fileList.isAllSelected ? 'Deselect All' : 'Select All' }}
-          <ContextMenuShortcut>Ctrl+A</ContextMenuShortcut>
-        </ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
+          <template v-if="!ui.readonly">
+            <ContextMenuItem v-if="clipboard.hasContent" @select="pasteItems(navigation.currentPathStr)">
+              <ClipboardPaste class="size-4" />
+              Paste
+              <ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuSeparator v-if="clipboard.hasContent" />
+            <ContextMenuItem @select="createItem('file')">
+              <File class="size-4" />
+              New File
+            </ContextMenuItem>
+            <ContextMenuItem @select="createItem('dir')">
+              <Folder class="size-4" />
+              New Folder
+            </ContextMenuItem>
+            <ContextMenuItem v-if="ui.features.remoteDownload" @select="showRemoteDownloadDialog()">
+              <CloudDownload class="size-4" />
+              Remote Download
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+          </template>
+          <ContextMenuItem @select="fileList.toggleSelectAll()">
+            <CheckSquare v-if="!fileList.isAllSelected" class="size-4" />
+            <Square v-else class="size-4" />
+            {{ fileList.isAllSelected ? 'Deselect All' : 'Select All' }}
+            <ContextMenuShortcut>Ctrl+A</ContextMenuShortcut>
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+
+      <!-- README preview pane -->
+      <ReadmePane
+        v-if="readmeFile && !fileList.loading && !fileList.error"
+        :name="readmeFile"
+        :path="readmePath"
+      />
+    </div>
 
     <!-- Status / Batch bar -->
     <BatchActionBar v-if="fileList.hasSelection" />

@@ -125,6 +125,10 @@ export function isArchive(name: string): boolean {
   return ARCHIVE_EXTENSIONS.has(pathExtension(name))
 }
 
+export function isMarkdown(name: string): boolean {
+  return pathExtension(name) === 'md'
+}
+
 export function isPdf(name: string): boolean {
   return pathExtension(name) === 'pdf'
 }

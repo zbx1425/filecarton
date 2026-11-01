@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, markRaw } from 'vue'
 import { toast } from 'vue-sonner'
-import { useDebounceFn } from '@vueuse/core'
+import { useThrottleFn } from '@vueuse/core'
 import UploadToast from '@/components/upload/UploadToast.vue'
 import { Upload as TusUpload, DetailedError } from 'tus-js-client'
 import { apiPost, toErrorInfo, ApiError, maybeUnauthorized, buildTusEndpointUrl, getCsrfToken } from '@/api/client'
@@ -391,6 +391,7 @@ export const useUploadStore = defineStore('upload', () => {
     refreshAfterUpload(task.targetDir)
 
     if (!hasActive.value) {
+      doRefresh()
       snapshotLatestBatch()
       remeasureToast()
       dismissUploadToast()
@@ -583,13 +584,14 @@ export const useUploadStore = defineStore('upload', () => {
 
   const pendingRefreshDirs = new Set<string>()
 
-  const flushRefresh = useDebounceFn(() => {
+  function doRefresh() {
+    const dirs = new Set(pendingRefreshDirs)
+    pendingRefreshDirs.clear()
+    if (dirs.size === 0) return
+
     const navigation = useNavigationStore()
     const fileList = useFileListStore()
     const tree = useTreeStore()
-
-    const dirs = new Set(pendingRefreshDirs)
-    pendingRefreshDirs.clear()
 
     for (const dir of dirs) {
       tree.invalidateSubtree(dir)
@@ -607,11 +609,13 @@ export const useUploadStore = defineStore('upload', () => {
     if (dirs.has(navigation.currentPathStr)) {
       fileList.fetchDir(navigation.currentPathStr)
     }
-  }, 500)
+  }
+
+  const throttledRefresh = useThrottleFn(doRefresh, 1000, true, true)
 
   function refreshAfterUpload(targetDir: string) {
     pendingRefreshDirs.add(targetDir)
-    flushRefresh()
+    throttledRefresh()
   }
 
   return {

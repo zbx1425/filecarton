@@ -33,6 +33,8 @@ interface StoredPreferences {
   tableMaxWidth: number | null
   showDotFiles: boolean
   showUnixPerm: boolean
+  readmePaneHeight: number
+  readmePaneCollapsed: boolean
 }
 
 const DEFAULTS: StoredPreferences = {
@@ -49,6 +51,8 @@ const DEFAULTS: StoredPreferences = {
   tableMaxWidth: null,
   showDotFiles: false,
   showUnixPerm: true,
+  readmePaneHeight: 300,
+  readmePaneCollapsed: false,
 }
 
 const DENSITY_ROW_HEIGHT_REM: Record<Density, number> = {
@@ -101,6 +105,8 @@ export const usePreferencesStore = defineStore('preferences', () => {
   const editorAutoDetect = ref(saved.editorAutoDetect)
   const displayDensity = ref<Density>(saved.displayDensity)
   const tableMaxWidth = ref<number | null>(saved.tableMaxWidth)
+  const readmePaneHeight = ref(saved.readmePaneHeight)
+  const readmePaneCollapsed = ref(saved.readmePaneCollapsed)
 
   const config = window.__FILECARTON__
   const dotfilesConfig = config.dotfiles ?? { block: false, forceVisible: false }
@@ -221,6 +227,8 @@ export const usePreferencesStore = defineStore('preferences', () => {
       tableMaxWidth: tableMaxWidth.value,
       showDotFiles: _showDotFiles.value,
       showUnixPerm: _showUnixPerm.value,
+      readmePaneHeight: readmePaneHeight.value,
+      readmePaneCollapsed: readmePaneCollapsed.value,
     })
   }
 
@@ -367,7 +375,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
   watch(baseFontSize, () => { applyTypography(); persist() })
   watch(displayDensity, () => { applyDensity(); persist() })
   watch(effectiveTableMaxWidth, () => { applyTableMaxWidth() })
-  watch([editorFontSize, editorWordWrap, editorTabSize, editorLineNumbers, editorAutoDetect, _showDotFiles, _showUnixPerm], () => persist())
+  watch([editorFontSize, editorWordWrap, editorTabSize, editorLineNumbers, editorAutoDetect, _showDotFiles, _showUnixPerm, readmePaneHeight, readmePaneCollapsed], () => persist())
 
   watch(breakpointBracket, (newBracket) => {
     if (newBracket !== prevBracket) {
@@ -406,6 +414,8 @@ export const usePreferencesStore = defineStore('preferences', () => {
     unixPermLocked,
     unixPermLockedReason,
     resolvedTheme,
+    readmePaneHeight,
+    readmePaneCollapsed,
     isFilenameBlocked,
     isDotFileBlocked,
     setTableMaxWidth,
