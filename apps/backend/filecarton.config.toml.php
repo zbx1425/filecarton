@@ -55,6 +55,9 @@ feature_unix_perm_modify = false
 # WARNING: Security risk! Will allow SSRF attacks. Only enable when all users are fully trusted!
 feature_remote_download = false
 
+# Enable computing file checksums (SHA-256, SHA-1, MD5).
+feature_checksum = true
+
 # Temporary file directory for chunked uploads, archive extraction, etc.
 # Leave empty for auto ({root_path}/__fc_tmp/).
 # Supports ${ROOT_PATH} substitution for the resolved root_path.

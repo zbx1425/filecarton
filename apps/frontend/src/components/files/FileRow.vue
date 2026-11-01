@@ -17,12 +17,13 @@ import { formatSize, formatTime, formatTimeLocalISO8601, formatUnixMode } from '
 import {
   copySelected, cutSelected, deleteItems, renameItem, pasteItems,
   openPermissionsSelected, canModifyItemPermissions, canModifySelectedPermissions,
+  requestChecksum,
 } from '@/composables/useFileActions'
 import { buildDownloadUrl, buildRawUrl, fetchBatchDownload } from '@/api/client'
 import { errorMessage } from '@/utils/errorMessage'
 import { toast } from 'vue-sonner'
 import { joinPath, archiveSubdirName } from '@/utils/path'
-import { PackageOpen, FileArchive, Shield } from '@lucide/vue'
+import { PackageOpen, FileArchive, Shield, Hash } from '@lucide/vue'
 import {
   ContextMenuSub,
   ContextMenuSubTrigger,
@@ -165,6 +166,10 @@ function handlePermissions() {
     fileList.toggleSelect(props.name)
   }
   openPermissionsSelected()
+}
+
+function handleChecksum() {
+  requestChecksum(joinPath(navigation.currentPathStr, props.name))
 }
 
 const dropHover = ref(false)
@@ -310,6 +315,20 @@ const thumbnailUrl = computed(() => {
         @delete="handleDelete"
         @download="handleDownload"
       >
+        <template v-if="!ui.readonly && ui.features.unixPermModify">
+          <ContextMenuSeparator v-if="!ui.features.archive" />
+          <ContextMenuItem :disabled="!canModifyPermissions" @select="handlePermissions">
+            <Shield class="size-4" />
+            Permissions
+          </ContextMenuItem>
+        </template>
+        <template v-if="ui.features.checksum && !isDir && fileList.selectedCount <= 1">
+          <ContextMenuSeparator />
+          <ContextMenuItem @select="handleChecksum">
+            <Hash class="size-4" />
+            Checksum
+          </ContextMenuItem>
+        </template>
         <template v-if="!ui.readonly && ui.features.archive">
           <ContextMenuSeparator />
           <template v-if="fileList.selectedCount <= 1 && !isDir && isArchive(name)">
@@ -343,13 +362,6 @@ const thumbnailUrl = computed(() => {
               </ContextMenuSubContent>
             </ContextMenuSub>
           </template>
-        </template>
-        <template v-if="!ui.readonly && ui.features.unixPermModify">
-          <ContextMenuSeparator v-if="!ui.features.archive" />
-          <ContextMenuItem :disabled="!canModifyPermissions" @select="handlePermissions">
-            <Shield class="size-4" />
-            Permissions
-          </ContextMenuItem>
         </template>
       </FileItemMenu>
     </ContextMenuContent>

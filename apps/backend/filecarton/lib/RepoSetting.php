@@ -19,6 +19,8 @@ class RepoSetting {
     public $featureUnixPermModify;
     /** @var bool|null */
     public $featureRemoteDownload;
+    /** @var bool|null */
+    public $featureChecksum;
     /** @var string|null */
     public $tempDir;
     /** @var string|null */
@@ -35,6 +37,7 @@ class RepoSetting {
         $this->featureUnixPerm = null;
         $this->featureUnixPermModify = null;
         $this->featureRemoteDownload = null;
+        $this->featureChecksum = null;
         $this->tempDir = null;
         $this->themePrimary = null;
         $this->themeToolbar = null;
@@ -46,6 +49,11 @@ class RepoSetting {
         'feature_unix_perm'        => 'featureUnixPerm',
         'feature_unix_perm_modify' => 'featureUnixPermModify',
         'feature_remote_download'  => 'featureRemoteDownload',
+        'feature_checksum'         => 'featureChecksum',
+    ];
+
+    private const BOOL_DEFAULTS = [
+        'feature_checksum' => true,
     ];
 
     /**
@@ -56,7 +64,7 @@ class RepoSetting {
         $s = self::fromStaticRow($arr, true);
         foreach (self::BOOL_MAP as $k => $prop) {
             if ($k !== 'readonly' && $s->$prop === null) {
-                $s->$prop = false;
+                $s->$prop = self::BOOL_DEFAULTS[$k] ?? false;
             }
         }
         return $s;
@@ -129,6 +137,7 @@ class RepoSetting {
         if ($override->featureUnixPerm !== null) $result->featureUnixPerm = $override->featureUnixPerm;
         if ($override->featureUnixPermModify !== null) $result->featureUnixPermModify = $override->featureUnixPermModify;
         if ($override->featureRemoteDownload !== null) $result->featureRemoteDownload = $override->featureRemoteDownload;
+        if ($override->featureChecksum !== null) $result->featureChecksum = $override->featureChecksum;
         return $result;
     }
 
@@ -176,6 +185,7 @@ class RepoSetting {
             'unixPerm'       => $this->unixPermEnabled(),
             'unixPermModify' => $this->unixPermModifyEnabled(),
             'remoteDownload' => $this->remoteDownloadEnabled(),
+            'checksum'       => (bool)$this->featureChecksum,
         ];
     }
 

@@ -58,6 +58,17 @@ export function formatDuration(seconds: number): string {
   return hrs > 0 ? `${hrs}:${pad(mins)}:${pad(secs)}` : `${pad(mins)}:${pad(secs)}`
 }
 
+const BINARY_UNITS = ['KiB', 'MiB', 'GiB', 'TiB'] as const
+
+export function formatSizeExact(bytes: number): string {
+  const bytesStr = bytes.toLocaleString()
+  if (bytes < 1024) return `${bytesStr} B`
+  const k = 1024
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)) - 1, BINARY_UNITS.length - 1)
+  const value = bytes / Math.pow(k, i + 1)
+  return `${bytesStr} B (${value.toFixed(1)} ${BINARY_UNITS[i]})`
+}
+
 export function formatUnixMode(mode: number, isDir: boolean): string {
   const typeChar = isDir ? 'd' : '-'
   const ur = (mode & 0o400) ? 'r' : '-'

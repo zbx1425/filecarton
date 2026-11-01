@@ -62,6 +62,15 @@ export interface RemoteDownloadDialogState {
   targetDir: string
 }
 
+export interface ChecksumDialogState {
+  open: boolean
+  name: string
+  size: number
+  sha256: string
+  sha1: string
+  md5: string
+}
+
 export const dialogState = reactive({
   confirm: {
     open: false, title: '', message: '', actionLabel: 'Confirm', danger: false, hideCancel: false, resolve: null,
@@ -82,6 +91,9 @@ export const dialogState = reactive({
   remoteDownload: {
     open: false, targetDir: '',
   } as RemoteDownloadDialogState,
+  checksum: {
+    open: false, name: '', size: 0, sha256: '', sha1: '', md5: '',
+  } as ChecksumDialogState,
 })
 
 export function showPermissionsDialog(dirPath: string, items: PermissionItemInfo[]) {
@@ -191,6 +203,15 @@ export function showPasteConflict(files: string[]): Promise<boolean> {
       ? 'One of these files is currently open in the editor. Overwriting will discard your changes.'
       : '',
   })
+}
+
+export function showChecksumDialog(data: { name: string; size: number; sha256: string; sha1: string; md5: string }) {
+  dialogState.checksum.name = data.name
+  dialogState.checksum.size = data.size
+  dialogState.checksum.sha256 = data.sha256
+  dialogState.checksum.sha1 = data.sha1
+  dialogState.checksum.md5 = data.md5
+  dialogState.checksum.open = true
 }
 
 export function showEditorConflict(): Promise<'overwrite' | 'reload' | 'cancel'> {

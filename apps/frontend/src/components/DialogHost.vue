@@ -23,6 +23,7 @@ import { pathWithoutExtension } from '@/utils/path'
 import OperationReportDialog from '@/components/modal/OperationReportDialog.vue'
 import PermissionsDialog from '@/components/modal/PermissionsDialog.vue'
 import RemoteDownloadDialog from '@/components/modal/RemoteDownloadDialog.vue'
+import ChecksumDialog from '@/components/modal/ChecksumDialog.vue'
 
 const promptValue = ref('')
 const promptInputRef = ref<InstanceType<typeof Input> | null>(null)
@@ -138,6 +139,9 @@ function handleEditorConflictOpenChange(open: boolean) {
 
   <!-- Remote Download Dialog -->
   <RemoteDownloadDialog />
+
+  <!-- Checksum Dialog -->
+  <ChecksumDialog />
 
   <!-- Editor Conflict (Dialog) -->
   <Dialog :open="dialogState.editorConflict.open" @update:open="handleEditorConflictOpenChange">

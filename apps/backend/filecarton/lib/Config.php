@@ -185,6 +185,7 @@ class Config {
             'feature_unix_perm'        => false,
             'feature_unix_perm_modify' => false,
             'feature_remote_download'  => false,
+            'feature_checksum'         => true,
             'theme_primary'            => '',
             'theme_toolbar'            => '',
         ]);

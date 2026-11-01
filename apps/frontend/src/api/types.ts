@@ -136,6 +136,14 @@ export interface RemoteDownloadResponse {
   conflict?: string
 }
 
+export interface ChecksumResponse {
+  name: string
+  size: number
+  sha256: string
+  sha1: string
+  md5: string
+}
+
 export interface FileCartonUnixPermConfig {
   user: string
   isRoot: boolean
@@ -180,6 +188,7 @@ export interface FileCartonFeatures {
   unixPerm: boolean
   unixPermModify: boolean
   remoteDownload: boolean
+  checksum: boolean
 }
 
 export interface FileCartonConfig {

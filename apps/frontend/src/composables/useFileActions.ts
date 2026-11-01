@@ -1,12 +1,12 @@
 import { toast } from 'vue-sonner'
-import { apiPost } from '@/api/client'
-import type { CreateResponse, DeleteResponse, RenameResponse, PasteResponse, RemoteDownloadResponse } from '@/api/types'
+import { apiGet, apiPost } from '@/api/client'
+import type { CreateResponse, DeleteResponse, RenameResponse, PasteResponse, RemoteDownloadResponse, ChecksumResponse } from '@/api/types'
 import { useFileListStore } from '@/stores/fileList'
 import { useTreeStore } from '@/stores/tree'
 import { useNavigationStore } from '@/stores/navigation'
 import { useClipboardStore } from '@/stores/clipboard'
 import { useUiStore } from '@/stores/ui'
-import { confirm, prompt, showPasteConflict, showOperationReport, showPermissionsDialog } from '@/composables/useDialogs'
+import { confirm, prompt, showPasteConflict, showOperationReport, showPermissionsDialog, showChecksumDialog } from '@/composables/useDialogs'
 import { usePreferencesStore } from '@/stores/preferences'
 import { joinPath, validateFileName } from '@/utils/path'
 import { errorMessage } from '@/utils/errorMessage'
@@ -498,5 +498,16 @@ export function openPermissionsSelected() {
 
   if (items.length === 0) return
   showPermissionsDialog(navigation.currentPathStr, items)
+}
+
+export async function requestChecksum(filePath: string) {
+  const toastId = toast.loading('Computing checksums…')
+  try {
+    const result = await apiGet<ChecksumResponse>('checksum', { path: filePath })
+    toast.dismiss(toastId)
+    showChecksumDialog(result)
+  } catch (e: unknown) {
+    toast.error(errorMessage(e), { id: toastId })
+  }
 }
 

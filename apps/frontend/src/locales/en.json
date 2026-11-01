@@ -62,6 +62,8 @@
   "err.remote_download.http_error": "Remote server returned HTTP {status}",
   "err.remote_download.too_large": "Remote file exceeds the size limit ({maxMB} MiB)",
 
+  "err.checksum.disabled": "Checksum feature is disabled",
+
   "err.auth.required": "Authentication required",
   "err.auth.allowlist": "This account is not allowed to log in. Your account ID is: {id}",
   "err.auth.bad_root": "Account root directory is missing",

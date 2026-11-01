@@ -34,6 +34,7 @@ $validActions = [
     'tus', 'archive_create', 'archive_extract',
     'archive_list', 'archive_read', 'archive_raw', 'archive_download',
     'batch_download', 'check_upload_conflicts', 'remote_download',
+    'checksum',
     'auth_login', 'auth_logout',
 ];
 
@@ -77,6 +78,10 @@ try {
 
     if ($action === 'remote_download' && !RepoSetting::current()->remoteDownloadEnabled()) {
         Response::error('remote_download.disabled', 403);
+    }
+
+    if ($action === 'checksum' && !RepoSetting::current()->featureChecksum) {
+        Response::error('checksum.disabled', 403);
     }
 
     $pathSec = null;
