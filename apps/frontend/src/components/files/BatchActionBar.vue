@@ -80,7 +80,7 @@ function handleSelectAll(checked: boolean | "indeterminate") {
 
     <div class="flex-1" />
 
-    <Button v-if="ui.features.archive" variant="ghost" size="sm" :disabled="downloading" @click="downloadSelected">
+    <Button v-if="isSingleFile || ui.features.archive" variant="ghost" size="sm" :disabled="downloading" @click="downloadSelected">
       <Download class="size-3.5" />
       {{ isSingleFile ? 'Download' : 'Download All' }}
     </Button>

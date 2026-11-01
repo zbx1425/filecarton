@@ -11,7 +11,11 @@ import {
   deleteSelected,
   renameSelected,
   pasteItems,
+  downloadSelected,
+  refreshCurrent,
 } from '@/composables/useFileActions'
+import { errorMessage } from '@/utils/errorMessage'
+import { toast } from 'vue-sonner'
 import { useClipboardStore } from '@/stores/clipboard'
 
 export function useKeyboard() {
@@ -103,6 +107,21 @@ export function useKeyboard() {
       e.preventDefault()
       const searchInput = document.querySelector<HTMLInputElement>('[placeholder="Search..."]')
       searchInput?.focus()
+      return
+    }
+
+    if (e.key === 'F5') {
+      e.preventDefault()
+      refreshCurrent()
+      return
+    }
+    if (e.key === 'F6') {
+      e.preventDefault()
+      if (fileList.hasSelection) {
+        downloadSelected().catch((err) => {
+          toast.error(errorMessage(err))
+        })
+      }
       return
     }
 

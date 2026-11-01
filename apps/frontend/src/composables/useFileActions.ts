@@ -1,5 +1,5 @@
 import { toast } from 'vue-sonner'
-import { apiGet, apiPost } from '@/api/client'
+import { apiGet, apiPost, buildDownloadUrl, fetchBatchDownload } from '@/api/client'
 import type { CreateResponse, DeleteResponse, RenameResponse, PasteResponse, RemoteDownloadResponse, ChecksumResponse } from '@/api/types'
 import { useFileListStore } from '@/stores/fileList'
 import { useTreeStore } from '@/stores/tree'
@@ -11,7 +11,7 @@ import { usePreferencesStore } from '@/stores/preferences'
 import { joinPath, validateFileName } from '@/utils/path'
 import { errorMessage } from '@/utils/errorMessage'
 
-function refreshCurrent() {
+export function refreshCurrent() {
   const navigation = useNavigationStore()
   const fileList = useFileListStore()
   const tree = useTreeStore()
@@ -498,6 +498,25 @@ export function openPermissionsSelected() {
 
   if (items.length === 0) return
   showPermissionsDialog(navigation.currentPathStr, items)
+}
+
+export async function downloadSelected() {
+  const fileList = useFileListStore()
+  const navigation = useNavigationStore()
+  const ui = useUiStore()
+
+  const items = Array.from(fileList.selected)
+  if (items.length === 0) return
+
+  const isSingle = items.length === 1 && !!fileList.getFileByName(items[0])
+  if (isSingle) {
+    const filePath = joinPath(navigation.currentPathStr, items[0])
+    window.open(buildDownloadUrl(filePath), '_blank')
+    return
+  }
+
+  if (!ui.features.archive) return
+  await fetchBatchDownload(navigation.currentPathStr, items)
 }
 
 export async function requestChecksum(filePath: string) {

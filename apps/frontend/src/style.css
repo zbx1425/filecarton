@@ -271,8 +271,3 @@ code.hljs { padding: 3px 5px; }
 .dark .hljs-strong { color: #c9d1d9; font-weight: bold; }
 .dark .hljs-addition { color: #aff5b4; background-color: #033a16; }
 .dark .hljs-deletion { color: #ffdcd7; background-color: #67060c; }
-
-/* Task list (markdown-it-task-lists) */
-.task-list-item { list-style-type: none; }
-.task-list-item input[type="checkbox"] { margin-right: 0.4em; }
-.task-list-item .task-list-item-label { display: inline; }

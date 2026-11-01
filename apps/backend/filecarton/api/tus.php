@@ -248,6 +248,12 @@ function tus_patch(PathSecurity $pathSec, string $uploadId): void {
 
         // Check if upload is complete
         if ($newOffset === $meta['uploadLength']) {
+            if (connection_aborted()) {
+                // Client cancelled the upload
+                $meta['offset'] = $newOffset;
+                @file_put_contents($tusDir . '/meta.json', json_encode($meta));
+                exit;
+            }
             $finalPath = $meta['finalPath'];
             if (is_dir($finalPath)) {
                 Response::error('upload.target_is_directory', 409);
@@ -289,24 +295,21 @@ function tus_patch(PathSecurity $pathSec, string $uploadId): void {
 function tus_delete(string $uploadId): void {
     $tusDir = tus_resolve_dir($uploadId);
 
-    // Ensure no PATCH is in progress (same lock PATCH uses)
     $lockPath = $tusDir . '.lock';
-    if (is_file($lockPath)) {
-        $lockFp = @fopen($lockPath, 'c');
-        if ($lockFp !== false) {
-            if (!flock($lockFp, LOCK_EX | LOCK_NB)) {
-                fclose($lockFp);
-                Response::error('upload.in_progress', 409);
-            }
-            flock($lockFp, LOCK_UN);
+    $lockFp = @fopen($lockPath, 'c');
+    if ($lockFp !== false) {
+        if (!flock($lockFp, LOCK_EX | LOCK_NB)) {
             fclose($lockFp);
+            Response::error('upload.in_progress', 409);
         }
+        // Hold lock through deleteRecursive to prevent a PATCH from starting
+        Platform::deleteRecursive($tusDir);
+        flock($lockFp, LOCK_UN);
+        fclose($lockFp);
+        @unlink($lockPath);
+    } else {
+        Platform::deleteRecursive($tusDir);
     }
-
-    if (!Platform::deleteRecursive($tusDir)) {
-        Response::error('server_error', 500);
-    }
-    @unlink($tusDir . '.lock');
 
     http_response_code(204);
     exit;

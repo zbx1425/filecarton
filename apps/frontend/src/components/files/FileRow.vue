@@ -304,7 +304,7 @@ const thumbnailUrl = computed(() => {
         :can-paste="clipboard.hasContent"
         :show-open="fileList.selectedCount <= 1"
         :show-rename="fileList.selectedCount <= 1"
-        :show-download="true"
+        :show-download="!isBulkDownload || ui.features.archive"
         :download-label="isBulkDownload ? 'Download All' : 'Download'"
         :has-hotkey="true"
         @open="handleOpen"

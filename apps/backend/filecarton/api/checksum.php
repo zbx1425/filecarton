@@ -28,6 +28,7 @@ function api_checksum(PathSecurity $pathSec, FileOps $fileOps): void {
         hash_update($ctx256, $chunk);
         hash_update($ctx1, $chunk);
         hash_update($ctxMd5, $chunk);
+        if (connection_aborted()) break;
     }
     fclose($fp);
 

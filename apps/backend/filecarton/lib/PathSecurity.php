@@ -437,7 +437,11 @@ class PathSecurity {
             $tempDir = RepoSetting::current()->resolvedTempDir();
             if ($tempDir !== '') {
                 $normalizedTemp = str_replace('\\', '/', $tempDir);
-                if ($normalizedTemp === $this->rootPath || str_starts_with($normalizedTemp, $this->rootPath . '/')) {
+                $rootPrefix = $this->rootPath . '/';
+                $tempInRoot = $this->caseInsensitive
+                    ? (strcasecmp($normalizedTemp, $this->rootPath) === 0 || strncasecmp($normalizedTemp, $rootPrefix, strlen($rootPrefix)) === 0)
+                    : ($normalizedTemp === $this->rootPath || str_starts_with($normalizedTemp, $rootPrefix));
+                if ($tempInRoot) {
                     $this->ignore->addAbsolutePath($normalizedTemp);
                 }
             }

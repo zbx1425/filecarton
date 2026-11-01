@@ -7,6 +7,7 @@ defineProps<{
   modelValue: string
   placeholder?: string
   inputClass?: string
+  inputAttrs?: Record<string, string>
 }>()
 
 const emit = defineEmits<{
@@ -35,6 +36,7 @@ function handleBlur(e: FocusEvent) {
         :model-value="modelValue"
         :placeholder="placeholder ?? 'Search...'"
         :class="['h-8 pl-7 text-sm', inputClass]"
+        v-bind="inputAttrs"
         @update:model-value="emit('update:modelValue', String($event))"
         @focus="handleFocus"
       />
@@ -48,6 +50,7 @@ function handleBlur(e: FocusEvent) {
       <div
         v-if="panelOpen"
         class="absolute left-0 right-0 top-full mt-1 z-20 rounded-md border bg-popover p-1.5 shadow-md"
+        @mousedown.prevent
       >
         <slot name="panel" />
       </div>

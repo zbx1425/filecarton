@@ -94,6 +94,7 @@ const ui = useUiStore()
           :model-value="searchQuery"
           placeholder="Search in archive..."
           input-class="w-64 max-w-full h-7"
+          :input-attrs="{ 'data-archive-search': '' }"
           @update:model-value="emit('update:searchQuery', $event)"
         >
           <template #panel>
