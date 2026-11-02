@@ -1,4 +1,4 @@
-import { onMounted, onBeforeUnmount } from 'vue'
+import { onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useNavigationStore } from '@/stores/navigation'
 import { useFileListStore } from '@/stores/fileList'
 import { useUiStore } from '@/stores/ui'
@@ -18,6 +18,13 @@ import { useUploadStore } from '@/stores/upload'
 import { errorMessage } from '@/utils/errorMessage'
 import { toast } from 'vue-sonner'
 import { useClipboardStore } from '@/stores/clipboard'
+
+function scrollFocusedRowIntoView(name: string) {
+  nextTick(() => {
+    const row = document.querySelector(`[data-file-row][data-name="${CSS.escape(name)}"]`)
+    row?.scrollIntoView({ block: 'nearest' })
+  })
+}
 
 export function useKeyboard() {
   const navigation = useNavigationStore()
@@ -171,6 +178,7 @@ export function useKeyboard() {
       if (entries[fileList.focusIndex]) {
         fileList.clearSelection()
         fileList.toggleSelect(entries[fileList.focusIndex].name)
+        scrollFocusedRowIntoView(entries[fileList.focusIndex].name)
       }
       return
     }
@@ -181,6 +189,7 @@ export function useKeyboard() {
       if (entries[fileList.focusIndex]) {
         fileList.clearSelection()
         fileList.toggleSelect(entries[fileList.focusIndex].name)
+        scrollFocusedRowIntoView(entries[fileList.focusIndex].name)
       }
       return
     }

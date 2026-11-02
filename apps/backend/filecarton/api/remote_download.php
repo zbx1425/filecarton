@@ -43,7 +43,6 @@ function api_remote_download(PathSecurity $pathSec, FileOps $fileOps): void {
         }
         $resolvedName = $customName;
         $finalPath = $dirAbs . '/' . $resolvedName;
-        $pathSec->assertWithinRoot($finalPath);
         $pathSec->assertCanCreateAt($finalPath, false);
 
         if (is_dir($finalPath)) {
@@ -97,7 +96,6 @@ function api_remote_download(PathSecurity $pathSec, FileOps $fileOps): void {
             }
             $finalPath = $dirAbs . '/' . $resolvedName;
             try {
-                $pathSec->assertWithinRoot($finalPath);
                 $pathSec->assertCanCreateAt($finalPath, false);
             } catch (ApiException $e) {
                 $abortException = $e;

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { ArrowUp, ArrowDown, CornerLeftUp, Loader2, ClipboardPaste, File, Folder, CloudDownload, CheckSquare, Square, RefreshCw } from '@lucide/vue'
+import { Button } from '@/components/ui/button'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -198,11 +199,11 @@ function startResize(e: MouseEvent) {
                 <CornerLeftUp class="size-4" />
                 <span>..</span>
               </div>
-              <div class="w-20" />
-              <div class="w-24" />
+              <div class="w-22" />
+              <div class="w-28" />
               <template v-if="showUnixCols">
-                <div class="w-24" />
-                <div class="w-32" />
+                <div class="w-28" />
+                <div class="w-36" />
               </template>
             </div>
 

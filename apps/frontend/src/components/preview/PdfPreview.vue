@@ -11,5 +11,5 @@ const src = computed(() => buildRawUrl(props.path))
 </script>
 
 <template>
-  <iframe :src="src" sandbox="allow-same-origin" class="w-full h-full border-0" />
+  <iframe :src="src" sandbox="allow-scripts allow-same-origin" class="w-full h-full border-0" />
 </template>

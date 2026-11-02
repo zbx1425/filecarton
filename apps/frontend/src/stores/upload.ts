@@ -485,7 +485,7 @@ export const useUploadStore = defineStore('upload', () => {
           'X-CSRF-Token': getCsrfToken(),
         },
         metadata: {
-          filename: task.file.name,
+          filename: sanitizeFileName(task.file.name) || task.file.name,
           targetPath: targetDir,
         },
         onProgress(bytesSent, bytesTotal) {
@@ -541,6 +541,7 @@ export const useUploadStore = defineStore('upload', () => {
   function retry(taskId: string) {
     const task = tasks.value.find(t => t.id === taskId)
     if (task && task.status === 'error') {
+      tasks.value = tasks.value.filter(t => t.status !== 'success')
       const retryBatchId = crypto.randomUUID()
       latestBatchId.value = retryBatchId
       latestBatchResult.value = null
@@ -561,6 +562,7 @@ export const useUploadStore = defineStore('upload', () => {
   function retryAllErrors() {
     const errs = tasks.value.filter(t => t.status === 'error')
     if (errs.length === 0) return
+    tasks.value = tasks.value.filter(t => t.status !== 'success')
     const retryBatchId = crypto.randomUUID()
     latestBatchId.value = retryBatchId
     latestBatchResult.value = null
@@ -656,7 +658,7 @@ export const useUploadStore = defineStore('upload', () => {
     }
 
     if (dirs.has(navigation.currentPathStr)) {
-      fileList.fetchDir(navigation.currentPathStr)
+      fileList.fetchDir(navigation.currentPathStr, true)
     }
   }
 

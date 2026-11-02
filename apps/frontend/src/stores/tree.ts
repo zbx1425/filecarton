@@ -10,6 +10,11 @@ export const useTreeStore = defineStore('tree', () => {
   const loading = ref(new Set<string>())
   const rootError = ref(false)
   const pendingRequests = new Map<string, Promise<TreeChild[]>>()
+  const generation = new Map<string, number>()
+
+  function getGeneration(path: string): number {
+    return generation.get(path) ?? 0
+  }
 
   async function loadChildren(path: string): Promise<TreeChild[]> {
     const cached = childrenCache.value.get(path)
@@ -22,7 +27,10 @@ export const useTreeStore = defineStore('tree', () => {
     l.add(path)
     loading.value = l
 
+    const gen = getGeneration(path)
+
     const promise = apiGet<TreeNodeResponse>('tree_node', { path }).then(data => {
+      if (getGeneration(path) !== gen) return data.children
       const newCache = new Map(childrenCache.value)
       newCache.set(path, data.children)
       childrenCache.value = newCache
@@ -32,7 +40,9 @@ export const useTreeStore = defineStore('tree', () => {
       if (path === '') rootError.value = true
       throw err
     }).finally(() => {
-      pendingRequests.delete(path)
+      if (getGeneration(path) === gen) {
+        pendingRequests.delete(path)
+      }
       const l2 = new Set(loading.value)
       l2.delete(path)
       loading.value = l2
@@ -89,6 +99,7 @@ export const useTreeStore = defineStore('tree', () => {
   }
 
   function invalidate(path: string) {
+    generation.set(path, getGeneration(path) + 1)
     const newCache = new Map(childrenCache.value)
     newCache.delete(path)
     childrenCache.value = newCache
@@ -96,11 +107,14 @@ export const useTreeStore = defineStore('tree', () => {
   }
 
   function invalidateSubtree(path: string) {
+    generation.set(path, getGeneration(path) + 1)
     const newCache = new Map<string, TreeChild[]>()
     const prefix = path ? path + '/' : ''
     for (const [key, value] of childrenCache.value) {
       if (key !== path && !key.startsWith(prefix)) {
         newCache.set(key, value)
+      } else {
+        generation.set(key, getGeneration(key) + 1)
       }
     }
     childrenCache.value = newCache

@@ -242,6 +242,7 @@ const thumbnailUrl = computed(() => {
     <ContextMenuTrigger as-child>
       <div
         data-file-row
+        :data-name="name"
         class="flex items-center px-3 text-sm group border-b border-transparent cursor-default select-none h-(--fc-row-height) max-w-(--fc-table-max-w)"
         :class="[
           dropHover ? 'bg-primary/10 border-primary border-dashed' :

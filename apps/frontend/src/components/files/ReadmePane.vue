@@ -86,16 +86,21 @@ function updateAvailableHeight() {
   }
 }
 
+let fetchSeq = 0
+
 async function fetchContent() {
+  const seq = ++fetchSeq
   loading.value = true
   error.value = null
   try {
     const data = await apiGet<ReadResponse>('read', { path: props.path })
+    if (seq !== fetchSeq) return
     content.value = data.content
   } catch (e: unknown) {
+    if (seq !== fetchSeq) return
     error.value = toErrorInfo(e)
   } finally {
-    loading.value = false
+    if (seq === fetchSeq) loading.value = false
   }
 }
 

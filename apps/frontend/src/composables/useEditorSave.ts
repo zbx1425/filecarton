@@ -5,7 +5,18 @@ import { useI18n } from 'vue-i18n'
 import { apiGet, apiWrite, ApiError, toErrorInfo } from '@/api/client'
 import type { ReadResponse } from '@/api/types'
 import { useNavigationStore } from '@/stores/navigation'
+import { useFileListStore } from '@/stores/fileList'
 import { showEditorConflict } from '@/composables/useDialogs'
+
+function updateFileEntry(filePath: string, result: { size: number; mtime: number }) {
+  const fileList = useFileListStore()
+  const fileName = filePath.includes('/') ? filePath.slice(filePath.lastIndexOf('/') + 1) : filePath
+  const entry = fileList.files.find(f => f.name === fileName)
+  if (entry) {
+    entry.size = result.size
+    entry.mtime = result.mtime
+  }
+}
 
 export function useEditorSave() {
   const navigation = useNavigationStore()
@@ -50,6 +61,7 @@ export function useEditorSave() {
           navigation.editDirty = false
         }
       }
+      updateFileEntry(savedPath, result)
       toast.success('File saved')
     } catch (e: unknown) {
       if (e instanceof ApiError && e.authError) {
@@ -66,6 +78,7 @@ export function useEditorSave() {
                 navigation.editDirty = false
               }
             }
+            updateFileEntry(savedPath, result)
             toast.success('File saved (overwritten)')
           } catch (e2: unknown) {
             if (e2 instanceof ApiError && e2.authError) {

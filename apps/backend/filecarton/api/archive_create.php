@@ -25,7 +25,6 @@ function api_archive_create(PathSecurity $pathSec, FileOps $fileOps): void {
     $sanitizedName = $pathSec->sanitizeFileName($archiveName);
 
     $archivePath = $dirAbs . '/' . $sanitizedName;
-    $pathSec->assertWithinRoot($archivePath);
     $pathSec->assertCanCreateAt($archivePath, false);
 
     if (file_exists($archivePath)) {

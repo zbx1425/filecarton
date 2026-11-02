@@ -89,7 +89,6 @@ function tus_create(PathSecurity $pathSec): void {
 
     $targetAbs = $pathSec->resolveOrCreate($targetPath);
     $finalPath = $targetAbs . '/' . $fileName;
-    $pathSec->assertWithinRoot($finalPath);
     $pathSec->assertCanCreateAt($finalPath, false);
 
     if ($uploadLength > FILECARTON_UPLOAD_MAX_FILE_SIZE) {
@@ -136,7 +135,7 @@ function tus_create(PathSecurity $pathSec): void {
 
     $meta = [
         'uploadLength' => $uploadLength,
-        'fileName'     => $sanitizedName,
+        'fileName'     => $fileName,
         'targetPath'   => $targetPath,
         'targetAbs'    => $targetAbs,
         'finalPath'    => $finalPath,

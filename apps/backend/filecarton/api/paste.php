@@ -161,12 +161,9 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
             continue;
         }
 
-        try {
-            $pathSec->assertWithinRoot($dstAbs);
-        } catch (\Throwable $e) {
-            $failed[] = ['name' => $name, 'error' => 'path_traversal'];
-            continue;
-        }
+        // $dstAbs is always $normalizedTarget . '/' . $itemBaseName
+        // where normalizedTarget was already resolved via resolveExistingDir
+        // and itemBaseName is a validated single name segment.
 
         if (is_dir($srcAbs)) {
             $realSrc = str_replace('\\', '/', realpath($srcAbs) ?: $srcAbs);

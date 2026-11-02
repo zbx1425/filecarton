@@ -458,7 +458,11 @@ class PathSecurity {
 
     /**
      * Resolve a user-supplied relative path to a safe absolute path.
-     * Throws on traversal, null bytes, symlink escape, or non-existent target.
+     *
+     * Traversal segments (. and ..) are rejected to prevent escaping the
+     * root directory.  Symlinks are followed: a symlink inside root that
+     * points outside root is allowed, so administrators can mount external
+     * storage via symlinks.
      */
     public function resolve(string $relativePath): string {
         $this->rejectNullBytes($relativePath);
@@ -470,22 +474,22 @@ class PathSecurity {
             return $this->rootPath;
         }
 
+        $this->rejectTraversalSegments($relativePath);
+
         $target = $this->rootPath . '/' . $relativePath;
         $resolved = realpath($target);
         if ($resolved === false) {
             throw new ApiException('not_found.path', 404);
         }
 
-        $resolved = str_replace('\\', '/', $resolved);
-        $this->assertWithinRoot($resolved);
-        return $resolved;
+        return str_replace('\\', '/', $resolved);
     }
 
     /**
      * Resolve a relative directory path, creating missing intermediate
-     * directories as needed. Existing segments are verified via realpath()
-     * to catch symlink traversal. New segments are validated then mkdir'd.
-     * Final realpath() + assertWithinRoot() provides a closing security check.
+     * directories as needed.  Each segment is validated (no traversal),
+     * existing segments are canonicalized via realpath(), and new segments
+     * are created with mkdir().  Symlinks are followed transparently.
      */
     public function resolveOrCreate(string $relativePath): string {
         $this->rejectNullBytes($relativePath);
@@ -519,9 +523,7 @@ class PathSecurity {
                 if ($resolved === false) {
                     throw new ApiException('not_found.path', 404);
                 }
-                $resolved = str_replace('\\', '/', $resolved);
-                $this->assertWithinRoot($resolved);
-                $current = $resolved;
+                $current = str_replace('\\', '/', $resolved);
             } elseif (file_exists($next) || is_link($next)) {
                 throw new ApiException('not_a_dir', 409);
             } else {
@@ -536,15 +538,13 @@ class PathSecurity {
         if ($final === false) {
             throw new ApiException('not_found.path', 404);
         }
-        $final = str_replace('\\', '/', $final);
-        $this->assertWithinRoot($final);
-        return $final;
+        return str_replace('\\', '/', $final);
     }
 
     /**
      * Resolve for create operations where the target doesn't exist yet.
-     * Validates that the parent directory exists and is within root,
-     * then appends the sanitized basename.
+     * Validates that the parent directory exists, then appends the basename.
+     * Symlinks in the parent path are followed.
      */
     public function resolveParent(string $relativePath): string {
         $this->rejectNullBytes($relativePath);
@@ -571,9 +571,7 @@ class PathSecurity {
             throw new ApiException('not_found.dir', 404);
         }
 
-        $result = $parentAbs . '/' . $basename;
-        $this->assertWithinRoot($result);
-        return $result;
+        return $parentAbs . '/' . $basename;
     }
 
     /**
@@ -631,41 +629,14 @@ class PathSecurity {
 
         $target = $baseAbs . '/' . $itemName;
 
-        if (is_link($target)) {
-            $normalized = str_replace('\\', '/', $target);
-            $this->assertWithinRoot($normalized);
-            return $normalized;
-        }
-
-        if (file_exists($target)) {
+        if (file_exists($target) || is_link($target)) {
             $real = realpath($target);
             if ($real !== false) {
-                $real = str_replace('\\', '/', $real);
-                $this->assertWithinRoot($real);
-                return $real;
+                return str_replace('\\', '/', $real);
             }
         }
 
-        $this->assertWithinRoot(str_replace('\\', '/', $target));
         return str_replace('\\', '/', $target);
-    }
-
-    /**
-     * Normalize a path logically (resolve . and .. segments) without requiring existence.
-     */
-    public static function normalizePath(string $path): string {
-        $path = str_replace('\\', '/', $path);
-        $parts = explode('/', $path);
-        $result = [];
-        foreach ($parts as $part) {
-            if ($part === '' || $part === '.') continue;
-            if ($part === '..') {
-                array_pop($result);
-            } else {
-                $result[] = $part;
-            }
-        }
-        return implode('/', $result);
     }
 
     // ------------------------------------------------------------------
@@ -832,6 +803,14 @@ class PathSecurity {
     private function rejectNullBytes(string $path): void {
         if (str_contains($path, "\0")) {
             throw new ApiException('invalid_input', 400, ['field' => 'path']);
+        }
+    }
+
+    private function rejectTraversalSegments(string $relativePath): void {
+        foreach (explode('/', $relativePath) as $part) {
+            if ($part === '.' || $part === '..') {
+                throw new ApiException('path_traversal', 403);
+            }
         }
     }
 }

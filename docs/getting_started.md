@@ -141,3 +141,21 @@ FileCarton's built-in auth is disabled and your logic controls its configuration
   *(While reducing `upload_chunk_size` can also get it working, it's generally not a good idea.)*
 - If you're using IIS, it's a good idea to set `fastcgi.logging = 0` in `php.ini`.
 - FileCarton is configured by default to hide its own files (`filecarton.php`, `filecarton.config.toml.php`) from the file listing automatically.
+
+### Symbolic links
+
+FileCarton follows symbolic links inside `root_path`. A symlink that points outside the root directory is treated as a regular file or directory. All operations (read, write, upload, delete) work on the symlink target.
+
+This lets administrators mount additional storage under the root via symlinks. For example:
+
+```
+/var/www/files/            ← root_path
+/var/www/files/projects/   ← regular directory
+/var/www/files/media/ → /mnt/nas/media   ← symlink to external storage
+```
+
+Path traversal (e.g. `../../etc/passwd`) is always rejected regardless of symlinks.
+
+Archive operations (zip/tar download and creation) **skip** symlinks.
+
+> **Security warning**: FileCarton's own API cannot create symbolic links. However, if users have other access to the managed root directory that allows creating symlinks (e.g. via OpenSSH SFTP and even if with `ChrootDirectory`, elFinder, or shell access), they may be able to create symlinks that point to arbitrary locations on the server.

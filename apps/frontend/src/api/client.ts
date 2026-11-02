@@ -28,6 +28,9 @@ export function toErrorInfo(e: unknown): ErrorInfo {
   if (e instanceof ApiError) {
     return { code: e.code, params: e.params }
   }
+  if (e instanceof TypeError) {
+    return { code: 'network_error' }
+  }
   return { code: 'server_error' }
 }
 

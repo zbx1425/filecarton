@@ -94,6 +94,8 @@ function batch_download_stream(PathSecurity $pathSec, string $token): void {
         Response::error('missing_fields', 400, ['fields' => 'token']);
     }
 
+    Csrf::ensureSession();
+
     $downloads = $_SESSION['fc_batch_downloads'] ?? [];
     if (!isset($downloads[$token]) || !is_array($downloads[$token])) {
         Response::error('not_found.download', 404);

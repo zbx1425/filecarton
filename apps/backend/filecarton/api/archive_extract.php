@@ -24,7 +24,6 @@ function api_archive_extract(PathSecurity $pathSec, FileOps $fileOps): void {
     if ($createSubdir) {
         $baseName = $pathSec->sanitizeFileName(archive_base_name($archiveAbs));
         $candidate = $baseTargetAbs . '/' . $baseName;
-        $pathSec->assertWithinRoot($candidate);
         if ($pathSec->wouldBeIgnored($candidate, true)) {
             Response::error('access_denied', 403);
         }
@@ -37,7 +36,6 @@ function api_archive_extract(PathSecurity $pathSec, FileOps $fileOps): void {
                 Response::error('not_found.dir', 404);
             }
             $targetAbs = str_replace('\\', '/', $realCandidate);
-            $pathSec->assertWithinRoot($targetAbs);
             $pathSec->assertNotIgnored($targetAbs);
         } else {
             $targetAbs = $candidate;

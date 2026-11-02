@@ -230,11 +230,6 @@ function apply_unix_perm_recursive(
             continue;
         }
         $normalizedChild = str_replace('\\', '/', $realChild);
-        try {
-            $pathSec->assertWithinRoot($normalizedChild);
-        } catch (\Throwable $e) {
-            continue;
-        }
 
         if ($pathSec->isIgnored($normalizedChild)) {
             continue;

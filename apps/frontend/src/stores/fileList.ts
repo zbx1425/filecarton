@@ -116,26 +116,43 @@ export const useFileListStore = defineStore('fileList', () => {
     return entries.length > 0 && entries.every(e => selected.value.has(e.name))
   })
 
-  async function fetchDir(path: string) {
+  async function fetchDir(path: string, background = false) {
     if (fetchAbort) fetchAbort.abort()
     fetchAbort = new AbortController()
     const signal = fetchAbort.signal
 
-    loading.value = true
-    error.value = null
-    selected.value = new Set()
-    focusIndex.value = -1
-    lastClickedName.value = null
+    if (!background) {
+      loading.value = true
+      error.value = null
+      selected.value = new Set()
+      focusIndex.value = -1
+      lastClickedName.value = null
+    }
     try {
       const data = await apiGet<ListResponse>('list', { path }, signal)
       if (signal.aborted) return
       dirs.value = data.dirs
       files.value = data.files
+      if (background && selected.value.size > 0) {
+        const currentNames = new Set([
+          ...data.dirs.map(d => d.name),
+          ...data.files.map(f => f.name),
+        ])
+        const pruned = new Set<string>()
+        for (const name of selected.value) {
+          if (currentNames.has(name)) pruned.add(name)
+        }
+        if (pruned.size !== selected.value.size) {
+          selected.value = pruned
+        }
+      }
     } catch (e: unknown) {
       if (signal.aborted) return
-      error.value = toErrorInfo(e)
-      dirs.value = []
-      files.value = []
+      if (!background) {
+        error.value = toErrorInfo(e)
+        dirs.value = []
+        files.value = []
+      }
     } finally {
       if (!signal.aborted) loading.value = false
     }
