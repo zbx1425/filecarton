@@ -280,11 +280,16 @@ function extract_archive_safe(
                 continue;
             }
 
+            $writeError = false;
             while (!feof($inStream)) {
                 $chunk = fread($inStream, 65536);
                 if ($chunk === false || $chunk === '') break;
-                fwrite($outFile, $chunk);
-                $bytesExtracted += strlen($chunk);
+                $written = fwrite($outFile, $chunk);
+                if ($written === false || $written < strlen($chunk)) {
+                    $writeError = true;
+                    break;
+                }
+                $bytesExtracted += $written;
                 if ($bytesExtracted > $maxBytes) {
                     fclose($inStream);
                     fclose($outFile);
@@ -293,9 +298,13 @@ function extract_archive_safe(
             }
 
             fclose($inStream);
-            fflush($outFile);
             fclose($outFile);
-            $extracted++;
+            if ($writeError) {
+                @unlink($destPath);
+                $failed[] = ['path' => $normalized, 'reason' => 'io_error'];
+            } else {
+                $extracted++;
+            }
         }
     }
 

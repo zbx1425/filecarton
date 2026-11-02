@@ -17,8 +17,9 @@ if ($query === '') {
 }
 
 $absBase = $pathSec->resolveExistingDir($basePath);
+$absBaseNorm = rtrim(str_replace('\\', '/', $absBase), '/');
+$logicalBase = ltrim(str_replace('\\', '/', $basePath), '/');
 
-$rootPath = $pathSec->getRootPath();
 $results = [];
 $truncated = false;
 
@@ -32,7 +33,8 @@ $filteredDir = new \RecursiveCallbackFilterIterator(
 
 $iterator = new \RecursiveIteratorIterator(
     $filteredDir,
-    \RecursiveIteratorIterator::SELF_FIRST
+    \RecursiveIteratorIterator::SELF_FIRST,
+    \RecursiveIteratorIterator::CATCH_GET_CHILD
 );
 
 $scanned = 0;
@@ -54,9 +56,12 @@ foreach ($iterator as $item) {
 
     $dirPath = str_replace('\\', '/', $item->getPath());
 
-    $relativeDirPath = ($dirPath === $rootPath)
-        ? ''
-        : substr($dirPath, strlen($rootPath) + 1);
+    if ($dirPath === $absBaseNorm) {
+        $relativeDirPath = $logicalBase;
+    } else {
+        $suffix = substr($dirPath, strlen($absBaseNorm) + 1);
+        $relativeDirPath = $logicalBase !== '' ? $logicalBase . '/' . $suffix : $suffix;
+    }
 
     $entry = [
         'name' => $name,

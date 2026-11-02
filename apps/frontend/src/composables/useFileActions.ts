@@ -198,6 +198,10 @@ export async function deleteItems(dirPath: string, itemNames: string[]) {
       fileList.fetchDir(navigation.currentPathStr)
     }
 
+    for (const name of succeededNames) {
+      const itemPath = joinPath(dirPath, name)
+      tree.invalidateSubtree(itemPath)
+    }
     tree.invalidate(dirPath)
     tree.loadChildren(dirPath)
 
@@ -271,8 +275,9 @@ export async function renameItem(dirPath: string, oldName: string, isDir?: boole
       await navigation.navigateTo(parentSegments)
     }
 
-    refreshCurrent()
     const tree = useTreeStore()
+    tree.invalidateSubtree(joinPath(dirPath, oldName))
+    refreshCurrent()
     tree.invalidate(dirPath)
     tree.loadChildren(dirPath)
   } catch (e: unknown) {
@@ -288,14 +293,15 @@ export async function pasteItems(targetPath: string) {
   if (!clipboard.hasContent || !clipboard.mode) return
 
   const { runPaste } = await import('@/composables/usePaste')
+  const items = clipboard.items.map(i => i.name)
   const totalCompleted = await runPaste({
     mode: clipboard.mode,
     sourcePath: clipboard.sourcePath,
-    items: clipboard.items.map(i => i.name),
+    items,
     targetPath,
   })
 
-  if (clipboard.mode === 'cut' && totalCompleted > 0) {
+  if (clipboard.mode === 'cut' && totalCompleted === items.length) {
     clipboard.clear()
   }
 }

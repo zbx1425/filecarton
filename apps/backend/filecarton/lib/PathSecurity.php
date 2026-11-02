@@ -574,16 +574,6 @@ class PathSecurity {
         return $parentAbs . '/' . $basename;
     }
 
-    /**
-     * Assert that an absolute path is within the root directory.
-     */
-    public function assertWithinRoot(string $absPath): void {
-        $normalized = str_replace('\\', '/', $absPath);
-        if ($normalized !== $this->rootPath && !str_starts_with($normalized, $this->rootPath . '/')) {
-            throw new ApiException('path_traversal', 403);
-        }
-    }
-
     // ------------------------------------------------------------------
     // Filename validation
     // ------------------------------------------------------------------
@@ -610,6 +600,7 @@ class PathSecurity {
         if (preg_match('#[/\\\\:*?"<>|]#', $name)) return false;
         if (trim($name, '. ') === '') return false;
         if (str_ends_with($name, '.') || str_ends_with($name, ' ')) return false;
+        if (preg_match('/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..+)?$/i', $name)) return false;
         return true;
     }
 

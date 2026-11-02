@@ -207,6 +207,16 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
             if ($mode === 'copy') {
                 if (is_dir($srcAbs) && is_dir($dstAbs)) {
                     $fileOps->copyItem($srcAbs, $dstAbs);
+                } elseif (is_file($srcAbs) && file_exists($dstAbs) && $overwrite) {
+                    $tmpDst = $dstAbs . '.fc_' . bin2hex(random_bytes(4)) . '.tmp';
+                    if (!@copy($srcAbs, $tmpDst)) {
+                        @unlink($tmpDst);
+                        throw new \RuntimeException('copy failed');
+                    }
+                    if (!@rename($tmpDst, $dstAbs)) {
+                        @unlink($tmpDst);
+                        throw new \RuntimeException('rename failed');
+                    }
                 } else {
                     if (file_exists($dstAbs) && $overwrite) {
                         $fileOps->deleteItem($dstAbs);
@@ -271,7 +281,8 @@ function collect_merge_conflicts(string $srcDir, string $dstDir, string $prefix)
 
     $iter = new \RecursiveIteratorIterator(
         new \RecursiveDirectoryIterator($srcDir, \RecursiveDirectoryIterator::SKIP_DOTS),
-        \RecursiveIteratorIterator::SELF_FIRST
+        \RecursiveIteratorIterator::SELF_FIRST,
+        \RecursiveIteratorIterator::CATCH_GET_CHILD
     );
 
     $srcLen = strlen($srcDir) + 1;

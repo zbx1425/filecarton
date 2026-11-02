@@ -87,15 +87,15 @@ function tus_create(PathSecurity $pathSec): void {
         Response::error('invalid_filename', 400);
     }
 
-    $targetAbs = $pathSec->resolveOrCreate($targetPath);
-    $finalPath = $targetAbs . '/' . $fileName;
-    $pathSec->assertCanCreateAt($finalPath, false);
-
     if ($uploadLength > FILECARTON_UPLOAD_MAX_FILE_SIZE) {
         Response::error('upload.content_too_large', 413, [
             'maxMB' => round(FILECARTON_UPLOAD_MAX_FILE_SIZE / 1024 / 1024),
         ]);
     }
+
+    $targetAbs = $pathSec->resolveOrCreate($targetPath);
+    $finalPath = $targetAbs . '/' . $fileName;
+    $pathSec->assertCanCreateAt($finalPath, false);
 
     // Read creation-with-upload body (may be empty)
     $body = file_get_contents('php://input');

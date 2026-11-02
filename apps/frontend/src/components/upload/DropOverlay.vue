@@ -5,6 +5,7 @@ import { useNavigationStore } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
 import { Upload } from '@lucide/vue'
 import { readEntryRecursive } from '@/utils/fileEntry'
+import { toast } from 'vue-sonner'
 
 const upload = useUploadStore()
 const navigation = useNavigationStore()
@@ -102,10 +103,22 @@ async function handleDrop(e: DragEvent) {
   }
 
   const allFiles: { file: File; relativePath: string }[] = []
+  let readErrors = 0
   for (const entry of entries) {
-    allFiles.push(...(await readEntryRecursive(entry, '')))
+    try {
+      allFiles.push(...(await readEntryRecursive(entry, '')))
+    } catch {
+      readErrors++
+    }
   }
 
+  if (readErrors > 0 && allFiles.length === 0) {
+    toast.error('Failed to read dropped items')
+    return
+  }
+  if (readErrors > 0) {
+    toast.warning(`${readErrors} item(s) could not be read and were skipped`)
+  }
   if (allFiles.length > 0) {
     upload.addFilesWithPaths(allFiles, navigation.currentPathStr)
   }

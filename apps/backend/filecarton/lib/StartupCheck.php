@@ -48,7 +48,9 @@ class StartupCheck {
         if (!extension_loaded('zlib') || !function_exists('gzdecode')) {
             $p[] = 'Required PHP extension missing: zlib (gzdecode)';
         }
-        // Require CURL anyways as this is very commonly needed.
+        // Require CURL anyways regardless of remote_download / auth feature state,
+        // as this is very commonly required by other PHP apps,
+        // thus the user will likely need it one way or another anyways.
         if (!extension_loaded('curl')) {
             $p[] = 'Required PHP extension missing: curl';
         }
@@ -108,6 +110,7 @@ class StartupCheck {
         // ROOT_PATH — use the merged per-user view from RepoSetting when logged in.
         // Skip on the login page (grant overlays resolve after login).
         $isLoginPage = false;
+        $readonly = false;
         if (class_exists(__NAMESPACE__ . '\\Auth', false) && !RepoSetting::embed()) {
             try {
                 $isLoginPage = Auth::identity() === null;
@@ -119,7 +122,7 @@ class StartupCheck {
         if (!$isLoginPage) {
             $current = RepoSetting::current();
             $rootPath = $current->rootPath ?? '';
-            $readonly = $current->readonly ?? false;
+            $readonly = (bool)($current->readonly ?? false);
             if ($rootPath === '' && class_exists(__NAMESPACE__ . '\\Auth', false)
                 && !RepoSetting::embed() && Auth::hasImplicit()) {
                 $p[] = 'Root directory is not available for the current identity. '
@@ -135,8 +138,10 @@ class StartupCheck {
             }
         }
 
-        // Temp dir (uploads, extraction, batch downloads need a writable temp location)
-        if (!$mustReadonly && !$isLoginPage) {
+        // Temp dir is created only by upload, archive extract, and remote download.
+        // Those routes are rejected for a read-only grant, and list/tree cleanup
+        // returns without creating the directory when it is absent.
+        if (!$mustReadonly && !$readonly && !$isLoginPage) {
             $tempDir = RepoSetting::current()->resolvedTempDir();
             if ($tempDir !== '') {
                 if (is_dir($tempDir)) {
@@ -157,12 +162,6 @@ class StartupCheck {
         // Session
         if (session_status() === PHP_SESSION_DISABLED) {
             $p[] = 'PHP sessions are disabled.';
-        } else {
-            $savePath = session_save_path() ?: sys_get_temp_dir();
-            if (!is_writable($savePath)) {
-                error_log('FC(startup): Session save path is not writable: ' . $savePath);
-                $p[] = 'Session save path is not writable. Check server logs for details.';
-            }
         }
 
         // Session name

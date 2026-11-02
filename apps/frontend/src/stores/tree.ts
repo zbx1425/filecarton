@@ -123,6 +123,13 @@ export const useTreeStore = defineStore('tree', () => {
         pendingRequests.delete(key)
       }
     }
+    const nextExpanded = new Set(expanded.value)
+    for (const key of nextExpanded) {
+      if (key.startsWith(prefix) && key !== path) {
+        nextExpanded.delete(key)
+      }
+    }
+    expanded.value = nextExpanded
   }
 
   function getChildren(path: string): TreeChild[] | undefined {

@@ -70,18 +70,22 @@ grant_resolvers = [
 
 `grant_resolvers` are evaluated in a chained fashion. Each resolver either returns a `RepoSetting` or returns `null` to pass. The first non-null result is combined with the default `[repo]` setting (`FILECARTON_REPO_SETTING`) from the config file. If every resolver returns null, the user is denied access (files are closed for that user).
 
-`RepoSetting` PHP object properties (when used as a grant override, `null` means inherit the default):
+`RepoSetting` PHP object properties are used as a grant override. Each entry set to `null` means the configuration item will inherit the default value from `FILECARTON_REPO_SETTING` (either loaded from the TOML config, or defined in bootstrapping script when embedding).
 
-| Property | Effect of `null` | Effect of a value |
-|---|---|---|
-| `rootPath` | Inherit `FILECARTON_REPO_SETTING['root_path']` | Use this directory instead. Resolved via `realpath()`; if the directory does not exist, the user gets "not configured." |
-| `readonly` | Inherit `FILECARTON_REPO_SETTING['readonly']` | `true` forces read-only; `false` forces writable. Neither can override `FILECARTON_MUST_READONLY` (when it is `true`, the instance is always read-only). |
-| `branding` | Inherit `FILECARTON_REPO_SETTING['branding']` | String (including `''`) overrides. |
-| `repoName` | Inherit `FILECARTON_REPO_SETTING['repo_name']` | String (including `''`) overrides. |
-| `featureArchive` | Inherit `FILECARTON_REPO_SETTING['feature_archive']` | `true` enables archive operations; `false` disables them. |
-| `featureUnixPerm` | Inherit `FILECARTON_REPO_SETTING['feature_unix_perm']` | `true` enables displaying Unix permissions; `false` disables them. |
-| `featureUnixPermModify` | Inherit `FILECARTON_REPO_SETTING['feature_unix_perm_modify']` | `true` enables modifying Unix permissions; `false` disables them. |
-| `featureRemoteDownload` | Inherit `FILECARTON_REPO_SETTING['feature_remote_download']` | `true` enables remote URL downloads; `false` disables them. |
+| Property | Description |
+|---|---|
+| `rootPath` | Use this directory instead as the root path for this user. Resolved via `realpath()`; if the directory does not exist, the user cannot be logged in. |
+| `readonly` | `true` forces read-only; `false` forces writable. Neither can override `FILECARTON_MUST_READONLY` (when it is `true`, the instance is always read-only). |
+| `branding` | String (including `''`) overrides. |
+| `repoName` | String (including `''`) overrides. |
+| `featureArchive` | `true` enables archive operations; `false` disables them. |
+| `featureUnixPerm` | `true` enables displaying Unix permissions; `false` disables them. |
+| `featureUnixPermModify` | `true` enables modifying Unix permissions; `false` disables them. |
+| `featureRemoteDownload` | `true` enables remote URL downloads; `false` disables them. |
+| `featureChecksum` | `true` enables file checksum computation; `false` disables it. |
+| `themePrimary` | Tailwind CSS color family for the primary theme color. |
+| `themeToolbar` | Tailwind CSS color family for the toolbar background. |
+| `tempDir` | Absolute path to use as the temporary directory for this user. If not specified, FileCarton will try to create a `__fc_tmp` folder inside `rootPath` when needed. You might want to configure it if your `rootPath` is not writable by your web server. |
 
 An example that looks up the user's directory from a database:
 

@@ -111,7 +111,10 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   resizeObserver?.disconnect()
+  editor?.getModel()?.dispose()
   editor?.dispose()
+  editor = null
+  editorInstance.value = null
 })
 </script>
 

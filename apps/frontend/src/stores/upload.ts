@@ -555,6 +555,7 @@ export const useUploadStore = defineStore('upload', () => {
       task.progress = 0
       task.error = undefined
       showUploadToast()
+      startSpeedSampling()
       processQueue()
     }
   }
@@ -579,6 +580,7 @@ export const useUploadStore = defineStore('upload', () => {
     }
     errorDialogOpen.value = false
     showUploadToast()
+    startSpeedSampling()
     processQueue()
   }
 

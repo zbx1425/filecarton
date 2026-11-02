@@ -129,7 +129,9 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeyDown)
   resizeObserver?.disconnect()
+  editor?.getModel()?.dispose()
   editor?.dispose()
+  editor = null
 })
 </script>
 

@@ -9,6 +9,9 @@ import { useFileListStore } from '@/stores/fileList'
 import { showEditorConflict } from '@/composables/useDialogs'
 
 function updateFileEntry(filePath: string, result: { size: number; mtime: number }) {
+  const navigation = useNavigationStore()
+  const parentPath = filePath.includes('/') ? filePath.slice(0, filePath.lastIndexOf('/')) : ''
+  if (navigation.currentPathStr !== parentPath) return
   const fileList = useFileListStore()
   const fileName = filePath.includes('/') ? filePath.slice(filePath.lastIndexOf('/') + 1) : filePath
   const entry = fileList.files.find(f => f.name === fileName)

@@ -68,7 +68,12 @@ export function useKeyboard() {
 
     if (e.key === 'Escape' && ui.dragOverlayVisible) return
 
-    if (navigation.viewMode === 'editor') return
+    if (navigation.viewMode === 'editor') {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+      }
+      return
+    }
 
     if (isInputFocused()) {
       if (e.key === 'Escape') {

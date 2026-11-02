@@ -192,19 +192,25 @@ class TempStorage {
         if ($mtime === false || ($now - $mtime) < $expiry) return;
 
         $lockPath = $filePath . '.lock';
-        if (is_file($lockPath)) {
-            $fp = @fopen($lockPath, 'c');
-            if ($fp === false) return;
-            if (!flock($fp, LOCK_EX | LOCK_NB)) {
-                fclose($fp);
-                return;
-            }
+        $fp = @fopen($lockPath, 'c');
+        if ($fp === false) return;
+        if (!flock($fp, LOCK_EX | LOCK_NB)) {
+            fclose($fp);
+            return;
+        }
+
+        // Re-check mtime after acquiring lock (another PATCH may have updated it)
+        $mtime = @filemtime($filePath);
+        if ($mtime !== false && ($now - $mtime) < $expiry) {
             flock($fp, LOCK_UN);
             fclose($fp);
-            @unlink($lockPath);
+            return;
         }
 
         @unlink($filePath);
+        flock($fp, LOCK_UN);
+        fclose($fp);
+        @unlink($lockPath);
     }
 
     private function cleanupDir(string $dirPath, int $expiry, int $now): void {
@@ -218,18 +224,26 @@ class TempStorage {
         }
 
         $lockPath = $dirPath . '.lock';
-        if (is_file($lockPath)) {
-            $fp = @fopen($lockPath, 'c');
-            if ($fp === false) return;
-            if (!flock($fp, LOCK_EX | LOCK_NB)) {
+        $fp = @fopen($lockPath, 'c');
+        if ($fp === false) return;
+        if (!flock($fp, LOCK_EX | LOCK_NB)) {
+            fclose($fp);
+            return;
+        }
+
+        // Re-check activity after acquiring lock
+        if (is_file($activityFile)) {
+            $mtime = @filemtime($activityFile);
+            if ($mtime !== false && ($now - $mtime) < $expiry) {
+                flock($fp, LOCK_UN);
                 fclose($fp);
                 return;
             }
-            flock($fp, LOCK_UN);
-            fclose($fp);
         }
 
         Platform::deleteRecursive($dirPath);
-        @unlink($dirPath . '.lock');
+        flock($fp, LOCK_UN);
+        fclose($fp);
+        @unlink($lockPath);
     }
 }

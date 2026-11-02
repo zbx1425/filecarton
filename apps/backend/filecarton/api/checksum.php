@@ -24,13 +24,19 @@ function api_checksum(PathSecurity $pathSec, FileOps $fileOps): void {
     if ($fp === false) {
         throw new ApiException('server_error', 500);
     }
+    $bytesRead = 0;
     while (($chunk = fread($fp, 65536)) !== false && $chunk !== '') {
         hash_update($ctx256, $chunk);
         hash_update($ctx1, $chunk);
         hash_update($ctxMd5, $chunk);
+        $bytesRead += strlen($chunk);
         if (connection_aborted()) break;
     }
     fclose($fp);
+
+    if ($bytesRead !== $size) {
+        throw new ApiException('server_error', 500);
+    }
 
     Response::ok([
         'name'   => basename($path),

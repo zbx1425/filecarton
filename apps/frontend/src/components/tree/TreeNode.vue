@@ -259,61 +259,73 @@ async function handleNewFolder() {
       </ContextMenuTrigger>
 
       <ContextMenuContent class="w-52">
-        <FileItemMenu
-          :is-dir="isDir"
-          :readonly="ui.readonly"
-          :can-paste="clipboard.hasContent && isDir"
-          :show-download="!isDir"
-          @open="handleOpen"
-          @copy="handleCopy"
-          @cut="handleCut"
-          @paste="handlePaste"
-          @rename="handleRename"
-          @delete="handleDelete"
-          @download="handleDownload"
-        >
-          <template v-if="!ui.readonly && (ui.features.archive || isDir || ui.features.unixPermModify)">
-            <ContextMenuSeparator />
-            <template v-if="ui.features.archive">
-              <template v-if="!isDir && isArchive(name)">
-                <ContextMenuSub>
-                  <ContextMenuSubTrigger class="gap-2">
-                    <PackageOpen class="size-4" />
-                    Extract
-                  </ContextMenuSubTrigger>
-                  <ContextMenuSubContent>
-                    <ContextMenuItem @select="handleExtract(false)">
-                      Here
-                    </ContextMenuItem>
-                    <ContextMenuItem v-if="archiveSubdirName(name)" @select="handleExtract(true)">
-                      To "{{ archiveSubdirName(name) }}/"
-                    </ContextMenuItem>
-                  </ContextMenuSubContent>
-                </ContextMenuSub>
+        <template v-if="navigation.editDirty">
+          <!-- 
+            Certain actions will cause navigation to parent folders, resulting in loss of unsaved work.
+            Disabling the menu entirely would be a more simplistic fix, and the user can just save
+            if they really need to use the menu here.
+            -->
+          <ContextMenuItem disabled class="text-xs text-muted-foreground">
+            Please save editor content first
+          </ContextMenuItem>
+        </template>
+        <template v-else>
+          <FileItemMenu
+            :is-dir="isDir"
+            :readonly="ui.readonly"
+            :can-paste="clipboard.hasContent && isDir"
+            :show-download="!isDir"
+            @open="handleOpen"
+            @copy="handleCopy"
+            @cut="handleCut"
+            @paste="handlePaste"
+            @rename="handleRename"
+            @delete="handleDelete"
+            @download="handleDownload"
+          >
+            <template v-if="!ui.readonly && (ui.features.archive || isDir || ui.features.unixPermModify)">
+              <ContextMenuSeparator />
+              <template v-if="ui.features.archive">
+                <template v-if="!isDir && isArchive(name)">
+                  <ContextMenuSub>
+                    <ContextMenuSubTrigger class="gap-2">
+                      <PackageOpen class="size-4" />
+                      Extract
+                    </ContextMenuSubTrigger>
+                    <ContextMenuSubContent>
+                      <ContextMenuItem @select="handleExtract(false)">
+                        Here
+                      </ContextMenuItem>
+                      <ContextMenuItem v-if="archiveSubdirName(name)" @select="handleExtract(true)">
+                        To "{{ archiveSubdirName(name) }}/"
+                      </ContextMenuItem>
+                    </ContextMenuSubContent>
+                  </ContextMenuSub>
+                </template>
+                <template v-else>
+                  <ContextMenuSub>
+                    <ContextMenuSubTrigger class="gap-2">
+                      <FileArchive class="size-4" />
+                      Archive
+                    </ContextMenuSubTrigger>
+                    <ContextMenuSubContent>
+                      <ContextMenuItem @select="handleCreateArchive('zip')">Create .zip</ContextMenuItem>
+                      <ContextMenuItem @select="handleCreateArchive('tar')">Create .tar</ContextMenuItem>
+                    </ContextMenuSubContent>
+                  </ContextMenuSub>
+                </template>
               </template>
-              <template v-else>
-                <ContextMenuSub>
-                  <ContextMenuSubTrigger class="gap-2">
-                    <FileArchive class="size-4" />
-                    Archive
-                  </ContextMenuSubTrigger>
-                  <ContextMenuSubContent>
-                    <ContextMenuItem @select="handleCreateArchive('zip')">Create .zip</ContextMenuItem>
-                    <ContextMenuItem @select="handleCreateArchive('tar')">Create .tar</ContextMenuItem>
-                  </ContextMenuSubContent>
-                </ContextMenuSub>
-              </template>
+              <ContextMenuItem v-if="isDir" @select="handleNewFolder">
+                <FolderPlus class="size-4" />
+                New Folder
+              </ContextMenuItem>
+              <ContextMenuItem v-if="ui.features.unixPermModify" :disabled="!canModifyPermissions" @select="handlePermissions">
+                <Shield class="size-4" />
+                Permissions
+              </ContextMenuItem>
             </template>
-            <ContextMenuItem v-if="isDir" @select="handleNewFolder">
-              <FolderPlus class="size-4" />
-              New Folder
-            </ContextMenuItem>
-            <ContextMenuItem v-if="ui.features.unixPermModify" :disabled="!canModifyPermissions" @select="handlePermissions">
-              <Shield class="size-4" />
-              Permissions
-            </ContextMenuItem>
-          </template>
-        </FileItemMenu>
+          </FileItemMenu>
+        </template>
       </ContextMenuContent>
     </ContextMenu>
 

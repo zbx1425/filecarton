@@ -3,13 +3,14 @@ import { computed } from 'vue'
 import { ArrowLeft, Download } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { buildArchiveRawUrl, buildArchiveDownloadUrl } from '@/api/client'
-import { isImage, isAudio, isVideo, isArchive, isEditable } from '@/composables/useFileType'
+import { isImage, isAudio, isVideo, isArchive, isEditable, isPdf } from '@/composables/useFileType'
 import type { ArchiveTreeItem } from '@/composables/useArchiveExplorer'
 import ImagePreview from '../ImagePreview.vue'
 import AudioPreview from '../AudioPreview.vue'
 import VideoPreview from '../VideoPreview.vue'
 import CodePreview from '../CodePreview.vue'
 import FallbackPreview from '../FallbackPreview.vue'
+import PdfPreview from '../PdfPreview.vue'
 
 const props = defineProps<{
   archivePath: string
@@ -29,6 +30,7 @@ const innerPreviewType = computed(() => {
   if (isImage(name)) return 'image'
   if (isAudio(name)) return 'audio'
   if (isVideo(name)) return 'video'
+  if (isPdf(name)) return 'pdf'
   if (isEditable(name)) return 'code'
   return 'fallback'
 })
@@ -98,6 +100,13 @@ const downloadUrl = computed(() => buildArchiveDownloadUrl(props.archivePath, pr
         :size="entry.size"
         :raw-url="rawUrl"
         :download-url="downloadUrl"
+      />
+      <PdfPreview
+        v-else-if="innerPreviewType === 'pdf'"
+        :path="entry.path"
+        :name="entry.name"
+        :size="entry.size"
+        :raw-url="rawUrl"
       />
       <CodePreview
         v-else-if="innerPreviewType === 'code'"

@@ -38,10 +38,10 @@ foreach ($input['items'] as $name) {
     }
 
     if (is_link($itemPath)) {
-        try {
-            @unlink($itemPath);
+        $ok = @unlink($itemPath) || @rmdir($itemPath); // On Windows rmdir should be used instead
+        if ($ok) {
             $deleted++;
-        } catch (\Throwable $e) {
+        } else {
             $failed[] = ['name' => $name, 'error' => 'server_error'];
         }
         continue;

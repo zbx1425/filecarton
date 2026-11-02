@@ -2,14 +2,15 @@
 import { computed } from 'vue'
 import { buildRawUrl } from '@/api/client'
 const props = defineProps<{
-  path: string
-  name: string
-  size: number
+  path: string,
+  name: string,
+  size: number,
+  rawUrl?: string
 }>()
 
-const src = computed(() => buildRawUrl(props.path))
+const src = computed(() => props.rawUrl ?? buildRawUrl(props.path))
 </script>
 
 <template>
-  <iframe :src="src" sandbox="allow-scripts allow-same-origin" class="w-full h-full border-0" />
+  <iframe :src="src" class="w-full h-full border-0" />
 </template>
