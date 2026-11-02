@@ -8,6 +8,7 @@ export const useTreeStore = defineStore('tree', () => {
   const childrenCache = ref(new Map<string, TreeChild[]>())
   const expanded = ref(new Set<string>())
   const loading = ref(new Set<string>())
+  const rootError = ref(false)
   const pendingRequests = new Map<string, Promise<TreeChild[]>>()
 
   async function loadChildren(path: string): Promise<TreeChild[]> {
@@ -25,7 +26,11 @@ export const useTreeStore = defineStore('tree', () => {
       const newCache = new Map(childrenCache.value)
       newCache.set(path, data.children)
       childrenCache.value = newCache
+      if (path === '') rootError.value = false
       return data.children
+    }).catch(err => {
+      if (path === '') rootError.value = true
+      throw err
     }).finally(() => {
       pendingRequests.delete(path)
       const l2 = new Set(loading.value)
@@ -35,6 +40,12 @@ export const useTreeStore = defineStore('tree', () => {
 
     pendingRequests.set(path, promise)
     return promise
+  }
+
+  function retryRoot() {
+    rootError.value = false
+    invalidate('')
+    loadChildren('')
   }
 
   function setExpanded(path: string, value: boolean) {
@@ -110,7 +121,9 @@ export const useTreeStore = defineStore('tree', () => {
     childrenCache,
     expanded,
     loading,
+    rootError,
     loadChildren,
+    retryRoot,
     setExpanded,
     toggleExpand,
     expandToPath,

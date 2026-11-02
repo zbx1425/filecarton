@@ -94,8 +94,8 @@ class StartupCheck {
             } else {
                 $path = FILECARTON_SCRIPT_DIR . '/public/.vite/manifest.json';
                 if (!is_file($path)) {
-                    $p[] = 'Vite manifest not found at ' . $path
-                        . '. Is the frontend built? Set FILECARTON_DEV_SERVER for development.';
+                    error_log('FC(startup): Vite manifest not found at ' . $path);
+                    $p[] = 'Frontend assets not found. Is the frontend built? Check server logs for details.';
                 } else {
                     $m = json_decode(file_get_contents($path), true);
                     if (!isset($m['src/main.ts'])) {
@@ -123,16 +123,14 @@ class StartupCheck {
             if ($rootPath === '' && class_exists(__NAMESPACE__ . '\\Auth', false)
                 && !RepoSetting::embed() && Auth::hasImplicit()) {
                 $p[] = 'Root directory is not available for the current identity. '
-                    . 'Check FILECARTON_REPO_SETTING root_path or the per-user root_path in your grant configuration.';
+                    . 'Check root_path in your configuration or per-user grant settings.';
             } elseif ($rootPath !== '') {
                 if (!is_dir($rootPath)) {
-                    $p[] = 'Root directory is not a directory: ' . $rootPath;
+                    error_log('FC(startup): Root directory is not a directory: ' . $rootPath);
+                    $p[] = 'Root directory is invalid. Check server logs for details.';
                 } elseif (!is_readable($rootPath)) {
-                    $p[] = 'Root directory is not readable: ' . $rootPath;
-
-                    // Do not check for root directory writeability:
-                    // Maybe the user only wants to manage some subdirectories,
-                    // and does not want to open up UNIX permissions for the root directory.
+                    error_log('FC(startup): Root directory is not readable: ' . $rootPath);
+                    $p[] = 'Root directory is not readable. Check server logs for details.';
                 }
             }
         }
@@ -143,16 +141,14 @@ class StartupCheck {
             if ($tempDir !== '') {
                 if (is_dir($tempDir)) {
                     if (!is_writable($tempDir)) {
-                        $p[] = 'Temporary directory exists but is not writable: ' . $tempDir
-                            . '. Ensure the web server user can write to it, or configure temp_dir in [repo].';
+                        error_log('FC(startup): Temporary directory is not writable: ' . $tempDir);
+                        $p[] = 'Temporary directory is not writable. Configure temp_dir in [repo] or check server logs.';
                     }
                 } else {
                     $parent = dirname($tempDir);
                     if (!is_dir($parent) || !is_writable($parent)) {
-                        $p[] = 'Cannot create temporary directory at: ' . $tempDir
-                            . ' (parent directory is not writable). '
-                            . 'Ensure the web server user can write to ' . $parent
-                            . ', or configure temp_dir in [repo].';
+                        error_log('FC(startup): Cannot create temporary directory at: ' . $tempDir . ' (parent: ' . $parent . ')');
+                        $p[] = 'Cannot create temporary directory. Configure temp_dir in [repo] or check server logs.';
                     }
                 }
             }
@@ -164,7 +160,8 @@ class StartupCheck {
         } else {
             $savePath = session_save_path() ?: sys_get_temp_dir();
             if (!is_writable($savePath)) {
-                $p[] = 'Session save path is not writable: ' . $savePath;
+                error_log('FC(startup): Session save path is not writable: ' . $savePath);
+                $p[] = 'Session save path is not writable. Check server logs for details.';
             }
         }
 

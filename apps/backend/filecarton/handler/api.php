@@ -28,60 +28,71 @@ $isAuthAction = in_array($action, $authPublic, true);
 
 ob_start();
 
-$validActions = [
-    'list', 'tree_node', 'read', 'write', 'raw', 'download',
-    'search', 'create', 'delete', 'rename', 'paste', 'chmod',
-    'tus', 'archive_create', 'archive_extract',
-    'archive_list', 'archive_read', 'archive_raw', 'archive_download',
-    'batch_download', 'check_upload_conflicts', 'remote_download',
-    'checksum',
-    'auth_login', 'auth_logout',
-];
-
-$postActions = [
-    'write', 'create', 'delete', 'rename', 'paste', 'chmod',
-    'tus', 'archive_create', 'archive_extract',
-    'check_upload_conflicts', 'remote_download',
-    'auth_login', 'auth_logout',
+// Action registry: [flags, feature?]
+// flags: 0 = GET, 1 = POST, 3 = POST+mutates (readonly-blocked)
+$actions = [
+    'list'                   => [0],
+    'tree_node'              => [0],
+    'read'                   => [0],
+    'raw'                    => [0],
+    'download'               => [0],
+    'search'                 => [0],
+    'write'                  => [3],
+    'create'                 => [3],
+    'delete'                 => [3],
+    'rename'                 => [3],
+    'paste'                  => [3],
+    'chmod'                  => [3, 'unixPermModify'],
+    'tus'                    => [3],
+    'archive_create'         => [3, 'archive'],
+    'archive_extract'        => [3, 'archive'],
+    'archive_list'           => [0, 'archive'],
+    'archive_read'           => [0, 'archive'],
+    'archive_raw'            => [0, 'archive'],
+    'archive_download'       => [0, 'archive'],
+    'batch_download'         => [0, 'archive'],
+    'check_upload_conflicts' => [1],
+    'remote_download'        => [3, 'remoteDownload'],
+    'checksum'               => [0, 'checksum'],
+    'auth_login'             => [1],
+    'auth_logout'            => [1],
 ];
 
 try {
-    if (!in_array($action, $validActions, true)) {
+    $desc = $actions[$action] ?? null;
+    if ($desc === null) {
         Response::error('unknown_action', 400);
     }
 
     assert_api_access($isAuthAction);
 
-    if (in_array($action, $postActions, true) && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    if (($desc[0] & 1) && $_SERVER['REQUEST_METHOD'] !== 'POST') {
         Response::error('method_not_allowed', 405);
     }
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         Csrf::validate();
-        $readonlyPostActions = ['batch_download'];
-        if (!$isAuthAction && !in_array($action, $readonlyPostActions, true) && RepoSetting::current()->readonly) {
+        if (($desc[0] & 2) && RepoSetting::current()->readonly) {
             Response::error('readonly', 403);
         }
     }
 
-    $archiveActions = [
-        'archive_create', 'archive_extract', 'archive_list',
-        'archive_read', 'archive_raw', 'archive_download', 'batch_download',
-    ];
-    if (in_array($action, $archiveActions, true) && !RepoSetting::current()->featureArchive) {
-        Response::error('archive.disabled', 403);
-    }
-
-    if ($action === 'chmod' && !RepoSetting::current()->unixPermModifyEnabled()) {
-        Response::error('perm.disabled', 403);
-    }
-
-    if ($action === 'remote_download' && !RepoSetting::current()->remoteDownloadEnabled()) {
-        Response::error('remote_download.disabled', 403);
-    }
-
-    if ($action === 'checksum' && !RepoSetting::current()->featureChecksum) {
-        Response::error('checksum.disabled', 403);
+    if (isset($desc[1])) {
+        $repo = RepoSetting::current();
+        switch ($desc[1]) {
+            case 'archive':
+                if (!$repo->featureArchive) Response::error('archive.disabled', 403);
+                break;
+            case 'unixPermModify':
+                if (!$repo->unixPermModifyEnabled()) Response::error('perm.disabled', 403);
+                break;
+            case 'remoteDownload':
+                if (!$repo->remoteDownloadEnabled()) Response::error('remote_download.disabled', 403);
+                break;
+            case 'checksum':
+                if (!$repo->featureChecksum) Response::error('checksum.disabled', 403);
+                break;
+        }
     }
 
     $pathSec = null;

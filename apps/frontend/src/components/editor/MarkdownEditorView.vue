@@ -63,10 +63,16 @@ async function save() {
   if (!editor || saving.value || isReadonly.value) return
 
   saving.value = true
+  const savedPath = filePath.value
+  const savedVersion = editor.getModel()?.getAlternativeVersionId()
   try {
-    const result = await apiWrite(filePath.value, editor.getValue(), currentMtime)
-    currentMtime = result.mtime
-    navigation.editDirty = false
+    const result = await apiWrite(savedPath, editor.getValue(), currentMtime)
+    if (filePath.value === savedPath) {
+      currentMtime = result.mtime
+      if (editor.getModel()?.getAlternativeVersionId() === savedVersion) {
+        navigation.editDirty = false
+      }
+    }
     toast.success('File saved')
   } catch (e: unknown) {
     if (e instanceof ApiError && e.authError) {
@@ -74,10 +80,16 @@ async function save() {
     } else if (e instanceof ApiError && e.status === 409) {
       const choice = await showEditorConflict()
       if (choice === 'overwrite') {
+        const owPath = filePath.value
+        const owVersion = editor!.getModel()?.getAlternativeVersionId()
         try {
-          const result = await apiWrite(filePath.value, editor!.getValue())
-          currentMtime = result.mtime
-          navigation.editDirty = false
+          const result = await apiWrite(owPath, editor!.getValue())
+          if (filePath.value === owPath) {
+            currentMtime = result.mtime
+            if (editor!.getModel()?.getAlternativeVersionId() === owVersion) {
+              navigation.editDirty = false
+            }
+          }
           toast.success('File saved (overwritten)')
         } catch (e2: unknown) {
           if (e2 instanceof ApiError && e2.authError) {

@@ -136,17 +136,28 @@ class Grants {
 
     /**
      * First non-null wins; resolver order follows FILECARTON_GRANT_RESOLVERS.
-     * @return RepoSetting|null
+     *
+     * If any resolver throws, this method throws ApiException('server_error')
+     * rather than returning null. The user's account may reside in the failing
+     * resolver, so a resolver crash should not be silently treated as "no grant".
+     *
+     * @return RepoSetting|null  null only when every resolver ran successfully
+     *                           and none returned a grant.
      */
     public static function resolveFor(AuthIdentity $identity) {
+        $hadException = false;
         foreach (self::$resolvers as $r) {
             try {
                 $g = $r->resolve($identity);
             } catch (\Throwable $e) {
                 error_log('FC(auth): ' . $e->getMessage());
+                $hadException = true;
                 continue;
             }
             if ($g instanceof RepoSetting) return $g;
+        }
+        if ($hadException) {
+            throw new ApiException('server_error', 500);
         }
         return null;
     }

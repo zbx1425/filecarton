@@ -55,6 +55,10 @@ onUnauthorized((_action, authError) => {
   const token = authError || 'expired'
   if (navigation.editDirty) {
     sessionStorage.setItem('filecarton_auth_error', token)
+    // Intentionally showing a dismiss-only "Cancel" button
+    // If the user has unsaved edits, providing a refresh button would allow for
+    // a loss of work that's too easy to accidentally trigger. 
+    // The user must manually copy their work from the editor, then refresh the page themselves.
     confirm(
       'Session unavailable',
       'Your session is no longer valid. Please copy any unsaved content, then refresh this page.',

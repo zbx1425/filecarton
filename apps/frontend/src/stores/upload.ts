@@ -13,7 +13,7 @@ import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
 import { useTreeStore } from '@/stores/tree'
 import { usePreferencesStore } from '@/stores/preferences'
-import { joinPath, parentPath, isAppleJunkName, isAppleJunkPath } from '@/utils/path'
+import { joinPath, parentPath, isAppleJunkName, isAppleJunkPath, sanitizeFileName } from '@/utils/path'
 import { CHUNK_SIZE as DEFAULT_CHUNK_SIZE, MAX_CONCURRENT_UPLOADS } from '@/utils/constants'
 import { formatSize } from '@/utils/format'
 
@@ -166,12 +166,13 @@ export const useUploadStore = defineStore('upload', () => {
   }
 
   function computeTargetPath(targetDir: string, relativePath: string, fileName: string): string {
+    const safeName = sanitizeFileName(fileName) || fileName
     if (relativePath) {
       const dir = relativePath.split('/').slice(0, -1).join('/')
       const base = dir ? joinPath(targetDir, dir) : targetDir
-      return joinPath(base, fileName)
+      return joinPath(base, safeName)
     }
-    return joinPath(targetDir, fileName)
+    return joinPath(targetDir, safeName)
   }
 
   async function checkConflicts(
@@ -268,6 +269,20 @@ export const useUploadStore = defineStore('upload', () => {
   async function addFiles(fileList: FileList | File[], targetDir: string) {
     let allFiles = filterRestricted(Array.from(fileList).filter(f => !isAppleJunkName(f.name)))
     if (allFiles.length === 0) return
+
+    // Deduplicate by sanitized target path (last wins)
+    const byTarget = new Map<string, File>()
+    let dupes = 0
+    for (const f of allFiles) {
+      const key = computeTargetPath(targetDir, '', f.name)
+      if (byTarget.has(key)) dupes++
+      byTarget.set(key, f)
+    }
+    allFiles = [...byTarget.values()]
+    if (dupes > 0) {
+      toast.warning(`${dupes} file(s) with duplicate names were skipped`)
+    }
+
     if (!await checkOversized(allFiles)) return
 
     const entries = allFiles.map(f => ({ fileName: f.name, relativePath: '', targetDir }))
@@ -291,8 +306,23 @@ export const useUploadStore = defineStore('upload', () => {
       return !isAppleJunkName(f.name) && (!rel || !isAppleJunkPath(rel))
     })
     const allowedSet = new Set(filterRestricted(rawFiles))
-    const allFiles = rawFiles.filter(f => allowedSet.has(f))
+    let allFiles = rawFiles.filter(f => allowedSet.has(f))
     if (allFiles.length === 0) return
+
+    // Deduplicate by sanitized target path (last wins)
+    const byTarget = new Map<string, File>()
+    let dupes = 0
+    for (const f of allFiles) {
+      const rel = (f as any).webkitRelativePath || ''
+      const key = computeTargetPath(targetDir, rel, f.name)
+      if (byTarget.has(key)) dupes++
+      byTarget.set(key, f)
+    }
+    allFiles = [...byTarget.values()]
+    if (dupes > 0) {
+      toast.warning(`${dupes} file(s) with duplicate target paths were skipped`)
+    }
+
     if (!await checkOversized(allFiles)) return
 
     const entries = allFiles.map(file => ({
@@ -343,9 +373,23 @@ export const useUploadStore = defineStore('upload', () => {
       toast.warning(`${blocked.length} file(s) not uploaded due to restrictions: ${listing}${suffix}`)
     }
     if (passed.length === 0) return
-    if (!await checkOversized(passed.map(f => f.file))) return
 
-    const entries = passed.map(({ file, relativePath }) => ({
+    // Deduplicate by sanitized target path (last wins)
+    const byTarget = new Map<string, typeof passed[0]>()
+    let dupes = 0
+    for (const entry of passed) {
+      const key = computeTargetPath(targetDir, entry.relativePath, entry.file.name)
+      if (byTarget.has(key)) dupes++
+      byTarget.set(key, entry)
+    }
+    const deduped = [...byTarget.values()]
+    if (dupes > 0) {
+      toast.warning(`${dupes} file(s) with duplicate target paths were skipped`)
+    }
+
+    if (!await checkOversized(deduped.map(f => f.file))) return
+
+    const entries = deduped.map(({ file, relativePath }) => ({
       fileName: file.name,
       relativePath,
       targetDir,
@@ -353,7 +397,7 @@ export const useUploadStore = defineStore('upload', () => {
     if (!await checkConflicts(entries)) return
 
     const batchId = crypto.randomUUID()
-    enqueueTasks(batchId, passed.map(({ file, relativePath }) => ({
+    enqueueTasks(batchId, deduped.map(({ file, relativePath }) => ({
       id: crypto.randomUUID(),
       batchId,
       file,

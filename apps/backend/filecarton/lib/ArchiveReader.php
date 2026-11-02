@@ -38,10 +38,26 @@ class ArchiveReader {
     }
 
     /**
-     * Normalize an archive entry path to a canonical relative path without leading/trailing slashes.
+     * Normalize an archive entry path: resolve . / .. segments, trim trailing
+     * dots and spaces from each segment so that list, preview, and extract
+     * all operate on the same canonical name.
      */
     public static function normalizeEntryPath(string $rawPath): string {
-        return PathSecurity::normalizePath($rawPath);
+        $path = str_replace('\\', '/', $rawPath);
+        $parts = explode('/', $path);
+        $result = [];
+        foreach ($parts as $part) {
+            if ($part === '' || $part === '.') continue;
+            if ($part === '..') {
+                array_pop($result);
+                continue;
+            }
+            $cleaned = rtrim($part, '. ');
+            if ($cleaned !== '' && $cleaned !== '.' && $cleaned !== '..') {
+                $result[] = $cleaned;
+            }
+        }
+        return implode('/', $result);
     }
 
     /**

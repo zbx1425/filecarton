@@ -142,20 +142,6 @@ function check_extract_entry(string $normalized, string $finalTarget, PathSecuri
     return null;
 }
 
-/**
- * Sanitize an archive entry path by trimming trailing dots/spaces from each segment.
- */
-function sanitize_entry_path(string $entryPath): string {
-    $parts = explode('/', $entryPath);
-    $result = [];
-    foreach ($parts as $part) {
-        $cleaned = rtrim($part, '. ');
-        if ($cleaned !== '' && $cleaned !== '.' && $cleaned !== '..') {
-            $result[] = $cleaned;
-        }
-    }
-    return implode('/', $result);
-}
 
 /**
  * Count regular files inside an extracted temporary directory subtree.
@@ -244,7 +230,7 @@ function extract_archive_safe(
     $bytesExtracted = 0;
 
     foreach (ArchiveReader::iterateEntries($archiveAbs) as $entry) {
-        $normalized = sanitize_entry_path($entry['path']);
+        $normalized = $entry['path'];
         if ($normalized === '') continue;
 
         $destPath = $normalizedTarget . '/' . $normalized;
@@ -326,7 +312,7 @@ function dry_run_archive(string $archiveAbs, string $normalizedTarget, PathSecur
     $failed = [];
 
     foreach (ArchiveReader::iterateEntries($archiveAbs) as $entry) {
-        $normalized = sanitize_entry_path($entry['path']);
+        $normalized = $entry['path'];
         if ($normalized === '') continue;
 
         if (PathSecurity::isAppleJunkPath($normalized)) continue;
