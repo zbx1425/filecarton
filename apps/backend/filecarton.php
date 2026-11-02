@@ -86,54 +86,60 @@ function dispatch(): void {
         return;
     }
 
-    // Catch auth config errors before calling identity() — prevents
-    // uncaught exceptions from e.g. misconfigured NoLoginAuth.
-    if (!RepoSetting::embed() && Auth::configProblems() !== []) {
-        require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
-        render_error_page(Auth::configProblems(), 500);
-        return;
-    }
-
-    // Standalone without identity → serve HTML shell (login page).
-    if (!RepoSetting::embed() && Auth::identity() === null) {
-        require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
-        handle_page();
-        return;
-    }
-
-    // Identity exists but no usable grant or bad root.
-    if (!RepoSetting::embed() && !RepoSetting::filesOpen()) {
-        $token = Grants::current() === null ? 'allowlist' : 'bad_root';
-        if (Auth::hasImplicit()) {
+    try {
+        // Catch auth config errors before calling identity() — prevents
+        // uncaught exceptions from e.g. misconfigured NoLoginAuth.
+        if (!RepoSetting::embed() && Auth::configProblems() !== []) {
             require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
-            $msg = $token === 'bad_root'
-                ? 'The root directory for this account is not a valid directory.'
-                : 'No grant found for the current identity.';
-            render_error_page([$msg], 403);
+            render_error_page(Auth::configProblems(), 500);
             return;
         }
-        // Interactive login: clear session once, show login page with error.
-        $errorParams = ($token === 'allowlist' && Auth::identity() !== null)
-            ? ['id' => Auth::identity()->id] : [];
-        Auth::setInlineError($token, $errorParams);
-        Auth::logout();
-        RepoSetting::resetForRequest();
-        if (class_exists(__NAMESPACE__ . '\\Grants', false)) {
-            Grants::resetForRequest();
+
+        // Standalone without identity → serve HTML shell (login page).
+        if (!RepoSetting::embed() && Auth::identity() === null) {
+            require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
+            handle_page();
+            return;
         }
+
+        // Identity exists but no usable grant or bad root.
+        if (!RepoSetting::embed() && !RepoSetting::filesOpen()) {
+            $token = Grants::current() === null ? 'allowlist' : 'bad_root';
+            if (Auth::hasImplicit()) {
+                require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
+                $msg = $token === 'bad_root'
+                    ? 'The root directory for this account is not a valid directory.'
+                    : 'No grant found for the current identity.';
+                render_error_page([$msg], 403);
+                return;
+            }
+            // Interactive login: clear session once, show login page with error.
+            $errorParams = ($token === 'allowlist' && Auth::identity() !== null)
+                ? ['id' => Auth::identity()->id] : [];
+            Auth::setInlineError($token, $errorParams);
+            Auth::logout();
+            RepoSetting::resetForRequest();
+            if (class_exists(__NAMESPACE__ . '\\Grants', false)) {
+                Grants::resetForRequest();
+            }
+            require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
+            handle_page();
+            return;
+        }
+
+        if (!RepoSetting::filesOpen()) {
+            require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
+            render_error_page(['root_path is invalid.'], 403);
+            exit;
+        }
+
         require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
         handle_page();
-        return;
-    }
-
-    if (!RepoSetting::filesOpen()) {
+    } catch (\Throwable $e) {
+        error_log('FC(dispatch): ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
         require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
-        render_error_page(['root_path is invalid.'], 403);
-        exit;
+        render_error_page(['An internal error occurred.'], 500);
     }
-
-    require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
-    handle_page();
 }
 
 dispatch();

@@ -52,6 +52,8 @@ async function handleLogout() {
     const leave = await navigation.checkDirty()
     if (!leave) return
   }
+  navigation.editDirty = false
+  if (upload.hasActive) upload.cancelAll()
   try {
     await apiPost('auth_logout', {})
   } catch { /* session already invalid */ }

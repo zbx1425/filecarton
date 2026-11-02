@@ -54,13 +54,18 @@ class Csrf {
 
     /**
      * Detect whether the current request arrived over HTTPS.
-     * X-Forwarded-Proto is trusted as sent; mismatches fail closed at the IdP allowlist.
+     * Checks direct TLS, port 443, X-Forwarded-Proto, and public_origin config.
      */
     public static function isHttps(): bool {
         if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') return true;
         if ((int)($_SERVER['SERVER_PORT'] ?? 0) === 443) return true;
         $proto = trim(explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')[0]);
         if (strtolower($proto) === 'https') return true;
+        if (defined('FILECARTON_PUBLIC_ORIGIN')
+            && is_string(FILECARTON_PUBLIC_ORIGIN)
+            && strncasecmp(FILECARTON_PUBLIC_ORIGIN, 'https://', 8) === 0) {
+            return true;
+        }
         return false;
     }
 

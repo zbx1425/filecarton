@@ -19,7 +19,7 @@ watch(
       tree.expandToPath(path)
     }
   },
-  { deep: true },
+  { deep: true, immediate: true },
 )
 </script>
 

@@ -82,14 +82,26 @@ export async function runPaste(params: PasteParams): Promise<number> {
     const navigation = useNavigationStore()
     const fileList = useFileListStore()
     const tree = useTreeStore()
-    fileList.fetchDir(navigation.currentPathStr)
-    tree.invalidateSubtree(targetPath)
-    tree.loadChildren(targetPath)
 
     if (mode === 'cut') {
+      const currentStr = navigation.currentPathStr
+      for (const item of items) {
+        const movedPath = sourcePath ? `${sourcePath}/${item}` : item
+        if (currentStr === movedPath || currentStr.startsWith(movedPath + '/')) {
+          const suffix = currentStr === movedPath ? '' : currentStr.slice(movedPath.length + 1)
+          const newBase = targetPath ? `${targetPath}/${item}` : item
+          const newPath = suffix ? `${newBase}/${suffix}` : newBase
+          await navigation.navigateTo(newPath.split('/'))
+          break
+        }
+      }
       tree.invalidate(sourcePath)
       tree.loadChildren(sourcePath)
     }
+
+    fileList.fetchDir(navigation.currentPathStr)
+    tree.invalidateSubtree(targetPath)
+    tree.loadChildren(targetPath)
 
     return totalCompleted
   } catch (e: unknown) {

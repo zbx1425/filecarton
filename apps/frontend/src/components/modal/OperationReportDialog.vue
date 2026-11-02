@@ -87,7 +87,7 @@ function handleOpenChange(open: boolean) {
       <ScrollArea class="max-h-[50vh]">
         <!-- Single group: flat list without accordion -->
         <div v-if="isSingleGroup" class="border rounded-md p-2">
-          <div class="text-sm font-medium text-muted-foreground mb-1.5">
+          <div v-if="groups[0].label" class="text-sm font-medium text-muted-foreground mb-1.5">
             {{ groups[0].label }} ({{ groups[0].items.length }})
           </div>
           <div class="space-y-0.5 text-sm font-mono break-all">

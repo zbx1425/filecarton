@@ -48,10 +48,22 @@ function api_archive_create(PathSecurity $pathSec, FileOps $fileOps): void {
     }
 
     $skipped = [];
-    if ($format === 'zip') {
-        create_zip($dirAbs, $input['items'], $archivePath, $pathSec, $skipped);
-    } else {
-        create_tar($dirAbs, $input['items'], $archivePath, $pathSec, $skipped);
+    $temp = new TempStorage(RepoSetting::current()->resolvedTempDir());
+    $tempFile = $temp->createTempFile('archive', '.' . $format);
+
+    try {
+        if ($format === 'zip') {
+            create_zip($dirAbs, $input['items'], $tempFile, $pathSec, $skipped);
+        } else {
+            create_tar($dirAbs, $input['items'], $tempFile, $pathSec, $skipped);
+        }
+
+        if (!Platform::safePublish($tempFile, $archivePath)) {
+            throw new ApiException('server_error', 500);
+        }
+    } catch (\Throwable $e) {
+        @unlink($tempFile);
+        throw $e;
     }
 
     $relativePath = substr($archivePath, strlen($pathSec->getRootPath()) + 1);
@@ -71,23 +83,35 @@ function create_zip(string $baseDir, array $items, string $archivePath, PathSecu
 
     foreach (enumerate_archive_entries($baseDir, $items, $pathSec, $skipped) as $entry) {
         if ($entry['isDir']) {
-            $zip->addEmptyDir(rtrim($entry['entryName'], '/'));
+            if ($zip->addEmptyDir(rtrim($entry['entryName'], '/')) === false) {
+                $zip->close();
+                throw new ApiException('server_error', 500);
+            }
         } else {
-            $zip->addFile($entry['fullPath'], $entry['entryName']);
+            if ($zip->addFile($entry['fullPath'], $entry['entryName']) === false) {
+                $zip->close();
+                throw new ApiException('server_error', 500);
+            }
         }
     }
 
-    $zip->close();
+    if ($zip->close() === false) {
+        throw new ApiException('server_error', 500);
+    }
 }
 
 function create_tar(string $baseDir, array $items, string $archivePath, PathSecurity $pathSec, array &$skipped = []): void {
-    $phar = new \PharData($archivePath);
-
-    foreach (enumerate_archive_entries($baseDir, $items, $pathSec, $skipped) as $entry) {
-        if ($entry['isDir']) {
-            $phar->addEmptyDir(rtrim($entry['entryName'], '/'));
-        } else {
-            $phar->addFile($entry['fullPath'], $entry['entryName']);
+    try {
+        $phar = new \PharData($archivePath);
+        foreach (enumerate_archive_entries($baseDir, $items, $pathSec, $skipped) as $entry) {
+            if ($entry['isDir']) {
+                $phar->addEmptyDir(rtrim($entry['entryName'], '/'));
+            } else {
+                $phar->addFile($entry['fullPath'], $entry['entryName']);
+            }
         }
+    } catch (\Throwable $e) {
+        @unlink($archivePath);
+        throw new ApiException('server_error', 500);
     }
 }

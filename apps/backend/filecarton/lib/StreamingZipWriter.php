@@ -225,8 +225,16 @@ class StreamingZipWriter {
     private function write(string $data): void {
         $len = strlen($data);
         if ($len === 0) return;
-        $written = @fwrite($this->out, $data);
-        $this->offset += ($written !== false) ? $written : 0;
+        $pos = 0;
+        while ($pos < $len) {
+            $written = @fwrite($this->out, $pos === 0 ? $data : substr($data, $pos));
+            if ($written === false || $written === 0) {
+                $this->offset += $pos;
+                throw new \RuntimeException('fwrite failed during streaming ZIP output');
+            }
+            $pos += $written;
+        }
+        $this->offset += $len;
     }
 
     /**

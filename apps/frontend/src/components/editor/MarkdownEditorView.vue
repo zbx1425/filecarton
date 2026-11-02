@@ -29,6 +29,13 @@ const editorInstance = ref<Monaco.editor.IStandaloneCodeEditor | null>(null)
 let editor: Monaco.editor.IStandaloneCodeEditor | null = null
 let resizeObserver: ResizeObserver | null = null
 
+watch(() => prefs.resolvedTheme, (t) => {
+  editorInstance.value?.updateOptions({ theme: t === 'dark' ? 'vs-dark' : 'vs' })
+})
+watch(() => prefs.editorFontSize, (s) => {
+  editorInstance.value?.updateOptions({ fontSize: s })
+})
+
 const filePath = computed(() => navigation.activeFilePath ?? '')
 const fileName = computed(() => navigation.activeFile ?? '')
 const isReadonly = computed(() => ui.readonly || navigation.viewMode === 'preview')
@@ -114,11 +121,6 @@ onMounted(async () => {
       if (!showPreview.value) editor?.layout()
     })
     resizeObserver.observe(containerRef.value)
-
-    watch(() => prefs.resolvedTheme, (t) => {
-      editor?.updateOptions({ theme: t === 'dark' ? 'vs-dark' : 'vs' })
-    })
-    watch(() => prefs.editorFontSize, (s) => editor?.updateOptions({ fontSize: s }))
   } catch (e: unknown) {
     error.value = toErrorInfo(e)
   } finally {

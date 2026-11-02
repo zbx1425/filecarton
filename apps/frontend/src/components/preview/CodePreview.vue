@@ -26,6 +26,19 @@ const error = ref<ErrorInfo | null>(null)
 let editor: Monaco.editor.IStandaloneCodeEditor | null = null
 let resizeObserver: ResizeObserver | null = null
 
+watch(() => prefs.resolvedTheme, (t) => {
+  editorInstance.value?.updateOptions({ theme: t === 'dark' ? 'vs-dark' : 'vs' })
+})
+watch(() => prefs.editorFontSize, (s) => {
+  editorInstance.value?.updateOptions({ fontSize: s })
+})
+watch(() => prefs.editorWordWrap, (w) => {
+  editorInstance.value?.updateOptions({ wordWrap: w ? 'on' : 'off' })
+})
+watch(() => prefs.editorLineNumbers, (l) => {
+  editorInstance.value?.updateOptions({ lineNumbers: l ? 'on' : 'off' })
+})
+
 onMounted(async () => {
   try {
     const [monaco, fileData] = await Promise.all([
@@ -52,13 +65,6 @@ onMounted(async () => {
 
     resizeObserver = new ResizeObserver(() => editor?.layout())
     resizeObserver.observe(containerRef.value)
-
-    watch(() => prefs.resolvedTheme, (t) => {
-      editor?.updateOptions({ theme: t === 'dark' ? 'vs-dark' : 'vs' })
-    })
-    watch(() => prefs.editorFontSize, (s) => editor?.updateOptions({ fontSize: s }))
-    watch(() => prefs.editorWordWrap, (w) => editor?.updateOptions({ wordWrap: w ? 'on' : 'off' }))
-    watch(() => prefs.editorLineNumbers, (l) => editor?.updateOptions({ lineNumbers: l ? 'on' : 'off' }))
   } catch (e: unknown) {
     error.value = toErrorInfo(e)
   } finally {

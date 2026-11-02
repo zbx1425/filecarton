@@ -49,6 +49,10 @@ class SsoWhitelistGrantResolver implements GrantResolver {
         
     }
 
+    public function validateConfig(): array {
+        return [];
+    }
+
     public function resolve(AuthIdentity $identity) {
         if ($identity->pluginId !== 'internalsso') {
             return null;
@@ -102,6 +106,10 @@ class DbGrantResolver implements GrantResolver {
 
     public function __construct(array $opts = []) {
         $this->dsn = isset($opts['dsn']) ? (string)$opts['dsn'] : '';
+    }
+
+    public function validateConfig(): array {
+        return [];
     }
 
     public function resolve(AuthIdentity $identity) {
@@ -209,7 +217,7 @@ class GitLabOAuth extends OAuth2Auth {
     }
 
     public function id(): string { return 'gitlab'; }
-    public function label(): string { return ['key' => 'auth.oauth_continue', 'params' => ['service' => 'GitLab']]; }
+    public function label() { return ['key' => 'auth.oauth_continue', 'params' => ['service' => 'GitLab']]; }
 
     protected function authorizeEndpoint(): string { return $this->baseUrl . '/oauth/authorize'; }
     protected function tokenEndpoint(): string     { return $this->baseUrl . '/oauth/token'; }

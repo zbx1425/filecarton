@@ -43,7 +43,19 @@ function api_write(PathSecurity $pathSec, FileOps $fileOps): void {
         }
     }
 
-    $bytes = $fileOps->writeFile($absPath, $content);
+    $temp = new TempStorage(RepoSetting::current()->resolvedTempDir());
+    $tmpFile = $temp->createTempFile('edit');
+    $bytes = file_put_contents($tmpFile, $content);
+    if ($bytes === false) {
+        @unlink($tmpFile);
+        throw new ApiException('server_error', 500);
+    }
+
+    if (!Platform::safePublish($tmpFile, $absPath)) {
+        @unlink($tmpFile);
+        throw new ApiException('server_error', 500);
+    }
+
     clearstatcache(true, $absPath);
 
     Response::ok([

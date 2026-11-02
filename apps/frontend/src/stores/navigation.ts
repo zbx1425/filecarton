@@ -128,6 +128,9 @@ export const useNavigationStore = defineStore('navigation', () => {
         }
       }
 
+      const pathChanged = JSON.stringify(segments) !== JSON.stringify(currentPath.value)
+        || fileName !== activeFile.value
+
       suppressHashSync = true
       currentPath.value = segments
       activeFile.value = fileName ?? null
@@ -139,7 +142,7 @@ export const useNavigationStore = defineStore('navigation', () => {
       } else {
         viewMode.value = view
       }
-      editDirty.value = false
+      if (pathChanged) editDirty.value = false
       suppressHashSync = false
     } else {
       suppressHashSync = true

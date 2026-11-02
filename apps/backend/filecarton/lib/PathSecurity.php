@@ -600,7 +600,8 @@ class PathSecurity {
         if (preg_match('#[/\\\\:*?"<>|]#', $name)) return false;
         if (trim($name, '. ') === '') return false;
         if (str_ends_with($name, '.') || str_ends_with($name, ' ')) return false;
-        if (preg_match('/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..+)?$/i', $name)) return false;
+        if (PHP_OS_FAMILY === 'Windows'
+            && preg_match('/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..+)?$/i', $name)) return false;
         return true;
     }
 

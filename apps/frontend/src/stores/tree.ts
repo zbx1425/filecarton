@@ -37,12 +37,11 @@ export const useTreeStore = defineStore('tree', () => {
       if (path === '') rootError.value = false
       return data.children
     }).catch(err => {
-      if (path === '') rootError.value = true
+      if (getGeneration(path) === gen && path === '') rootError.value = true
       throw err
     }).finally(() => {
-      if (getGeneration(path) === gen) {
-        pendingRequests.delete(path)
-      }
+      if (getGeneration(path) !== gen) return
+      pendingRequests.delete(path)
       const l2 = new Set(loading.value)
       l2.delete(path)
       loading.value = l2

@@ -30,6 +30,13 @@ const editorInstance = ref<Monaco.editor.IStandaloneCodeEditor | null>(null)
 let editor: Monaco.editor.IStandaloneCodeEditor | null = null
 let resizeObserver: ResizeObserver | null = null
 
+watch(() => prefs.resolvedTheme, (t) => {
+  editorInstance.value?.updateOptions({ theme: t === 'dark' ? 'vs-dark' : 'vs' })
+})
+watch(() => prefs.editorFontSize, (s) => {
+  editorInstance.value?.updateOptions({ fontSize: s })
+})
+
 const filePath = computed(() => navigation.activeFilePath ?? '')
 const fileName = computed(() => navigation.activeFile ?? '')
 
@@ -57,7 +64,15 @@ async function handleSave() {
   await save(editor, filePath.value)
 }
 
+function handleKeyDown(e: KeyboardEvent) {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault()
+    handleSave()
+  }
+}
+
 onMounted(async () => {
+  window.addEventListener('keydown', handleKeyDown)
   try {
     const [monaco, fileData] = await Promise.all([
       loadMonaco(),
@@ -97,11 +112,6 @@ onMounted(async () => {
 
     resizeObserver = new ResizeObserver(() => editor?.layout())
     resizeObserver.observe(containerRef.value)
-
-    watch(() => prefs.resolvedTheme, (t) => {
-      editor?.updateOptions({ theme: t === 'dark' ? 'vs-dark' : 'vs' })
-    })
-    watch(() => prefs.editorFontSize, (s) => editor?.updateOptions({ fontSize: s }))
   } catch (e: unknown) {
     error.value = toErrorInfo(e)
   } finally {
@@ -110,6 +120,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeyDown)
   resizeObserver?.disconnect()
   editor?.getModel()?.dispose()
   editor?.dispose()

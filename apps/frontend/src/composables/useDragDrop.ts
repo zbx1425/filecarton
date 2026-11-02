@@ -35,11 +35,12 @@ export function getDragPayload(e: DragEvent): DragPayload | null {
 
 export async function handleDrop(e: DragEvent, targetPath: string) {
   e.preventDefault()
-  const { useUiStore } = await import('@/stores/ui')
-  if (useUiStore().readonly) return
   const payload = getDragPayload(e)
   if (!payload) return
   if (payload.sourcePath === targetPath) return
+
+  const { useUiStore } = await import('@/stores/ui')
+  if (useUiStore().readonly) return
 
   const { runPaste } = await import('@/composables/usePaste')
   await runPaste({

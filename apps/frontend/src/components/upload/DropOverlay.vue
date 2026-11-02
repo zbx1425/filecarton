@@ -85,6 +85,8 @@ async function handleDrop(e: DragEvent) {
 
   if (ui.readonly) return
 
+  const targetDir = navigation.currentPathStr
+
   const items = e.dataTransfer?.items
   if (!items || items.length === 0) return
 
@@ -97,7 +99,7 @@ async function handleDrop(e: DragEvent) {
   if (entries.length === 0) {
     const files = e.dataTransfer?.files
     if (files && files.length > 0) {
-      upload.addFiles(files, navigation.currentPathStr)
+      upload.addFiles(files, targetDir)
     }
     return
   }
@@ -120,7 +122,7 @@ async function handleDrop(e: DragEvent) {
     toast.warning(`${readErrors} item(s) could not be read and were skipped`)
   }
   if (allFiles.length > 0) {
-    upload.addFilesWithPaths(allFiles, navigation.currentPathStr)
+    upload.addFilesWithPaths(allFiles, targetDir)
   }
 }
 

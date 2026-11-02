@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onBeforeUnmount } from 'vue'
 import { ChevronRight, Loader2, FolderPlus, FileArchive, PackageOpen, Shield } from '@lucide/vue'
 import {
   ContextMenu,
@@ -107,6 +107,8 @@ function handleDragOver(e: DragEvent) {
   dropHover.value = true
 }
 
+const rowRef = ref<HTMLElement | null>(null)
+
 function handleDragEnter(e: DragEvent) {
   if (!isDir.value || !isInternalDrag(e)) return
   if (!isExpanded.value && expandTimer === null) {
@@ -117,13 +119,22 @@ function handleDragEnter(e: DragEvent) {
   }
 }
 
-function handleDragLeave() {
+function handleDragLeave(e: DragEvent) {
+  const related = e.relatedTarget as Node | null
+  if (related && rowRef.value?.contains(related)) return
   dropHover.value = false
   if (expandTimer) {
     clearTimeout(expandTimer)
     expandTimer = null
   }
 }
+
+onBeforeUnmount(() => {
+  if (expandTimer) {
+    clearTimeout(expandTimer)
+    expandTimer = null
+  }
+})
 
 async function handleDrop(e: DragEvent) {
   dropHover.value = false
@@ -226,6 +237,7 @@ async function handleNewFolder() {
     <ContextMenu>
       <ContextMenuTrigger as-child>
         <div
+          ref="rowRef"
           class="flex items-center h-7 pl-1 cursor-pointer select-none group"
           :class="[
             dropHover ? 'bg-primary/10' :

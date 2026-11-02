@@ -144,21 +144,28 @@ export async function deleteItems(dirPath: string, itemNames: string[]) {
   const count = itemNames.length
 
   const affectsEditor = navigation.editDirty && (isAffectingActiveFile(dirPath, itemNames) || isAffectingCurrentPath(dirPath, itemNames))
-  let message: string
-  if (affectsEditor) {
-    message = count === 1
-      ? `"${itemNames[0]}" is currently being edited with unsaved changes. Deleting it will discard your changes. Continue?`
-      : `${count} items include a file you are editing with unsaved changes. Deleting will discard your changes. Continue?`
-  } else {
-    message = count === 1
-      ? `Are you sure you want to delete "${itemNames[0]}"?`
-      : `Are you sure you want to delete ${count} items?`
-  }
 
-  const confirmed = await confirm('Delete', message, {
-    actionLabel: 'Delete',
-    danger: true,
-  })
+  let confirmed: boolean
+  if (count === 1) {
+    const message = affectsEditor
+      ? `"${itemNames[0]}" is currently being edited with unsaved changes. Deleting it will discard your changes. Continue?`
+      : `Are you sure you want to delete "${itemNames[0]}"?`
+    confirmed = await confirm('Delete', message, {
+      actionLabel: 'Delete',
+      danger: true,
+    })
+  } else {
+    confirmed = await showOperationReport({
+      title: 'Delete',
+      description: `Are you sure you want to delete ${count} items?`,
+      items: itemNames.map(n => ({ name: n, reason: '' })),
+      continueLabel: 'Delete',
+      dangerContinue: true,
+      warningBanner: affectsEditor
+        ? 'One of these items is currently being edited. Unsaved changes will be lost.'
+        : '',
+    })
+  }
   if (!confirmed) return
 
   const toastId = toast.loading(`Deleting ${count} item(s)...`)
@@ -271,8 +278,11 @@ export async function renameItem(dirPath: string, oldName: string, isDir?: boole
 
     if (isAffectingCurrentPath(dirPath, [oldName])) {
       navigation.editDirty = false
-      const parentSegments = dirPath ? dirPath.split('/') : []
-      await navigation.navigateTo(parentSegments)
+      const oldPrefix = joinPath(dirPath, oldName)
+      const currentStr = navigation.currentPathStr
+      const suffix = currentStr === oldPrefix ? '' : currentStr.slice(oldPrefix.length + 1)
+      const newPath = suffix ? joinPath(joinPath(dirPath, newName), suffix) : joinPath(dirPath, newName)
+      await navigation.navigateTo(newPath.split('/'))
     }
 
     const tree = useTreeStore()
