@@ -31,10 +31,10 @@ export const useNavigationStore = defineStore('navigation', () => {
     return leave
   }
 
-  async function navigateTo(path: string[]) {
+  async function navigateTo(path: string[]): Promise<boolean> {
     if (viewMode.value === 'editor' && editDirty.value) {
       const canLeave = await checkDirty()
-      if (!canLeave) return
+      if (!canLeave) return false
     }
     viewMode.value = 'list'
     activeFile.value = null
@@ -43,12 +43,13 @@ export const useNavigationStore = defineStore('navigation', () => {
     const ui = useUiStore()
     ui.searchQuery = ''
     ui.searchRecursive = false
+    return true
   }
 
-  async function openFile(fileName: string) {
+  async function openFile(fileName: string): Promise<boolean> {
     if (viewMode.value === 'editor' && editDirty.value) {
       const canLeave = await checkDirty()
-      if (!canLeave) return
+      if (!canLeave) return false
     }
     activeFile.value = fileName
     const ext = pathExtension(fileName)
@@ -59,20 +60,22 @@ export const useNavigationStore = defineStore('navigation', () => {
     const blocked = prefs.isFilenameBlocked(fileName)
     viewMode.value = (editable && !ui.readonly && !blocked) ? 'editor' : 'preview'
     editDirty.value = false
+    return true
   }
 
   function openEditor() {
     viewMode.value = 'editor'
   }
 
-  async function backToList() {
+  async function backToList(): Promise<boolean> {
     if (viewMode.value === 'editor' && editDirty.value) {
       const canLeave = await checkDirty()
-      if (!canLeave) return
+      if (!canLeave) return false
     }
     viewMode.value = 'list'
     activeFile.value = null
     editDirty.value = false
+    return true
   }
 
   function syncToHash() {

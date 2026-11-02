@@ -9,6 +9,7 @@ import type { ErrorInfo } from '@/api/client'
 import type { CheckUploadConflictsResponse } from '@/api/types'
 import { createPostOnlyHttpStack } from '@/utils/tusHttpStack'
 import { showPasteConflict, confirm } from '@/composables/useDialogs'
+import { errorMessage } from '@/utils/errorMessage'
 import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
 import { useTreeStore } from '@/stores/tree'
@@ -185,8 +186,9 @@ export const useUploadStore = defineStore('upload', () => {
         return await showPasteConflict(result.existing)
       }
       return true
-    } catch {
-      return true
+    } catch (e) {
+      toast.error(errorMessage(e))
+      return false
     }
   }
 
@@ -506,7 +508,10 @@ export const useUploadStore = defineStore('upload', () => {
               const status = resp.getStatus()
               let body: any = null
               try { body = JSON.parse(resp.getBody()) } catch { /* non-JSON */ }
-              const code = body?.error ?? `http_${status}`
+              const fallback = status === 413 ? 'upload.content_too_large'
+                : status === 403 ? 'access_denied'
+                : 'server_error'
+              const code = body?.error ?? fallback
               reject(new ApiError(code, status, body?.params, body?.authError))
               return
             }

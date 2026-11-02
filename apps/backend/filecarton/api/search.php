@@ -8,8 +8,8 @@ namespace FileCarton;
  */
 
 function api_search(PathSecurity $pathSec, FileOps $fileOps): void {
-$basePath = $_GET['path'] ?? '';
-$query = $_GET['q'] ?? '';
+$basePath = api_query_string('path');
+$query = api_query_string('q');
 $limit = max(1, min(FILECARTON_SEARCH_MAX_LIMIT, (int)($_GET['limit'] ?? FILECARTON_SEARCH_DEFAULT_LIMIT)));
 
 if ($query === '') {

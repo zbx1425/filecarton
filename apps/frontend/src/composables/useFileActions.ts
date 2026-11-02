@@ -1,6 +1,6 @@
 import { toast } from 'vue-sonner'
 import { apiGet, apiPost, buildDownloadUrl, fetchBatchDownload } from '@/api/client'
-import type { CreateResponse, DeleteResponse, RenameResponse, PasteResponse, RemoteDownloadResponse, ChecksumResponse } from '@/api/types'
+import type { CreateResponse, DeleteResponse, RenameResponse, RemoteDownloadResponse, ChecksumResponse } from '@/api/types'
 import { useFileListStore } from '@/stores/fileList'
 import { useTreeStore } from '@/stores/tree'
 import { useNavigationStore } from '@/stores/navigation'
@@ -287,104 +287,16 @@ export async function pasteItems(targetPath: string) {
   const clipboard = useClipboardStore()
   if (!clipboard.hasContent || !clipboard.mode) return
 
-  const loadingText = clipboard.mode === 'copy'
-    ? `Copying ${clipboard.items.length} item(s)...`
-    : `Moving ${clipboard.items.length} item(s)...`
-  let activeToastId: string | number | undefined = toast.loading(loadingText)
+  const { runPaste } = await import('@/composables/usePaste')
+  const totalCompleted = await runPaste({
+    mode: clipboard.mode,
+    sourcePath: clipboard.sourcePath,
+    items: clipboard.items.map(i => i.name),
+    targetPath,
+  })
 
-  try {
-    const check = await apiPost<PasteResponse>('paste', {
-      mode: clipboard.mode,
-      sourcePath: clipboard.sourcePath,
-      items: clipboard.items.map(i => i.name),
-      targetPath,
-      overwrite: false,
-    })
-
-    const hasConflicts = check.conflicts.length > 0
-    let totalCompleted = check.completed
-
-    if (hasConflicts && check.completed === 0) {
-      toast.dismiss(activeToastId)
-      activeToastId = undefined
-
-      const overwrite = await showPasteConflict(check.conflicts)
-      if (!overwrite) return
-
-      activeToastId = toast.loading(loadingText)
-      const result = await apiPost<PasteResponse>('paste', {
-        mode: clipboard.mode,
-        sourcePath: clipboard.sourcePath,
-        items: clipboard.items.map(i => i.name),
-        targetPath,
-        overwrite: true,
-      })
-      totalCompleted = result.completed
-
-      const verb = clipboard.mode === 'copy' ? 'Copied' : 'Moved'
-      if (result.failed.length > 0 && result.completed === 0) {
-        toast.dismiss(activeToastId)
-        activeToastId = undefined
-        await showOperationReport({
-          title: `${verb === 'Copied' ? 'Copy' : 'Move'} Failed`,
-          description: `All items failed.`,
-          items: result.failed.map(f => ({ name: f.name, reason: f.error })),
-        })
-      } else if (result.failed.length > 0) {
-        toast.dismiss(activeToastId)
-        activeToastId = undefined
-        await showOperationReport({
-          title: `Partial ${verb === 'Copied' ? 'Copy' : 'Move'}`,
-          description: `${verb} ${result.completed} item(s), ${result.failed.length} failed.`,
-          items: result.failed.map(f => ({ name: f.name, reason: f.error })),
-        })
-      } else {
-        toast.success(`${verb} ${result.completed} item(s)`, { id: activeToastId })
-      }
-    } else {
-      const verb = clipboard.mode === 'copy' ? 'Copied' : 'Moved'
-      if (check.failed.length > 0 && check.completed === 0) {
-        toast.dismiss(activeToastId)
-        activeToastId = undefined
-        await showOperationReport({
-          title: `${verb === 'Copied' ? 'Copy' : 'Move'} Failed`,
-          description: 'All items were rejected due to restrictions.',
-          items: check.failed.map(f => ({ name: f.name, reason: f.error })),
-        })
-      } else if (check.failed.length > 0) {
-        toast.dismiss(activeToastId)
-        activeToastId = undefined
-        await showOperationReport({
-          title: `Partial ${verb === 'Copied' ? 'Copy' : 'Move'}`,
-          description: `${verb} ${check.completed} item(s), ${check.failed.length} skipped.`,
-          items: check.failed.map(f => ({ name: f.name, reason: f.error })),
-        })
-      } else {
-        toast.success(`${verb} ${check.completed} item(s)`, { id: activeToastId })
-      }
-    }
-
-    if (clipboard.mode === 'cut') {
-      const tree = useTreeStore()
-      tree.invalidate(clipboard.sourcePath)
-      tree.loadChildren(clipboard.sourcePath)
-      if (totalCompleted > 0) {
-        clipboard.clear()
-      }
-    }
-
-    const navigation = useNavigationStore()
-    const fileList = useFileListStore()
-    const tree = useTreeStore()
-    fileList.fetchDir(navigation.currentPathStr)
-    tree.invalidateSubtree(targetPath)
-    tree.loadChildren(targetPath)
-  } catch (e: unknown) {
-    if (e instanceof Error && e.message === '__cancelled__') {
-      if (activeToastId !== undefined) toast.dismiss(activeToastId)
-      return
-    }
-    toast.error(errorMessage(e), activeToastId !== undefined ? { id: activeToastId } : undefined)
+  if (clipboard.mode === 'cut' && totalCompleted > 0) {
+    clipboard.clear()
   }
 }
 

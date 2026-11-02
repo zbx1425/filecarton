@@ -35,8 +35,8 @@ function handleClick() {
     <template v-if="canPreview">
       <div
         class="cursor-zoom-in max-w-full max-h-[calc(100%-4rem)]"
-        style="background-image: conic-gradient(#eee 25%, transparent 25%, transparent 75%, #eee 75%),
-               conic-gradient(#eee 25%, transparent 25%, transparent 75%, #eee 75%);
+        style="background-image: conic-gradient(var(--fc-checker, #eee) 25%, transparent 25%, transparent 75%, var(--fc-checker, #eee) 75%),
+               conic-gradient(var(--fc-checker, #eee) 25%, transparent 25%, transparent 75%, var(--fc-checker, #eee) 75%);
                background-size: 16px 16px;
                background-position: 0 0, 8px 8px;"
         @click="handleClick"

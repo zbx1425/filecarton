@@ -10,7 +10,7 @@ namespace FileCarton;
  */
 
 function api_checksum(PathSecurity $pathSec, FileOps $fileOps): void {
-    $path = $_GET['path'] ?? '';
+    $path = api_query_string('path');
     $absPath = $pathSec->resolveExistingFile($path);
     $size = filesize($absPath);
 

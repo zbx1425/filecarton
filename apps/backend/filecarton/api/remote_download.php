@@ -128,6 +128,12 @@ function api_remote_download(PathSecurity $pathSec, FileOps $fileOps): void {
         Response::error('remote_download.failed', 502);
     }
 
+    @set_time_limit(0);
+    // No CURLOPT_TIMEOUT since user might want a very large download.
+    // Maybe implement some heartbeat sending to prevent nginx/apache from closing the connection,
+    // send X-Accel-Buffering header,
+    // and check connection_aborted, later
+
     $opts = [
         CURLOPT_CUSTOMREQUEST   => 'GET',
         CURLOPT_RETURNTRANSFER  => false,

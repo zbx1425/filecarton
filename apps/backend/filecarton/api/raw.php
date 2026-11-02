@@ -8,7 +8,7 @@ namespace FileCarton;
  */
 
 function api_raw(PathSecurity $pathSec, FileOps $fileOps): void {
-$path = $_GET['path'] ?? '';
+$path = api_query_string('path');
 $absPath = $pathSec->resolveExistingFile($path);
 
 $mime = MimeType::detect($absPath);

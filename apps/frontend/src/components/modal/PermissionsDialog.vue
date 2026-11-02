@@ -313,11 +313,11 @@ async function applyPermissions(recursive: boolean) {
     payload.group = groupInput.value.trim()
   }
 
-  closeDialog()
   const toastId = toast.loading('Updating permissions...')
 
   try {
     const result = await apiPost<ChmodResponse>('chmod', payload)
+    closeDialog()
 
     if (result.failed.length > 0 && result.completed === 0) {
       toast.dismiss(toastId)
@@ -348,6 +348,7 @@ async function applyPermissions(recursive: boolean) {
       tree.loadChildren(dirPath)
     }
   } catch (e: unknown) {
+    closeDialog()
     toast.error(errorMessage(e), { id: toastId })
   } finally {
     submitting.value = false

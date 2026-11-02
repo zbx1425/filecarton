@@ -67,7 +67,7 @@ function handleSelectAll(checked: boolean | "indeterminate") {
 
 <template>
   <div
-    class="flex items-center h-9 px-3 gap-2 shrink-0 bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
+    class="flex items-center h-9 px-3 gap-2 shrink-0 overflow-x-auto bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
   >
     <Checkbox
       :model-value="checkboxState"
@@ -124,7 +124,7 @@ function handleSelectAll(checked: boolean | "indeterminate") {
       </Button>
     </template>
 
-    <Button variant="ghost" size="sm" @click="fileList.clearSelection()">
+    <Button variant="ghost" size="sm" aria-label="Clear selection" @click="fileList.clearSelection()">
       <X class="size-3.5" />
     </Button>
   </div>

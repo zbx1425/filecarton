@@ -32,12 +32,14 @@ const loading = ref(false)
 const truncated = ref(false)
 const scanLimitReached = ref(false)
 const error = ref<ErrorInfo | null>(null)
+let searchSeq = 0
 
 async function doSearch(query: string) {
   if (!query.trim()) {
     rawResults.value = []
     return
   }
+  const seq = ++searchSeq
   loading.value = true
   error.value = null
   try {
@@ -46,13 +48,15 @@ async function doSearch(query: string) {
       q: query.trim(),
       limit: '200',
     })
+    if (seq !== searchSeq) return
     rawResults.value = data.results
     truncated.value = data.truncated
     scanLimitReached.value = data.scanLimitReached ?? false
   } catch (e: unknown) {
+    if (seq !== searchSeq) return
     error.value = toErrorInfo(e)
   } finally {
-    loading.value = false
+    if (seq === searchSeq) loading.value = false
   }
 }
 
@@ -101,8 +105,11 @@ function navigateToDir(path: string) {
       <Loader2 class="size-5 animate-spin text-muted-foreground" />
     </div>
 
-    <div v-else-if="error" class="flex-1 flex items-center justify-center text-sm text-destructive">
-      {{ $t('err.' + error.code, error.params ?? {}) }}
+    <div v-else-if="error" class="flex-1 flex flex-col items-center justify-center gap-2 text-sm text-destructive">
+      <p>{{ $t('err.' + error.code, error.params ?? {}) }}</p>
+      <button class="text-sm underline text-muted-foreground hover:text-foreground" @click="doSearch(ui.searchQuery)">
+        Retry
+      </button>
     </div>
 
     <div v-else-if="results.length === 0" class="flex-1 flex items-center justify-center text-sm text-muted-foreground">

@@ -135,7 +135,12 @@ must_readonly = false
 #   "*.php"      Block files ending with ".php".
 #   ".htaccess"  Block files whose name is exactly ".htaccess".
 #   "!*.txt"     Allow files ending with ".txt" (Overriding any block rule).
-filename_blocklist = ["*.php", ".htaccess", ".user.ini", "web.config"]
+filename_blocklist = [
+  "*.php", "*.phtml", "*.phar", "*.pht", 
+  "*.php3", "*.php4", "*.php5", "*.php7", "*.php8",
+  "*.shtml",
+  ".htaccess", ".user.ini", "web.config"
+]
 
 # Patterns matched against paths relative to root_path.
 # Folders and files matching any pattern are hidden and immutable.

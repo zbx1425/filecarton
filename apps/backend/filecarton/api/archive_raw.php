@@ -8,8 +8,8 @@ namespace FileCarton;
  */
 
 function api_archive_raw(PathSecurity $pathSec, FileOps $fileOps): void {
-    $path = $_GET['path'] ?? '';
-    $entryPath = $_GET['entry'] ?? '';
+    $path = api_query_string('path');
+    $entryPath = api_query_string('entry');
     $absPath = $pathSec->resolveExistingFile($path);
 
     $opened = ArchiveReader::openEntryStream($absPath, $entryPath);

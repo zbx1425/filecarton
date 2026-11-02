@@ -111,6 +111,7 @@ watch(
       v-if="ui.showTreeToggle"
       variant="ghost"
       size="icon-sm"
+      aria-label="Toggle tree panel"
       @click="ui.toggleTreePanel()"
     >
       <PanelLeft class="size-4" />
@@ -175,7 +176,8 @@ watch(
         <SearchBox
           v-model="ui.searchQuery"
           placeholder="Search..."
-          input-class="w-60 max-w-full"
+          input-class="w-36 sm:w-60 max-w-full"
+          :input-attrs="{ 'data-search': '' }"
           class="me-1"
         >
           <template #panel>
@@ -258,7 +260,7 @@ watch(
         </DropdownMenu>
       </template>
 
-      <Button variant="ghost" size="icon-sm" class="-ms-2" @click="ui.settingsOpen = true">
+      <Button variant="ghost" size="icon-sm" class="-ms-2" aria-label="Settings" @click="ui.settingsOpen = true">
         <Settings2 class="size-4" />
       </Button>
     </div>

@@ -1,11 +1,5 @@
-import { toast } from 'vue-sonner'
-import { apiPost } from '@/api/client'
-import type { PasteResponse } from '@/api/types'
 import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
-import { useTreeStore } from '@/stores/tree'
-import { showPasteConflict, showOperationReport } from '@/composables/useDialogs'
-import { errorMessage } from '@/utils/errorMessage'
 
 const MIME_TYPE = 'application/filecarton'
 
@@ -41,93 +35,19 @@ export function getDragPayload(e: DragEvent): DragPayload | null {
 
 export async function handleDrop(e: DragEvent, targetPath: string) {
   e.preventDefault()
+  const { useUiStore } = await import('@/stores/ui')
+  if (useUiStore().readonly) return
   const payload = getDragPayload(e)
   if (!payload) return
   if (payload.sourcePath === targetPath) return
 
-  const loadingText = `Moving ${payload.items.length} item(s)...`
-  let activeToastId: string | number | undefined = toast.loading(loadingText)
-
-  try {
-    const check = await apiPost<PasteResponse>('paste', {
-      mode: 'cut',
-      sourcePath: payload.sourcePath,
-      items: payload.items,
-      targetPath,
-      overwrite: false,
-    })
-
-    const hasConflicts = check.conflicts.length > 0
-
-    if (hasConflicts && check.completed === 0) {
-      toast.dismiss(activeToastId)
-      activeToastId = undefined
-
-      const overwrite = await showPasteConflict(check.conflicts)
-      if (!overwrite) return
-
-      activeToastId = toast.loading(loadingText)
-      const result = await apiPost<PasteResponse>('paste', {
-        mode: 'cut',
-        sourcePath: payload.sourcePath,
-        items: payload.items,
-        targetPath,
-        overwrite: true,
-      })
-
-      if (result.failed.length > 0 && result.completed === 0) {
-        toast.dismiss(activeToastId)
-        activeToastId = undefined
-        await showOperationReport({
-          title: 'Move Failed',
-          description: 'All items failed.',
-          items: result.failed.map(f => ({ name: f.name, reason: f.error })),
-        })
-      } else if (result.failed.length > 0) {
-        toast.dismiss(activeToastId)
-        activeToastId = undefined
-        await showOperationReport({
-          title: 'Partial Move',
-          description: `Moved ${result.completed} item(s), ${result.failed.length} failed.`,
-          items: result.failed.map(f => ({ name: f.name, reason: f.error })),
-        })
-      } else {
-        toast.success(`Moved ${result.completed} item(s)`, { id: activeToastId })
-      }
-    } else {
-      if (check.failed.length > 0 && check.completed === 0) {
-        toast.dismiss(activeToastId)
-        activeToastId = undefined
-        await showOperationReport({
-          title: 'Move Failed',
-          description: 'All items were rejected due to restrictions.',
-          items: check.failed.map(f => ({ name: f.name, reason: f.error })),
-        })
-      } else if (check.failed.length > 0) {
-        toast.dismiss(activeToastId)
-        activeToastId = undefined
-        await showOperationReport({
-          title: 'Partial Move',
-          description: `Moved ${check.completed} item(s), ${check.failed.length} skipped.`,
-          items: check.failed.map(f => ({ name: f.name, reason: f.error })),
-        })
-      } else {
-        toast.success(`Moved ${check.completed} item(s)`, { id: activeToastId })
-      }
-    }
-
-    const navigation = useNavigationStore()
-    const fileList = useFileListStore()
-    const tree = useTreeStore()
-
-    fileList.fetchDir(navigation.currentPathStr)
-    tree.invalidateSubtree(payload.sourcePath)
-    tree.invalidateSubtree(targetPath)
-    tree.loadChildren(payload.sourcePath)
-    tree.loadChildren(targetPath)
-  } catch (e: unknown) {
-    toast.error(errorMessage(e), activeToastId !== undefined ? { id: activeToastId } : undefined)
-  }
+  const { runPaste } = await import('@/composables/usePaste')
+  await runPaste({
+    mode: 'cut',
+    sourcePath: payload.sourcePath,
+    items: payload.items,
+    targetPath,
+  })
 }
 
 export function startDragFromSelection(e: DragEvent) {

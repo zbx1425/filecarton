@@ -8,7 +8,7 @@ namespace FileCarton;
  */
 
 function api_tree_node(PathSecurity $pathSec, FileOps $fileOps): void {
-$path = $_GET['path'] ?? '';
+$path = api_query_string('path');
 $absPath = $pathSec->resolveExistingDir($path);
 
 $children = $fileOps->treeChildren($absPath);

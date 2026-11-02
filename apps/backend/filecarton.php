@@ -51,6 +51,11 @@ function dispatch(): void {
     require_once FILECARTON_SCRIPT_DIR . '/lib/RepoSetting.php';
 
     if (FILECARTON_MUST_EMBED && !RepoSetting::embed()) {
+        if (isset($_GET['fcapi'])) {
+            require_once FILECARTON_SCRIPT_DIR . '/lib/Response.php';
+            Response::error('not_configured', 403);
+            return;
+        }
         require_once FILECARTON_SCRIPT_DIR . '/handler/page.php';
         render_error_page([
             'FileCarton is configured to require embedding.',

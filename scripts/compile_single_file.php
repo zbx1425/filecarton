@@ -60,6 +60,19 @@ $libFiles = [
     $fcDir . '/lib/Grant.php',
 ];
 
+// Verify all lib/*.php files are included in the list
+$actualLibFiles = glob($fcDir . '/lib/*.php');
+sort($actualLibFiles);
+$missing = array_diff($actualLibFiles, $libFiles);
+if (!empty($missing)) {
+    fwrite(STDERR, "Error: lib files present on disk but not in compile list:\n");
+    foreach ($missing as $f) {
+        fwrite(STDERR, "  " . basename($f) . "\n");
+    }
+    fwrite(STDERR, "Add them to \$libFiles in the correct dependency order.\n");
+    exit(1);
+}
+
 $apiFiles = glob($fcDir . '/api/*.php');
 sort($apiFiles);
 

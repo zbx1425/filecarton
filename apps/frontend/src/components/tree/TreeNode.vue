@@ -89,7 +89,8 @@ async function handleClick() {
       : ''
     const segments = parent ? parent.split('/') : []
     if (navigation.currentPathStr !== parent) {
-      await navigation.navigateTo(segments)
+      const ok = await navigation.navigateTo(segments)
+      if (!ok) return
     }
     await navigation.openFile(props.name)
   }
@@ -253,7 +254,7 @@ async function handleNewFolder() {
           <span v-else class="w-4 shrink-0" />
 
           <component :is="icon" class="size-4 mx-1.5 shrink-0" :class="iconColor" />
-          <span class="truncate text-sm">{{ name }}</span>
+          <span class="truncate text-sm" :title="name">{{ name }}</span>
         </div>
       </ContextMenuTrigger>
 

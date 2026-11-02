@@ -13,5 +13,8 @@ export function errorMessage(e: unknown): string {
   if (e instanceof ApiError) {
     return t(`err.${e.code}`, (e.params as Record<string, unknown>) ?? {})
   }
+  if (e instanceof TypeError) {
+    return t('err.network_error')
+  }
   return t('err.server_error')
 }

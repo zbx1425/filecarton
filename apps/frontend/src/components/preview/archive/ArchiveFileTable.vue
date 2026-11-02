@@ -189,7 +189,7 @@ onBeforeUnmount(() => {
                 class="size-4 shrink-0"
                 :class="getFileIconColor(item.name, item.isDir)"
               />
-              <span class="truncate" :class="item.isDir ? 'font-medium' : ''">{{ item.name }}</span>
+              <span class="truncate" :class="item.isDir ? 'font-medium' : ''" :title="item.name">{{ item.name }}</span>
             </div>
 
             <div class="w-22 text-muted-foreground shrink-0 tabular-nums">

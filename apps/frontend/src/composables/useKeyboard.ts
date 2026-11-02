@@ -14,6 +14,7 @@ import {
   downloadSelected,
   refreshCurrent,
 } from '@/composables/useFileActions'
+import { useUploadStore } from '@/stores/upload'
 import { errorMessage } from '@/utils/errorMessage'
 import { toast } from 'vue-sonner'
 import { useClipboardStore } from '@/stores/clipboard'
@@ -23,6 +24,7 @@ export function useKeyboard() {
   const fileList = useFileListStore()
   const ui = useUiStore()
   const clipboard = useClipboardStore()
+  const upload = useUploadStore()
 
   function isAnyDialogOpen(): boolean {
     return (
@@ -30,6 +32,12 @@ export function useKeyboard() {
       || dialogState.prompt.open
       || dialogState.operationReport.open
       || dialogState.editorConflict.open
+      || dialogState.permissions.open
+      || dialogState.remoteDownload.open
+      || dialogState.checksum.open
+      || ui.settingsOpen
+      || upload.uploadDialogOpen
+      || upload.errorDialogOpen
     )
   }
 
@@ -105,7 +113,7 @@ export function useKeyboard() {
     }
     if (ctrl && e.key === 'f') {
       e.preventDefault()
-      const searchInput = document.querySelector<HTMLInputElement>('[placeholder="Search..."]')
+      const searchInput = document.querySelector<HTMLInputElement>('[data-search]')
       searchInput?.focus()
       return
     }

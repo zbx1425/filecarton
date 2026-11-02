@@ -83,9 +83,12 @@ function tus_create(PathSecurity $pathSec): void {
         Response::error('missing_fields', 400, ['fields' => 'filename metadata']);
     }
 
-    $sanitizedName = $pathSec->sanitizeFileName($fileName);
+    if (!$pathSec->isValidFileName($fileName)) {
+        Response::error('invalid_filename', 400);
+    }
+
     $targetAbs = $pathSec->resolveOrCreate($targetPath);
-    $finalPath = $targetAbs . '/' . $sanitizedName;
+    $finalPath = $targetAbs . '/' . $fileName;
     $pathSec->assertWithinRoot($finalPath);
     $pathSec->assertCanCreateAt($finalPath, false);
 

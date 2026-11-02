@@ -42,6 +42,7 @@ const ui = useUiStore()
       v-if="ui.isMedium"
       variant="ghost"
       size="icon-sm"
+      aria-label="Toggle archive tree"
       @click="emit('toggleTree')"
     >
       <PanelLeft class="size-4" />

@@ -98,9 +98,10 @@ $configData['dotfiles'] = [
 ];
 $configData['filenameBlocklist'] = FILECARTON_FILENAME_BLOCKLIST;
 $configData['auth'] = ['enabled' => false];
+header('Cache-Control: no-store');
 if (!RepoSetting::embed()) {
     $configData['auth'] = Auth::frontendConfig();
-    header('Cache-Control: no-store');
+    header('X-Frame-Options: SAMEORIGIN');
 }
 $configJson = json_encode($configData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
 

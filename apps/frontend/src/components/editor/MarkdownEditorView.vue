@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 import type * as Monaco from 'monaco-editor'
-import { toast } from 'vue-sonner'
-import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
-import { apiGet, apiWrite, ApiError, toErrorInfo, buildDownloadUrl } from '@/api/client'
+import { apiGet, toErrorInfo, buildDownloadUrl } from '@/api/client'
 import type { ErrorInfo } from '@/api/client'
 import type { ReadResponse } from '@/api/types'
 import { useNavigationStore } from '@/stores/navigation'
@@ -12,30 +10,29 @@ import { useUiStore } from '@/stores/ui'
 import { usePreferencesStore } from '@/stores/preferences'
 import { loadMonaco } from '@/composables/useMonaco'
 import { monacoLanguage } from '@/composables/useFileType'
-import { showEditorConflict } from '@/composables/useDialogs'
+import { useEditorSave } from '@/composables/useEditorSave'
 import { ArrowLeft, Save, Loader2, ClipboardCopy, Download } from '@lucide/vue'
 import EditorStatusBar from './EditorStatusBar.vue'
 import MarkdownContent from '@/components/preview/MarkdownContent.vue'
+import { toast } from 'vue-sonner'
 
 const navigation = useNavigationStore()
 const ui = useUiStore()
 const prefs = usePreferencesStore()
-const { t } = useI18n()
+const { saving, setMtime, save } = useEditorSave()
 
 const containerRef = ref<HTMLElement | null>(null)
 const loading = ref(true)
 const error = ref<ErrorInfo | null>(null)
-const saving = ref(false)
 
 const editorInstance = ref<Monaco.editor.IStandaloneCodeEditor | null>(null)
 let editor: Monaco.editor.IStandaloneCodeEditor | null = null
 let resizeObserver: ResizeObserver | null = null
-let currentMtime = 0
 
 const filePath = computed(() => navigation.activeFilePath ?? '')
 const fileName = computed(() => navigation.activeFile ?? '')
-const isReadonly = computed(() => ui.readonly)
-const canEdit = computed(() => !isReadonly.value)
+const isReadonly = computed(() => ui.readonly || navigation.viewMode === 'preview')
+const canEdit = computed(() => !isReadonly.value && !prefs.isFilenameBlocked(fileName.value))
 
 const showPreview = ref(true)
 const rawContent = ref('')
@@ -59,82 +56,16 @@ async function copyAll() {
   }
 }
 
-async function save() {
-  if (!editor || saving.value || isReadonly.value) return
-
-  saving.value = true
-  const savedPath = filePath.value
-  const savedVersion = editor.getModel()?.getAlternativeVersionId()
-  try {
-    const result = await apiWrite(savedPath, editor.getValue(), currentMtime)
-    if (filePath.value === savedPath) {
-      currentMtime = result.mtime
-      if (editor.getModel()?.getAlternativeVersionId() === savedVersion) {
-        navigation.editDirty = false
-      }
-    }
-    toast.success('File saved')
-  } catch (e: unknown) {
-    if (e instanceof ApiError && e.authError) {
-      /* handled by the global onUnauthorized handler */
-    } else if (e instanceof ApiError && e.status === 409) {
-      const choice = await showEditorConflict()
-      if (choice === 'overwrite') {
-        const owPath = filePath.value
-        const owVersion = editor!.getModel()?.getAlternativeVersionId()
-        try {
-          const result = await apiWrite(owPath, editor!.getValue())
-          if (filePath.value === owPath) {
-            currentMtime = result.mtime
-            if (editor!.getModel()?.getAlternativeVersionId() === owVersion) {
-              navigation.editDirty = false
-            }
-          }
-          toast.success('File saved (overwritten)')
-        } catch (e2: unknown) {
-          if (e2 instanceof ApiError && e2.authError) {
-            /* handled by the global onUnauthorized handler */
-          } else {
-            const info2 = toErrorInfo(e2)
-            toast.error(t(`err.${info2.code}`, (info2.params as Record<string, unknown>) ?? {}))
-          }
-        }
-      } else if (choice === 'reload') {
-        await reloadContent()
-      }
-    } else {
-      const info = toErrorInfo(e)
-      toast.error(t(`err.${info.code}`, (info.params as Record<string, unknown>) ?? {}))
-    }
-  } finally {
-    saving.value = false
-  }
-}
-
-async function reloadContent() {
-  if (!editor) return
-  try {
-    const data = await apiGet<ReadResponse>('read', { path: filePath.value })
-    editor.setValue(data.content)
-    rawContent.value = data.content
-    previewContent.value = data.content
-    currentMtime = data.mtime
-    navigation.editDirty = false
-    toast.info('File reloaded')
-  } catch (e: unknown) {
-    if (e instanceof ApiError && e.authError) {
-      /* handled by maybeUnauthorized */
-    } else {
-      toast.error(t(`err.${toErrorInfo(e).code}`))
-    }
-  }
+async function handleSave() {
+  if (!editor || isReadonly.value) return
+  await save(editor, filePath.value)
 }
 
 function handleKeyDown(e: KeyboardEvent) {
   if (!showPreview.value || isReadonly.value) return
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
     e.preventDefault()
-    save()
+    handleSave()
   }
 }
 
@@ -143,12 +74,11 @@ onMounted(async () => {
 
   try {
     const fileData = await apiGet<ReadResponse>('read', { path: filePath.value })
-    currentMtime = fileData.mtime
+    setMtime(fileData.mtime)
     rawContent.value = fileData.content
     previewContent.value = fileData.content
 
     if (isReadonly.value) {
-      // Readonly: skip Monaco, just show preview
       return
     }
 
@@ -177,7 +107,7 @@ onMounted(async () => {
     })
 
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      save()
+      handleSave()
     })
 
     resizeObserver = new ResizeObserver(() => {
@@ -247,7 +177,7 @@ onBeforeUnmount(() => {
         v-if="canEdit"
         size="sm"
         :disabled="!navigation.editDirty || saving"
-        @click="save"
+        @click="handleSave"
       >
         <Loader2 v-if="saving" class="size-4 animate-spin" />
         <Save v-else class="size-4" />

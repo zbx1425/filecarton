@@ -22,7 +22,8 @@ require_once FILECARTON_SCRIPT_DIR . '/lib/TempStorage.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/StreamingZipWriter.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/ArchiveEntries.php';
 
-$action = $_GET['fcapi'] ?? '';
+$action = is_string($_GET['fcapi'] ?? '') ? $_GET['fcapi'] : '';
+
 $authPublic = ['auth_login', 'auth_logout'];
 $isAuthAction = in_array($action, $authPublic, true);
 
@@ -114,6 +115,18 @@ try {
     error_log('FC(api): ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
     Response::error('server_error', 500);
 }
+}
+
+/**
+ * Get a query string parameter as a validated string.
+ * Rejects array injection (e.g. ?path[]=foo) with 400.
+ */
+function api_query_string(string $key, string $default = ''): string {
+    $val = $_GET[$key] ?? $default;
+    if (!is_string($val)) {
+        throw new ApiException('invalid_input', 400, ['field' => $key]);
+    }
+    return $val;
 }
 
 /**

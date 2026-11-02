@@ -631,7 +631,13 @@ class PathSecurity {
 
         $target = $baseAbs . '/' . $itemName;
 
-        if (file_exists($target) || is_link($target)) {
+        if (is_link($target)) {
+            $normalized = str_replace('\\', '/', $target);
+            $this->assertWithinRoot($normalized);
+            return $normalized;
+        }
+
+        if (file_exists($target)) {
             $real = realpath($target);
             if ($real !== false) {
                 $real = str_replace('\\', '/', $real);

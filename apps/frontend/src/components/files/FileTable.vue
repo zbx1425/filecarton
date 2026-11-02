@@ -177,6 +177,9 @@ function startResize(e: MouseEvent) {
       <!-- Error -->
       <div v-else-if="fileList.error" class="flex-1 flex flex-col items-center justify-center gap-2 text-sm text-destructive">
         <p>{{ $t('err.' + fileList.error.code, fileList.error.params ?? {}) }}</p>
+        <Button variant="outline" size="sm" @click="fileList.fetchDir(navigation.currentPathStr)">
+          Retry
+        </Button>
       </div>
 
       <!-- File list with context menu on empty area -->

@@ -162,6 +162,7 @@ onBeforeUnmount(() => {
       <Button
         variant="ghost"
         size="icon-sm"
+        :aria-label="effectivelyCollapsed ? 'Expand README' : 'Collapse README'"
         @click="toggleCollapse"
       >
         <ChevronsUp v-if="effectivelyCollapsed" class="size-4" />

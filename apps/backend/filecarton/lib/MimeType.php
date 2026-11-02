@@ -91,6 +91,8 @@ class MimeType {
             'text/html', 'application/xhtml+xml',
             'image/svg+xml',
             'application/xml',
+            'application/javascript',
+            'text/css',
         ];
         return !in_array($mime, $unsafeMimes, true) && $mime !== 'application/octet-stream';
     }

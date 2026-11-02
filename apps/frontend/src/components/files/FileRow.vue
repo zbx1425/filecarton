@@ -248,7 +248,7 @@ const thumbnailUrl = computed(() => {
           isSelected ? 'bg-selected' : 'hover:bg-muted/50',
           isCut ? 'opacity-50' : '',
         ]"
-        :draggable="true"
+        :draggable="!ui.readonly"
         @click="handleRowClick"
         @dblclick="handleDblClick"
         @dragstart="handleDragStart"
@@ -272,7 +272,7 @@ const thumbnailUrl = computed(() => {
           @mouseleave="handleNameMouseLeave"
         >
           <component :is="icon" class="size-4 shrink-0" :class="iconColor" />
-          <span class="truncate" :class="isDir ? 'font-medium' : ''">{{ name }}</span>
+          <span class="truncate" :class="isDir ? 'font-medium' : ''" :title="name">{{ name }}</span>
         </div>
 
         <div class="w-22 text-muted-foreground shrink-0 tabular-nums">

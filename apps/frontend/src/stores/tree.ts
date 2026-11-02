@@ -63,7 +63,11 @@ export const useTreeStore = defineStore('tree', () => {
       setExpanded(path, false)
     } else {
       setExpanded(path, true)
-      await loadChildren(path)
+      try {
+        await loadChildren(path)
+      } catch {
+        setExpanded(path, false)
+      }
     }
   }
 
@@ -88,6 +92,7 @@ export const useTreeStore = defineStore('tree', () => {
     const newCache = new Map(childrenCache.value)
     newCache.delete(path)
     childrenCache.value = newCache
+    pendingRequests.delete(path)
   }
 
   function invalidateSubtree(path: string) {
@@ -99,6 +104,11 @@ export const useTreeStore = defineStore('tree', () => {
       }
     }
     childrenCache.value = newCache
+    for (const key of pendingRequests.keys()) {
+      if (key === path || key.startsWith(prefix)) {
+        pendingRequests.delete(key)
+      }
+    }
   }
 
   function getChildren(path: string): TreeChild[] | undefined {

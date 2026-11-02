@@ -72,6 +72,7 @@
   --statusbar-border: oklch(92.2% 0 0);
   --statusbar-hover: rgba(31, 31, 31, 0.067);
   --statusbar-hover-fg: oklch(0% 0 0);
+  --fc-checker: #eee;
 }
 
 .dark {
@@ -129,6 +130,7 @@
   --statusbar-border: oklch(20.5% 0 0);
   --statusbar-hover: rgba(241, 241, 241, 0.2);
   --statusbar-hover-fg: oklch(100% 0 0);
+  --fc-checker: #333;
 }
 
 [data-slot="app-toolbar"][data-toolbar-custom="true"] {

@@ -31,7 +31,7 @@ $targetAbs = $pathSec->resolveParent($relativePath);
 $pathSec->assertNotIgnored(dirname($targetAbs));
 $pathSec->assertCanCreateAt($targetAbs, $type === 'dir');
 
-if (file_exists($targetAbs)) {
+if (file_exists($targetAbs) || is_link($targetAbs)) {
     Response::error('already_exists', 409);
 }
 

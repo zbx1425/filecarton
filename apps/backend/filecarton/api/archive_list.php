@@ -8,7 +8,7 @@ namespace FileCarton;
  */
 
 function api_archive_list(PathSecurity $pathSec, FileOps $fileOps): void {
-    $path = $_GET['path'] ?? '';
+    $path = api_query_string('path');
     $absPath = $pathSec->resolveExistingFile($path);
 
     $result = ArchiveReader::listArchive($absPath);

@@ -83,6 +83,11 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
                 continue;
             }
 
+            if (is_link($dstAbs)) {
+                $conflicts[] = $name;
+                continue;
+            }
+
             $srcNormalized = str_replace('\\', '/', $srcAbs);
             if ($srcNormalized === $dstAbs && $mode === 'copy') {
                 continue;
@@ -169,6 +174,11 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
                 $failed[] = ['name' => $name, 'error' => 'paste.into_self'];
                 continue;
             }
+        }
+
+        if (is_link($dstAbs)) {
+            $conflicts[] = $name;
+            continue;
         }
 
         $srcNormalized = str_replace('\\', '/', $srcAbs);

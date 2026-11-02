@@ -37,6 +37,16 @@ foreach ($input['items'] as $name) {
         continue;
     }
 
+    if (is_link($itemPath)) {
+        try {
+            @unlink($itemPath);
+            $deleted++;
+        } catch (\Throwable $e) {
+            $failed[] = ['name' => $name, 'error' => 'server_error'];
+        }
+        continue;
+    }
+
     if (is_dir($itemPath) && $pathSec->hasProtectedDescendants($itemPath)) {
         $failed[] = ['name' => $name, 'error' => 'protected_items'];
         continue;
