@@ -3,9 +3,9 @@ import { apiPost } from '@/api/client'
 import type { ArchiveCreateResponse, ArchiveExtractResponse, ArchiveExtractDryRunResponse } from '@/api/types'
 import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
-import { useTreeStore } from '@/stores/tree'
 import { useUiStore } from '@/stores/ui'
 import { confirm, showPasteConflict, showOperationReport } from '@/composables/useDialogs'
+import { invalidateFileTree } from '@/composables/useFileTree'
 import { errorMessage } from '@/utils/errorMessage'
 
 export async function createArchive(
@@ -18,7 +18,6 @@ export async function createArchive(
 
   const fileList = useFileListStore()
   const navigation = useNavigationStore()
-  const tree = useTreeStore()
 
   const effectiveDirPath = dirPath ?? navigation.currentPathStr
   const effectiveItems = items ?? Array.from(fileList.selected)
@@ -42,9 +41,7 @@ export async function createArchive(
     } else {
       toast.success(`Archive created: ${archiveName}`, { id: toastId })
     }
-    fileList.fetchDir(navigation.currentPathStr)
-    tree.invalidate(effectiveDirPath)
-    tree.loadChildren(effectiveDirPath)
+    invalidateFileTree({ dirs: [effectiveDirPath] })
   } catch (e: unknown) {
     toast.error(errorMessage(e), { id: toastId })
   }
@@ -57,10 +54,6 @@ export async function extractArchive(
 ) {
   const ui = useUiStore()
   if (ui.readonly || !ui.features.archive) return
-
-  const navigation = useNavigationStore()
-  const fileList = useFileListStore()
-  const tree = useTreeStore()
 
   let activeToastId: string | number | undefined = toast.loading('Inspecting archive...')
   try {
@@ -125,9 +118,7 @@ export async function extractArchive(
     } else {
       toast.success(`Extracted ${result.extracted} files`, { id: activeToastId })
     }
-    fileList.fetchDir(navigation.currentPathStr)
-    tree.invalidateSubtree(targetDir)
-    tree.loadChildren(targetDir)
+    invalidateFileTree({ subtrees: [targetDir] })
   } catch (e: unknown) {
     toast.error(errorMessage(e), activeToastId !== undefined ? { id: activeToastId } : undefined)
   }

@@ -15,9 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
 import { dialogState, confirm, showOperationReport } from '@/composables/useDialogs'
 import { useUiStore } from '@/stores/ui'
-import { useFileListStore } from '@/stores/fileList'
-import { useTreeStore } from '@/stores/tree'
-import { useNavigationStore } from '@/stores/navigation'
+import { invalidateFileTree } from '@/composables/useFileTree'
 import { apiPost } from '@/api/client'
 import type { ChmodResponse } from '@/api/types'
 import { errorMessage } from '@/utils/errorMessage'
@@ -54,9 +52,6 @@ const ROWS: Array<{
 ]
 
 const ui = useUiStore()
-const fileList = useFileListStore()
-const tree = useTreeStore()
-const navigation = useNavigationStore()
 
 const state = computed(() => dialogState.permissions)
 const items = computed(() => state.value.items)
@@ -337,16 +332,9 @@ async function applyPermissions(recursive: boolean) {
       toast.success(`Updated permissions for ${result.completed} item(s)`, { id: toastId })
     }
 
-    // Refresh current file list and tree cache
-    fileList.fetchDir(navigation.currentPathStr)
-    if (recursive) {
-      tree.invalidateSubtree(dirPath)
-    } else {
-      tree.invalidate(dirPath)
-    }
-    if (dirPath === '' || tree.isExpanded(dirPath)) {
-      tree.loadChildren(dirPath)
-    }
+    invalidateFileTree(
+      recursive ? { subtrees: [dirPath] } : { dirs: [dirPath] },
+    )
   } catch (e: unknown) {
     closeDialog()
     toast.error(errorMessage(e), { id: toastId })

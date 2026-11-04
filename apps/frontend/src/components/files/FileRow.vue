@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onBeforeUnmount } from 'vue'
+import { computed, reactive, ref, onBeforeUnmount } from 'vue'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   ContextMenu,
@@ -8,10 +8,8 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
-import { useFileListStore } from '@/stores/fileList'
-import { useNavigationStore } from '@/stores/navigation'
-import { useClipboardStore } from '@/stores/clipboard'
 import { useUiStore } from '@/stores/ui'
+import { useFileListView } from '@/composables/useFileListView'
 import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
 import { formatSize, formatTime, formatTimeLocalISO8601, formatUnixMode } from '@/utils/format'
 import {
@@ -35,8 +33,6 @@ import { extractArchive, createArchive } from '@/composables/useArchive'
 import {
   isInternalDrag, handleDrop as dndHandleDrop, startDragFromSelection,
 } from '@/composables/useDragDrop'
-import { usePreferencesStore } from '@/stores/preferences'
-
 const props = defineProps<{
   name: string
   isDir: boolean
@@ -47,21 +43,16 @@ const props = defineProps<{
   group?: string
 }>()
 
-const fileList = useFileListStore()
-const navigation = useNavigationStore()
-const clipboard = useClipboardStore()
+const view = reactive(useFileListView())
 const ui = useUiStore()
-const preferences = usePreferencesStore()
 
-const showUnixCols = computed(() => ui.features.unixPerm && preferences.showUnixPerm)
-
-const isSelected = computed(() => fileList.selected.has(props.name))
-const isCut = computed(() => clipboard.isCutItem(navigation.currentPathStr, props.name))
+const isSelected = computed(() => view.selected.has(props.name))
+const isCut = computed(() => view.isCutItem(props.name))
 const icon = computed(() => getFileIcon(props.name, props.isDir))
 const iconColor = computed(() => getFileIconColor(props.name, props.isDir))
 
 const canModifyPermissions = computed(() => {
-  if (fileList.selected.has(props.name)) {
+  if (view.selected.has(props.name)) {
     return canModifySelectedPermissions()
   }
   return canModifyItemPermissions({ name: props.name, isDir: props.isDir, owner: props.owner })
@@ -70,114 +61,114 @@ const canModifyPermissions = computed(() => {
 function handleRowClick(e: MouseEvent) {
   if (e.shiftKey) {
     e.preventDefault()
-    fileList.rangeSelect(props.name)
+    view.rangeSelect(props.name)
   } else if (e.ctrlKey || e.metaKey) {
-    fileList.toggleSelect(props.name)
+    view.toggleSelect(props.name)
   } else {
-    fileList.clearSelection()
-    fileList.toggleSelect(props.name)
+    view.clearSelection()
+    view.toggleSelect(props.name)
   }
-  fileList.setFocusByName(props.name)
+  view.setFocusByName(props.name)
 }
 
 function handleDblClick() {
   if (props.isDir) {
-    navigation.navigateTo([...navigation.currentPath, props.name])
+    view.navigateTo([...view.currentPath, props.name])
   } else {
-    navigation.openFile(props.name)
+    view.openFile(props.name)
   }
 }
 
 function handleContextOpen() {
-  if (!fileList.selected.has(props.name)) {
-    fileList.clearSelection()
-    fileList.toggleSelect(props.name)
+  if (!view.selected.has(props.name)) {
+    view.clearSelection()
+    view.toggleSelect(props.name)
   }
 }
 
 function handleOpen() {
   if (props.isDir) {
-    navigation.navigateTo([...navigation.currentPath, props.name])
+    view.navigateTo([...view.currentPath, props.name])
   } else {
-    navigation.openFile(props.name)
+    view.openFile(props.name)
   }
 }
 
 async function handleCopy() {
-  fileList.selected.has(props.name) || fileList.toggleSelect(props.name)
+  view.selected.has(props.name) || view.toggleSelect(props.name)
   copySelected()
 }
 
 async function handleCut() {
-  fileList.selected.has(props.name) || fileList.toggleSelect(props.name)
+  view.selected.has(props.name) || view.toggleSelect(props.name)
   cutSelected()
 }
 
 async function handlePaste() {
   if (props.isDir) {
-    await pasteItems(joinPath(navigation.currentPathStr, props.name))
+    await pasteItems(joinPath(view.currentPathStr, props.name))
   } else {
-    await pasteItems(navigation.currentPathStr)
+    await pasteItems(view.currentPathStr)
   }
 }
 
 async function handleRename() {
-  await renameItem(navigation.currentPathStr, props.name, props.isDir)
+  await renameItem(view.currentPathStr, props.name, props.isDir)
 }
 
 async function handleDelete() {
-  const items = fileList.selected.has(props.name)
-    ? Array.from(fileList.selected)
+  const items = view.selected.has(props.name)
+    ? Array.from(view.selected)
     : [props.name]
-  await deleteItems(navigation.currentPathStr, items)
+  await deleteItems(view.currentPathStr, items)
 }
 
 const isBulkDownload = computed(() => {
-  if (fileList.selectedCount > 1) return true
-  if (fileList.selectedCount === 1) {
-    const name = Array.from(fileList.selected)[0]
-    return !fileList.getFileByName(name)
+  if (view.selectedCount > 1) return true
+  if (view.selectedCount === 1) {
+    const name = Array.from(view.selected)[0]
+    return !view.getFileByName(name)
   }
   return props.isDir
 })
 
 async function handleDownload() {
   if (isBulkDownload.value) {
-    const items = fileList.selectedCount > 0
-      ? Array.from(fileList.selected)
+    const items = view.selectedCount > 0
+      ? Array.from(view.selected)
       : [props.name]
     try {
-      await fetchBatchDownload(navigation.currentPathStr, items)
+      await fetchBatchDownload(view.currentPathStr, items)
     } catch (e) {
       toast.error(errorMessage(e))
     }
   } else {
-    const name = fileList.selectedCount === 1
-      ? Array.from(fileList.selected)[0]
+    const name = view.selectedCount === 1
+      ? Array.from(view.selected)[0]
       : props.name
-    const filePath = joinPath(navigation.currentPathStr, name)
+    const filePath = joinPath(view.currentPathStr, name)
     window.open(buildDownloadUrl(filePath), '_blank')
   }
 }
 
 function handlePermissions() {
-  if (!fileList.selected.has(props.name)) {
-    fileList.clearSelection()
-    fileList.toggleSelect(props.name)
+  if (!view.selected.has(props.name)) {
+    view.clearSelection()
+    view.toggleSelect(props.name)
   }
   openPermissionsSelected()
 }
 
 function handleChecksum() {
-  requestChecksum(joinPath(navigation.currentPathStr, props.name))
+  requestChecksum(joinPath(view.currentPathStr, props.name))
 }
 
 const dropHover = ref(false)
 
 function handleDragStart(e: DragEvent) {
-  if (!fileList.selected.has(props.name)) {
-    fileList.clearSelection()
-    fileList.toggleSelect(props.name)
+  if (!view.selected.has(props.name)) {
+    view.clearSelection()
+    view.toggleSelect(props.name)
   }
   startDragFromSelection(e)
 }
@@ -197,7 +188,7 @@ function handleDragLeave() {
 async function handleDrop(e: DragEvent) {
   dropHover.value = false
   if (!props.isDir) return
-  await dndHandleDrop(e, joinPath(navigation.currentPathStr, props.name))
+  await dndHandleDrop(e, joinPath(view.currentPathStr, props.name))
 }
 
 const showThumbnail = ref(false)
@@ -233,7 +224,7 @@ onBeforeUnmount(() => {
 
 const thumbnailUrl = computed(() => {
   if (!hasThumbnail.value) return ''
-  return buildRawUrl(joinPath(navigation.currentPathStr, props.name))
+  return buildRawUrl(joinPath(view.currentPathStr, props.name))
 })
 </script>
 
@@ -262,7 +253,7 @@ const thumbnailUrl = computed(() => {
             :model-value="isSelected"
             class="size-3.5 opacity-0 group-hover:opacity-100"
             :class="{ '!opacity-100': isSelected }"
-            @update:model-value="fileList.toggleSelect(name)"
+            @update:model-value="view.toggleSelect(name)"
           />
         </div>
 
@@ -284,7 +275,7 @@ const thumbnailUrl = computed(() => {
           {{ formatTime(mtime) }}
         </div>
 
-        <template v-if="showUnixCols">
+        <template v-if="view.showUnixPerm">
           <div class="w-28 font-mono text-muted-foreground shrink-0">
             {{ mode !== undefined ? formatUnixMode(mode, isDir) : '—' }}
           </div>
@@ -302,9 +293,9 @@ const thumbnailUrl = computed(() => {
       <FileItemMenu
         :is-dir="isDir"
         :readonly="ui.readonly"
-        :can-paste="clipboard.hasContent"
-        :show-open="fileList.selectedCount <= 1"
-        :show-rename="fileList.selectedCount <= 1"
+        :can-paste="view.canPaste"
+        :show-open="view.selectedCount <= 1"
+        :show-rename="view.selectedCount <= 1"
         :show-download="!isBulkDownload || ui.features.archive"
         :download-label="isBulkDownload ? 'Download All' : 'Download'"
         :has-hotkey="true"
@@ -323,7 +314,7 @@ const thumbnailUrl = computed(() => {
             Permissions
           </ContextMenuItem>
         </template>
-        <template v-if="ui.features.checksum && !isDir && fileList.selectedCount <= 1">
+        <template v-if="ui.features.checksum && !isDir && view.selectedCount <= 1">
           <ContextMenuSeparator />
           <ContextMenuItem @select="handleChecksum">
             <Hash class="size-4" />
@@ -332,19 +323,19 @@ const thumbnailUrl = computed(() => {
         </template>
         <template v-if="!ui.readonly && ui.features.archive">
           <ContextMenuSeparator />
-          <template v-if="fileList.selectedCount <= 1 && !isDir && isArchive(name)">
+          <template v-if="view.selectedCount <= 1 && !isDir && isArchive(name)">
             <ContextMenuSub>
               <ContextMenuSubTrigger class="gap-2">
                 <PackageOpen class="size-4" />
                 Extract
               </ContextMenuSubTrigger>
               <ContextMenuSubContent>
-                <ContextMenuItem @select="extractArchive(joinPath(navigation.currentPathStr, name), navigation.currentPathStr, false)">
+                <ContextMenuItem @select="extractArchive(joinPath(view.currentPathStr, name), view.currentPathStr, false)">
                   Here
                 </ContextMenuItem>
                 <ContextMenuItem
                   v-if="archiveSubdirName(name)"
-                  @select="extractArchive(joinPath(navigation.currentPathStr, name), navigation.currentPathStr, true)"
+                  @select="extractArchive(joinPath(view.currentPathStr, name), view.currentPathStr, true)"
                 >
                   To "{{ archiveSubdirName(name) }}/"
                 </ContextMenuItem>

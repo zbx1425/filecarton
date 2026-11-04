@@ -9,10 +9,8 @@ import type { ErrorInfo } from '@/api/client'
 import type { CheckUploadConflictsResponse } from '@/api/types'
 import { showPasteConflict, confirm } from '@/composables/useDialogs'
 import { errorMessage } from '@/utils/errorMessage'
-import { useFileListStore } from '@/stores/fileList'
-import { useNavigationStore } from '@/stores/navigation'
-import { useTreeStore } from '@/stores/tree'
-import { joinPath, parentPath, isAppleJunkName, isAppleJunkPath } from '@/utils/path'
+import { invalidateFileTree } from '@/composables/useFileTree'
+import { joinPath, isAppleJunkName, isAppleJunkPath } from '@/utils/path'
 import { sanitizeFileName, isDotFileBlocked, isFilenameBlocked } from '@/utils/pathValidation'
 import { uploadViaTus } from '@/services/tusUploader'
 import { useSpeedSampling } from '@/composables/useSpeedSampling'
@@ -479,26 +477,10 @@ export const useUploadStore = defineStore('upload', () => {
     pendingRefreshDirs.clear()
     if (dirs.size === 0) return
 
-    const navigation = useNavigationStore()
-    const fileList = useFileListStore()
-    const tree = useTreeStore()
-
-    for (const dir of dirs) {
-      tree.invalidateSubtree(dir)
-      tree.loadChildren(dir)
-      let ancestor = parentPath(dir)
-      while (ancestor) {
-        tree.invalidate(ancestor)
-        tree.loadChildren(ancestor)
-        ancestor = parentPath(ancestor)
-      }
-      tree.invalidate('')
-      tree.loadChildren('')
-    }
-
-    if (dirs.has(navigation.currentPathStr)) {
-      fileList.fetchDir(navigation.currentPathStr, true)
-    }
+    invalidateFileTree({
+      subtrees: [...dirs],
+      fileListBackground: true,
+    })
   }
 
   const throttledRefresh = useThrottleFn(doRefresh, 1000, true, true)

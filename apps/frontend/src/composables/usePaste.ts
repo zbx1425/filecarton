@@ -1,10 +1,9 @@
 import { toast } from 'vue-sonner'
 import { apiPost } from '@/api/client'
 import type { PasteResponse } from '@/api/types'
-import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
-import { useTreeStore } from '@/stores/tree'
 import { showPasteConflict, showOperationReport } from '@/composables/useDialogs'
+import { invalidateFileTree, type MutationRefreshOptions } from '@/composables/useFileTree'
 import { errorMessage } from '@/utils/errorMessage'
 
 export interface PasteParams {
@@ -80,8 +79,6 @@ export async function runPaste(params: PasteParams): Promise<number> {
     }
 
     const navigation = useNavigationStore()
-    const fileList = useFileListStore()
-    const tree = useTreeStore()
 
     if (mode === 'cut') {
       const currentStr = navigation.currentPathStr
@@ -95,13 +92,14 @@ export async function runPaste(params: PasteParams): Promise<number> {
           break
         }
       }
-      tree.invalidate(sourcePath)
-      tree.loadChildren(sourcePath)
     }
 
-    fileList.fetchDir(navigation.currentPathStr)
-    tree.invalidateSubtree(targetPath)
-    tree.loadChildren(targetPath)
+    const refreshOpts: MutationRefreshOptions = { subtrees: [targetPath] }
+    if (mode === 'cut') {
+      refreshOpts.dirs = [sourcePath]
+      refreshOpts.removed = items.map(n => sourcePath ? `${sourcePath}/${n}` : n)
+    }
+    invalidateFileTree(refreshOpts)
 
     return totalCompleted
   } catch (e: unknown) {

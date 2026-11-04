@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onBeforeUnmount } from 'vue'
+import { computed, reactive, ref, onBeforeUnmount } from 'vue'
 import { ChevronRight, Loader2, FolderPlus, FileArchive, PackageOpen, Shield } from '@lucide/vue'
 import {
   ContextMenu,
@@ -13,12 +13,10 @@ import {
 } from '@/components/ui/context-menu'
 import FileItemMenu from '@/components/FileItemMenu.vue'
 import { buildDownloadUrl } from '@/api/client'
-import { useTreeStore } from '@/stores/tree'
-import { useNavigationStore } from '@/stores/navigation'
-import { useClipboardStore } from '@/stores/clipboard'
 import { useUiStore } from '@/stores/ui'
+import { useTreeNavigation } from '@/composables/useTreeNavigation'
 import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
-import { joinPath, parentPath, archiveSubdirName } from '@/utils/path'
+import { joinPath, archiveSubdirName } from '@/utils/path'
 import {
   createItem, deleteItems, renameItem, pasteItems, canModifyItemPermissions,
 } from '@/composables/useFileActions'
@@ -39,65 +37,26 @@ const props = defineProps<{
   group?: string
 }>()
 
-const tree = useTreeStore()
-const navigation = useNavigationStore()
-const clipboard = useClipboardStore()
 const ui = useUiStore()
+const tn = reactive(useTreeNavigation({
+  path: () => props.path,
+  name: () => props.name,
+  type: () => props.type,
+}))
 
-const isDir = computed(() => props.type === 'dir')
-const isExpanded = computed(() => isDir.value && tree.isExpanded(props.path))
-const isLoading = computed(() => tree.isLoading(props.path))
-const children = computed(() => tree.getChildren(props.path) ?? [])
-
-const isCut = computed(() => {
-  const dirPath = isDir.value ? parentPath(props.path) : (props.path.includes('/') ? props.path.slice(0, props.path.lastIndexOf('/')) : '')
-  return clipboard.isCutItem(dirPath, props.name)
-})
-
-const isActive = computed(() => {
-  if (isDir.value) {
-    return navigation.currentPathStr === props.path
-  }
-  const parent = props.path.includes('/')
-    ? props.path.slice(0, props.path.lastIndexOf('/'))
-    : ''
-  return navigation.currentPathStr === parent && navigation.activeFile === props.name
-})
-
-const icon = computed(() => getFileIcon(props.name, isDir.value, isExpanded.value))
-const iconColor = computed(() => getFileIconColor(props.name, isDir.value, isExpanded.value))
+const icon = computed(() => getFileIcon(props.name, tn.isDir, tn.isExpanded))
+const iconColor = computed(() => getFileIconColor(props.name, tn.isDir, tn.isExpanded))
 
 const dropHover = ref(false)
 let expandTimer: ReturnType<typeof setTimeout> | null = null
 
 function handleChevronClick(e: Event) {
   e.stopPropagation()
-  tree.toggleExpand(props.path)
-}
-
-async function handleClick() {
-  if (isDir.value) {
-    const segments = props.path ? props.path.split('/') : []
-    await navigation.navigateTo(segments)
-  } else {
-    const parent = props.path.includes('/')
-      ? props.path.slice(0, props.path.lastIndexOf('/'))
-      : ''
-    const segments = parent ? parent.split('/') : []
-    if (navigation.currentPathStr !== parent) {
-      const ok = await navigation.navigateTo(segments)
-      if (!ok) return
-    }
-    await navigation.openFile(props.name)
-  }
-}
-
-function handleOpen() {
-  handleClick()
+  tn.handleToggle()
 }
 
 function handleDragOver(e: DragEvent) {
-  if (!isDir.value || !isInternalDrag(e)) return
+  if (!tn.isDir || !isInternalDrag(e)) return
   e.preventDefault()
   if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
   dropHover.value = true
@@ -106,10 +65,10 @@ function handleDragOver(e: DragEvent) {
 const rowRef = ref<HTMLElement | null>(null)
 
 function handleDragEnter(e: DragEvent) {
-  if (!isDir.value || !isInternalDrag(e)) return
-  if (!isExpanded.value && expandTimer === null) {
+  if (!tn.isDir || !isInternalDrag(e)) return
+  if (!tn.isExpanded && expandTimer === null) {
     expandTimer = setTimeout(() => {
-      tree.toggleExpand(props.path)
+      tn.handleToggle()
       expandTimer = null
     }, 600)
   }
@@ -138,35 +97,30 @@ async function handleDrop(e: DragEvent) {
     clearTimeout(expandTimer)
     expandTimer = null
   }
-  if (!isDir.value) return
+  if (!tn.isDir) return
   await dndHandleDrop(e, props.path)
 }
 
-const dirPath = computed(() => {
-  if (isDir.value) return parentPath(props.path)
-  return props.path.includes('/') ? props.path.slice(0, props.path.lastIndexOf('/')) : ''
-})
-
 async function handleRename() {
-  await renameItem(dirPath.value, props.name, isDir.value)
+  await renameItem(tn.dirPath, props.name, tn.isDir)
 }
 
 async function handleDelete() {
-  await deleteItems(dirPath.value, [props.name])
+  await deleteItems(tn.dirPath, [props.name])
 }
 
 function handleCopy() {
-  clipboard.copy([{ name: props.name, isDir: isDir.value }], dirPath.value)
+  tn.handleCopy()
   toast.info(`Copied ${props.name}`)
 }
 
 function handleCut() {
-  clipboard.cut([{ name: props.name, isDir: isDir.value }], dirPath.value)
+  tn.handleCut()
   toast.info(`Cut ${props.name}`)
 }
 
 async function handlePaste() {
-  if (isDir.value) {
+  if (tn.isDir) {
     await pasteItems(props.path)
   }
 }
@@ -176,22 +130,22 @@ function handleDownload() {
 }
 
 async function handleCreateArchive(format: 'zip' | 'tar') {
-  await createArchive(format, dirPath.value, [props.name])
+  await createArchive(format, tn.dirPath, [props.name])
 }
 
 async function handleExtract(createSubdir = false) {
-  await extractArchive(props.path, dirPath.value, createSubdir)
+  await extractArchive(props.path, tn.dirPath, createSubdir)
 }
 
 const canModifyPermissions = computed(() =>
-  canModifyItemPermissions({ name: props.name, isDir: isDir.value, owner: props.owner }),
+  canModifyItemPermissions({ name: props.name, isDir: tn.isDir, owner: props.owner }),
 )
 
 function handlePermissions() {
   if (!canModifyPermissions.value) return
-  showPermissionsDialog(dirPath.value, [{
+  showPermissionsDialog(tn.dirPath, [{
     name: props.name,
-    isDir: isDir.value,
+    isDir: tn.isDir,
     mode: props.mode,
     owner: props.owner,
     group: props.group,
@@ -199,7 +153,7 @@ function handlePermissions() {
 }
 
 function handleNewFolder() {
-  if (!isDir.value) return
+  if (!tn.isDir) return
   createItem('dir', props.path)
 }
 </script>
@@ -213,10 +167,10 @@ function handleNewFolder() {
           class="flex items-center h-7 pl-1 cursor-pointer select-none group"
           :class="[
             dropHover ? 'bg-primary/10' :
-            isActive ? 'bg-accent text-accent-foreground font-medium' : 'hover:bg-muted/50',
-            isCut ? 'opacity-50' : '',
+            tn.isActive ? 'bg-accent text-accent-foreground font-medium' : 'hover:bg-muted/50',
+            tn.isCut ? 'opacity-50' : '',
           ]"
-          @click="handleClick"
+          @click="tn.handleClick"
           @dragover="handleDragOver"
           @dragenter="handleDragEnter"
           @dragleave="handleDragLeave"
@@ -224,15 +178,15 @@ function handleNewFolder() {
         >
           <span v-for="i in depth" :key="i" class="w-4 shrink-0" />
           <span
-            v-if="isDir"
+            v-if="tn.isDir"
             class="flex items-center justify-center w-4 h-4 shrink-0"
             @click.stop="handleChevronClick"
           >
-            <Loader2 v-if="isLoading" class="size-3 animate-spin text-muted-foreground" />
+            <Loader2 v-if="tn.isLoading" class="size-3 animate-spin text-muted-foreground" />
             <ChevronRight
               v-else
               class="size-3 text-muted-foreground transition-transform duration-150"
-              :class="{ 'rotate-90': isExpanded }"
+              :class="{ 'rotate-90': tn.isExpanded }"
             />
           </span>
           <span v-else class="w-4 shrink-0" />
@@ -243,7 +197,7 @@ function handleNewFolder() {
       </ContextMenuTrigger>
 
       <ContextMenuContent class="w-52">
-        <template v-if="navigation.editDirty">
+        <template v-if="tn.editDirty">
           <!-- 
             Certain actions will cause navigation to parent folders, resulting in loss of unsaved work.
             Disabling the menu entirely would be a more simplistic fix, and the user can just save
@@ -255,11 +209,11 @@ function handleNewFolder() {
         </template>
         <template v-else>
           <FileItemMenu
-            :is-dir="isDir"
+            :is-dir="tn.isDir"
             :readonly="ui.readonly"
-            :can-paste="clipboard.hasContent && isDir"
-            :show-download="!isDir"
-            @open="handleOpen"
+            :can-paste="tn.canPaste"
+            :show-download="!tn.isDir"
+            @open="tn.handleClick"
             @copy="handleCopy"
             @cut="handleCut"
             @paste="handlePaste"
@@ -267,10 +221,10 @@ function handleNewFolder() {
             @delete="handleDelete"
             @download="handleDownload"
           >
-            <template v-if="!ui.readonly && (ui.features.archive || isDir || ui.features.unixPermModify)">
+            <template v-if="!ui.readonly && (ui.features.archive || tn.isDir || ui.features.unixPermModify)">
               <ContextMenuSeparator />
               <template v-if="ui.features.archive">
-                <template v-if="!isDir && isArchive(name)">
+                <template v-if="!tn.isDir && isArchive(name)">
                   <ContextMenuSub>
                     <ContextMenuSubTrigger class="gap-2">
                       <PackageOpen class="size-4" />
@@ -299,7 +253,7 @@ function handleNewFolder() {
                   </ContextMenuSub>
                 </template>
               </template>
-              <ContextMenuItem v-if="isDir" @select="handleNewFolder">
+              <ContextMenuItem v-if="tn.isDir" @select="handleNewFolder">
                 <FolderPlus class="size-4" />
                 New Folder
               </ContextMenuItem>
@@ -313,9 +267,9 @@ function handleNewFolder() {
       </ContextMenuContent>
     </ContextMenu>
 
-    <template v-if="isDir && isExpanded">
+    <template v-if="tn.isDir && tn.isExpanded">
       <TreeNode
-        v-for="child in children"
+        v-for="child in tn.children"
         :key="child.name"
         :name="child.name"
         :path="joinPath(path, child.name)"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, reactive } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -8,14 +8,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useFileListStore } from '@/stores/fileList'
 import { useUiStore } from '@/stores/ui'
+import { useFileListView } from '@/composables/useFileListView'
 import {
   copySelected, cutSelected, deleteSelected,
   openPermissionsSelected, canModifySelectedPermissions,
 } from '@/composables/useFileActions'
 import { createArchive } from '@/composables/useArchive'
-import { useNavigationStore } from '@/stores/navigation'
 import { fetchBatchDownload, buildDownloadUrl } from '@/api/client'
 import { joinPath } from '@/utils/path'
 import { errorMessage } from '@/utils/errorMessage'
@@ -23,28 +22,27 @@ import { toast } from 'vue-sonner'
 import { ref } from 'vue'
 import { Copy, Scissors, Trash2, X, FileArchive, Shield, Download } from '@lucide/vue'
 
-const fileList = useFileListStore()
+const view = reactive(useFileListView())
 const ui = useUiStore()
-const navigation = useNavigationStore()
 const downloading = ref(false)
 
 const isSingleFile = computed(() => {
-  if (fileList.selectedCount !== 1) return false
-  const name = Array.from(fileList.selected)[0]
-  return !!fileList.getFileByName(name)
+  if (view.selectedCount !== 1) return false
+  const name = Array.from(view.selected)[0]
+  return !!view.getFileByName(name)
 })
 
 async function downloadSelected() {
-  const items = Array.from(fileList.selected)
+  const items = Array.from(view.selected)
   if (items.length === 0) return
   if (isSingleFile.value) {
-    const filePath = joinPath(navigation.currentPathStr, items[0])
+    const filePath = joinPath(view.currentPathStr, items[0])
     window.open(buildDownloadUrl(filePath), '_blank')
     return
   }
   downloading.value = true
   try {
-    await fetchBatchDownload(navigation.currentPathStr, items)
+    await fetchBatchDownload(view.currentPathStr, items)
   } catch (e) {
     toast.error(errorMessage(e))
   } finally {
@@ -55,13 +53,13 @@ async function downloadSelected() {
 const canModifyPermissions = computed(() => canModifySelectedPermissions())
 
 const checkboxState = computed(() => {
-  if (fileList.isAllSelected) return true
+  if (view.isAllSelected) return true
   return 'indeterminate' as const
 })
 
 function handleSelectAll(checked: boolean | "indeterminate") {
-  if (checked === true) fileList.selectAll()
-  else fileList.clearSelection()
+  if (checked === true) view.selectAll()
+  else view.clearSelection()
 }
 </script>
 
@@ -75,7 +73,7 @@ function handleSelectAll(checked: boolean | "indeterminate") {
       @update:model-value="handleSelectAll"
     />
     <span class="text-sm text-muted-foreground">
-      {{ fileList.selectedCount }} selected
+      {{ view.selectedCount }} selected
     </span>
 
     <div class="flex-1" />
@@ -124,7 +122,7 @@ function handleSelectAll(checked: boolean | "indeterminate") {
       </Button>
     </template>
 
-    <Button variant="ghost" size="sm" aria-label="Clear selection" @click="fileList.clearSelection()">
+    <Button variant="ghost" size="sm" aria-label="Clear selection" @click="view.clearSelection()">
       <X class="size-3.5" />
     </Button>
   </div>

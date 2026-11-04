@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { ArrowUp, ArrowDown, CornerLeftUp, Loader2, ClipboardPaste, File, Folder, CloudDownload, CheckSquare, Square, RefreshCw } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import {
@@ -10,12 +10,8 @@ import {
   ContextMenuShortcut,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
-import { useFileListStore } from '@/stores/fileList'
-import { useNavigationStore } from '@/stores/navigation'
-import { useTreeStore } from '@/stores/tree'
-import { useClipboardStore } from '@/stores/clipboard'
 import { useUiStore } from '@/stores/ui'
-import { usePreferencesStore } from '@/stores/preferences'
+import { useFileListView } from '@/composables/useFileListView'
 import { formatSize } from '@/utils/format'
 import { createItem, pasteItems } from '@/composables/useFileActions'
 import { showRemoteDownloadDialog } from '@/composables/useDialogs'
@@ -24,50 +20,30 @@ import BatchActionBar from './BatchActionBar.vue'
 import ReadmePane from './ReadmePane.vue'
 import { joinPath } from '@/utils/path'
 
-const fileList = useFileListStore()
-const navigation = useNavigationStore()
-const tree = useTreeStore()
-const clipboard = useClipboardStore()
+const view = reactive(useFileListView())
 const ui = useUiStore()
-const preferences = usePreferencesStore()
 
-const showUnixCols = computed(() => ui.features.unixPerm && preferences.showUnixPerm)
-
-function handleRefresh() {
-  const dir = navigation.currentPathStr
-  fileList.fetchDir(dir)
-  tree.invalidate(dir)
-  if (dir === '' || tree.isExpanded(dir)) {
-    tree.loadChildren(dir)
-  }
-}
-
-const isRoot = computed(() => navigation.currentPath.length === 0)
+const isRoot = computed(() => view.currentPath.length === 0)
 
 const isActuallyEmpty = computed(
-  () => fileList.dirs.length === 0 && fileList.files.length === 0 && !fileList.loading,
+  () => view.dirs.length === 0 && view.files.length === 0 && !view.loading,
 )
 
 const isFilteredEmpty = computed(
   () => !isActuallyEmpty.value
-    && fileList.filteredDirs.length === 0
-    && fileList.filteredFiles.length === 0
-    && !fileList.loading,
+    && view.filteredDirs.length === 0
+    && view.filteredFiles.length === 0
+    && !view.loading,
 )
 
-function goUp() {
-  const parent = navigation.currentPath.slice(0, -1)
-  navigation.navigateTo(parent)
-}
-
 function sortIcon(column: string) {
-  if (fileList.sortBy !== column) return null
-  return fileList.sortAsc ? ArrowUp : ArrowDown
+  if (view.sortBy !== column) return null
+  return view.sortAsc ? ArrowUp : ArrowDown
 }
 
 const readmeFile = computed(() => {
   let readme: string | null = null
-  for (const f of fileList.files) {
+  for (const f of view.files) {
     const lower = f.name.toLowerCase()
     if (lower === 'readme.md') return f.name
     if (lower === 'readme' && !readme) readme = f.name
@@ -77,19 +53,19 @@ const readmeFile = computed(() => {
 
 const readmePath = computed(() => {
   if (!readmeFile.value) return ''
-  return joinPath(navigation.currentPathStr, readmeFile.value)
+  return joinPath(view.currentPathStr, readmeFile.value)
 })
 
 function handleEmptyClick(e: MouseEvent) {
   if (e.target === e.currentTarget) {
-    fileList.clearSelection()
+    view.clearSelection()
   }
 }
 
 function handleListClick(e: MouseEvent) {
   const target = e.target as HTMLElement
   if (target.closest('[data-file-row]')) return
-  fileList.clearSelection()
+  view.clearSelection()
 }
 
 const resizing = ref(false)
@@ -98,15 +74,15 @@ function startResize(e: MouseEvent) {
   e.preventDefault()
   resizing.value = true
   const startX = e.clientX
-  const startWidth = preferences.effectiveTableMaxWidth ?? e.clientX
+  const startWidth = view.effectiveTableMaxWidth ?? e.clientX
 
   function onMouseMove(ev: MouseEvent) {
     const delta = ev.clientX - startX
     const newWidth = Math.max(400, startWidth + delta)
     if (newWidth > window.innerWidth - 48) {
-      preferences.setTableMaxWidth(null)
+      view.setTableMaxWidth(null)
     } else {
-      preferences.setTableMaxWidth(newWidth)
+      view.setTableMaxWidth(newWidth)
     }
   }
 
@@ -129,26 +105,26 @@ function startResize(e: MouseEvent) {
         <div class="w-6 shrink-0" />
         <div
           class="flex items-center gap-1 flex-1 min-w-0 cursor-pointer hover:text-foreground"
-          @click="fileList.toggleSort('name')"
+          @click="view.toggleSort('name')"
         >
           Name
           <component :is="sortIcon('name')" v-if="sortIcon('name')" class="size-3" />
         </div>
         <div
           class="w-22 cursor-pointer hover:text-foreground flex items-center gap-1"
-          @click="fileList.toggleSort('size')"
+          @click="view.toggleSort('size')"
         >
           Size
           <component :is="sortIcon('size')" v-if="sortIcon('size')" class="size-3" />
         </div>
         <div
           class="w-28 cursor-pointer hover:text-foreground flex items-center gap-1"
-          @click="fileList.toggleSort('mtime')"
+          @click="view.toggleSort('mtime')"
         >
           Modified
           <component :is="sortIcon('mtime')" v-if="sortIcon('mtime')" class="size-3" />
         </div>
-        <template v-if="showUnixCols">
+        <template v-if="view.showUnixPerm">
           <div class="w-28 shrink-0">
             Permissions
           </div>
@@ -159,7 +135,7 @@ function startResize(e: MouseEvent) {
       </div>
       <!-- Resize handle on header -->
       <div
-        v-if="preferences.effectiveTableMaxWidth != null"
+        v-if="view.effectiveTableMaxWidth != null"
         class="absolute top-0 bottom-0 left-(--fc-table-resize-left) w-1.5 cursor-col-resize transition-colors -translate-x-1/2 group/handle z-20"
         :class="resizing ? 'bg-primary/40' : 'hover:bg-primary/30'"
         @mousedown="startResize"
@@ -171,14 +147,14 @@ function startResize(e: MouseEvent) {
     <!-- Main content area: file list + optional readme pane -->
     <div class="flex-1 min-h-0 flex flex-col">
       <!-- Loading -->
-      <div v-if="fileList.loading" class="flex-1 flex items-center justify-center">
+      <div v-if="view.loading" class="flex-1 flex items-center justify-center">
         <Loader2 class="size-5 animate-spin text-muted-foreground" />
       </div>
 
       <!-- Error -->
-      <div v-else-if="fileList.error" class="flex-1 flex flex-col items-center justify-center gap-2 text-sm text-destructive">
-        <p>{{ $t('err.' + fileList.error.code, fileList.error.params ?? {}) }}</p>
-        <Button variant="outline" size="sm" @click="fileList.fetchDir(navigation.currentPathStr)">
+      <div v-else-if="view.error" class="flex-1 flex flex-col items-center justify-center gap-2 text-sm text-destructive">
+        <p>{{ $t('err.' + view.error.code, view.error.params ?? {}) }}</p>
+        <Button variant="outline" size="sm" @click="view.refreshCurrent()">
           Retry
         </Button>
       </div>
@@ -192,7 +168,7 @@ function startResize(e: MouseEvent) {
               v-if="!isRoot"
               class="flex items-center px-3 text-sm text-muted-foreground cursor-pointer hover:bg-muted/50 h-(--fc-row-height) max-w-(--fc-table-max-w)"
               data-file-row
-              @click="goUp"
+              @click="view.goUp"
             >
               <div class="w-6 shrink-0" />
               <div class="flex items-center gap-2 flex-1">
@@ -201,14 +177,14 @@ function startResize(e: MouseEvent) {
               </div>
               <div class="w-22" />
               <div class="w-28" />
-              <template v-if="showUnixCols">
+              <template v-if="view.showUnixPerm">
                 <div class="w-28" />
                 <div class="w-36" />
               </template>
             </div>
 
             <FileRow
-              v-for="d in fileList.filteredDirs"
+              v-for="d in view.filteredDirs"
               :key="'d-' + d.name"
               :name="d.name"
               :is-dir="true"
@@ -218,7 +194,7 @@ function startResize(e: MouseEvent) {
               :group="d.group"
             />
             <FileRow
-              v-for="f in fileList.filteredFiles"
+              v-for="f in view.filteredFiles"
               :key="'f-' + f.name"
               :name="f.name"
               :is-dir="false"
@@ -243,18 +219,18 @@ function startResize(e: MouseEvent) {
         </ContextMenuTrigger>
 
         <ContextMenuContent class="w-52">
-          <ContextMenuItem @select="handleRefresh">
+          <ContextMenuItem @select="view.refreshCurrent">
             <RefreshCw class="size-4" />
             Refresh
           </ContextMenuItem>
           <ContextMenuSeparator />
           <template v-if="!ui.readonly">
-            <ContextMenuItem v-if="clipboard.hasContent" @select="pasteItems(navigation.currentPathStr)">
+            <ContextMenuItem v-if="view.canPaste" @select="pasteItems(view.currentPathStr)">
               <ClipboardPaste class="size-4" />
               Paste
               <ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
             </ContextMenuItem>
-            <ContextMenuSeparator v-if="clipboard.hasContent" />
+            <ContextMenuSeparator v-if="view.canPaste" />
             <ContextMenuItem @select="createItem('file')">
               <File class="size-4" />
               New File
@@ -269,10 +245,10 @@ function startResize(e: MouseEvent) {
             </ContextMenuItem>
             <ContextMenuSeparator />
           </template>
-          <ContextMenuItem @select="fileList.toggleSelectAll()">
-            <CheckSquare v-if="!fileList.isAllSelected" class="size-4" />
+          <ContextMenuItem @select="view.toggleSelectAll()">
+            <CheckSquare v-if="!view.isAllSelected" class="size-4" />
             <Square v-else class="size-4" />
-            {{ fileList.isAllSelected ? 'Deselect All' : 'Select All' }}
+            {{ view.isAllSelected ? 'Deselect All' : 'Select All' }}
             <ContextMenuShortcut>Ctrl+A</ContextMenuShortcut>
           </ContextMenuItem>
         </ContextMenuContent>
@@ -280,20 +256,20 @@ function startResize(e: MouseEvent) {
 
       <!-- README preview pane -->
       <ReadmePane
-        v-if="readmeFile && !fileList.loading && !fileList.error"
+        v-if="readmeFile && !view.loading && !view.error"
         :name="readmeFile"
         :path="readmePath"
       />
     </div>
 
     <!-- Status / Batch bar -->
-    <BatchActionBar v-if="fileList.hasSelection" />
+    <BatchActionBar v-if="view.hasSelection" />
     <div
-      v-else-if="!fileList.loading && !fileList.error"
+      v-else-if="!view.loading && !view.error"
       class="flex items-center h-9 px-3 text-sm shrink-0 bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
     >
-      {{ fileList.filteredDirs.length }} folders, {{ fileList.filteredFiles.length }} files
-      <span class="ml-1">({{ formatSize(fileList.filteredTotalSize) }})</span>
+      {{ view.filteredDirs.length }} folders, {{ view.filteredFiles.length }} files
+      <span class="ml-1">({{ formatSize(view.filteredTotalSize) }})</span>
       <span class="flex-1"></span>
       <span class="text-muted-foreground/60">FileCarton by Zbx1425</span>
     </div>

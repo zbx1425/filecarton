@@ -3,11 +3,11 @@ import i18n from '@/i18n'
 import { apiGet, apiPost, buildDownloadUrl, fetchBatchDownload } from '@/api/client'
 import type { CreateResponse, DeleteResponse, RenameResponse, RemoteDownloadResponse, ChecksumResponse } from '@/api/types'
 import { useFileListStore } from '@/stores/fileList'
-import { useTreeStore } from '@/stores/tree'
 import { useNavigationStore } from '@/stores/navigation'
 import { useClipboardStore } from '@/stores/clipboard'
 import { useUiStore } from '@/stores/ui'
 import { confirm, prompt, showPasteConflict, showOperationReport, showPermissionsDialog, showChecksumDialog } from '@/composables/useDialogs'
+import { invalidateFileTree } from '@/composables/useFileTree'
 import { joinPath } from '@/utils/path'
 import { validateFileName, isDotFileBlocked, isFilenameBlocked } from '@/utils/pathValidation'
 import { errorMessage } from '@/utils/errorMessage'
@@ -17,13 +17,8 @@ const t = (key: string, params?: Record<string, unknown>): string =>
   (i18n.global as any).t(key, params ?? {})
 
 export function refreshCurrent() {
-  const navigation = useNavigationStore()
-  const fileList = useFileListStore()
-  const tree = useTreeStore()
-  const path = navigation.currentPathStr
-  fileList.fetchDir(path)
-  tree.invalidate(path)
-  tree.loadChildren(path)
+  const path = useNavigationStore().currentPathStr
+  invalidateFileTree({ dirs: [path] })
 }
 
 export async function createItem(type: 'file' | 'dir', targetPath?: string) {
@@ -58,13 +53,7 @@ export async function createItem(type: 'file' | 'dir', targetPath?: string) {
     { loading: t('toast.creating', { name }), success: t('toast.created', { name }) },
   )
   if (result) {
-    const tree = useTreeStore()
-    tree.invalidate(path)
-    tree.loadChildren(path)
-    if (navigation.currentPathStr === path) {
-      const fileList = useFileListStore()
-      fileList.fetchDir(path)
-    }
+    invalidateFileTree({ dirs: [path] })
   }
 }
 
@@ -107,17 +96,7 @@ export async function remoteDownload(
 
     toast.success(`Downloaded ${result.name}`, { id: activeToastId })
 
-    const navigation = useNavigationStore()
-    const fileList = useFileListStore()
-    const tree = useTreeStore()
-
-    if (navigation.currentPathStr === targetDir) {
-      fileList.fetchDir(targetDir)
-    }
-    tree.invalidate(targetDir)
-    if (targetDir === '' || tree.isExpanded(targetDir)) {
-      tree.loadChildren(targetDir)
-    }
+    invalidateFileTree({ dirs: [targetDir] })
   } catch (e: unknown) {
     toast.error(errorMessage(e), activeToastId !== undefined ? { id: activeToastId } : undefined)
   }
@@ -192,7 +171,6 @@ export async function deleteItems(dirPath: string, itemNames: string[]) {
     }
 
     const fileList = useFileListStore()
-    const tree = useTreeStore()
 
     const failedNames = new Set(result.failed.map(f => f.name))
     const succeededNames = itemNames.filter(n => !failedNames.has(n))
@@ -207,21 +185,12 @@ export async function deleteItems(dirPath: string, itemNames: string[]) {
       navigation.editDirty = false
       const parentSegments = dirPath ? dirPath.split('/') : []
       await navigation.navigateTo(parentSegments)
-    } else {
-      fileList.fetchDir(navigation.currentPathStr)
     }
 
-    for (const name of succeededNames) {
-      const itemPath = joinPath(dirPath, name)
-      tree.invalidateSubtree(itemPath)
-    }
-    tree.invalidate(dirPath)
-    tree.loadChildren(dirPath)
-
-    if (dirPath !== navigation.currentPathStr) {
-      tree.invalidate(navigation.currentPathStr)
-      tree.loadChildren(navigation.currentPathStr)
-    }
+    invalidateFileTree({
+      dirs: [dirPath],
+      removed: succeededNames.map(n => joinPath(dirPath, n)),
+    })
 
     fileList.clearSelection()
   } catch (e: unknown) {
@@ -290,11 +259,10 @@ export async function renameItem(dirPath: string, oldName: string, isDir?: boole
       await navigation.navigateTo(newPath.split('/'))
     }
 
-    const tree = useTreeStore()
-    tree.invalidateSubtree(joinPath(dirPath, oldName))
-    refreshCurrent()
-    tree.invalidate(dirPath)
-    tree.loadChildren(dirPath)
+    invalidateFileTree({
+      dirs: [dirPath],
+      removed: [joinPath(dirPath, oldName)],
+    })
   }
 }
 
