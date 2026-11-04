@@ -43,6 +43,7 @@ function isExternalFileDrag(e: DragEvent): boolean {
 
 function handleDragEnter(e: DragEvent) {
   if (ui.readonly) return
+  if (upload.uploadDialogOpen) return
   if (!isExternalFileDrag(e)) return
   dragCounter++
   if (dragCounter === 1) syncOverlay(true)
@@ -57,6 +58,7 @@ function handleDragLeave(_e: DragEvent) {
 }
 
 function handleDragOver(e: DragEvent) {
+  if (upload.uploadDialogOpen) return
   if (!isExternalFileDrag(e)) return
   e.preventDefault()
   if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'

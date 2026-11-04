@@ -1,12 +1,24 @@
 import { toast } from 'vue-sonner'
 import { apiPost } from '@/api/client'
 import type { ArchiveCreateResponse, ArchiveExtractResponse, ArchiveExtractDryRunResponse } from '@/api/types'
-import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
 import { confirm, showPasteConflict, showOperationReport } from '@/composables/useDialogs'
-import { invalidateFileTree } from '@/composables/useFileTree'
+import { handleMutation } from '@/services/treeInvalidation'
 import { errorMessage } from '@/utils/errorMessage'
+
+function selectedNamesInCurrentDir(): string[] {
+  const navigation = useNavigationStore()
+  const curPath = navigation.currentPathStr
+  const prefix = curPath ? curPath + '/' : ''
+  const names: string[] = []
+  for (const p of navigation.selected) {
+    if (prefix ? p.startsWith(prefix) && !p.slice(prefix.length).includes('/') : !p.includes('/')) {
+      names.push(prefix ? p.slice(prefix.length) : p)
+    }
+  }
+  return names
+}
 
 export async function createArchive(
   format: 'zip' | 'tar',
@@ -16,11 +28,10 @@ export async function createArchive(
   const ui = useUiStore()
   if (ui.readonly || !ui.features.archive) return
 
-  const fileList = useFileListStore()
   const navigation = useNavigationStore()
 
   const effectiveDirPath = dirPath ?? navigation.currentPathStr
-  const effectiveItems = items ?? Array.from(fileList.selected)
+  const effectiveItems = items ?? selectedNamesInCurrentDir()
   if (effectiveItems.length === 0) return
 
   const toastId = toast.loading(`Creating .${format} archive...`)
@@ -41,7 +52,7 @@ export async function createArchive(
     } else {
       toast.success(`Archive created: ${archiveName}`, { id: toastId })
     }
-    invalidateFileTree({ dirs: [effectiveDirPath] })
+    handleMutation({ dirs: [effectiveDirPath] })
   } catch (e: unknown) {
     toast.error(errorMessage(e), { id: toastId })
   }
@@ -118,7 +129,7 @@ export async function extractArchive(
     } else {
       toast.success(`Extracted ${result.extracted} files`, { id: activeToastId })
     }
-    invalidateFileTree({ subtrees: [targetDir] })
+    handleMutation({ subtrees: [targetDir] })
   } catch (e: unknown) {
     toast.error(errorMessage(e), activeToastId !== undefined ? { id: activeToastId } : undefined)
   }

@@ -5,15 +5,13 @@ import { apiGet, toErrorInfo } from '@/api/client'
 import type { ErrorInfo } from '@/api/client'
 import type { SearchResponse, SearchResult } from '@/api/types'
 import { useNavigationStore } from '@/stores/navigation'
-import { useUiStore } from '@/stores/ui'
 import { usePreferencesStore } from '@/stores/preferences'
 import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
 import { formatSize } from '@/utils/format'
-import { splitPath } from '@/utils/path'
+import { splitPath, joinPath } from '@/utils/path'
 import { Loader2, Search } from '@lucide/vue'
 
 const navigation = useNavigationStore()
-const ui = useUiStore()
 const prefs = usePreferencesStore()
 
 const rawResults = ref<SearchResult[]>([])
@@ -62,15 +60,15 @@ async function doSearch(query: string) {
 
 const debouncedSearch = useDebounceFn(doSearch, 300)
 
-watch(() => ui.searchQuery, (q) => {
-  if (ui.searchRecursive) {
+watch(() => navigation.searchQuery, (q) => {
+  if (navigation.searchRecursive) {
     debouncedSearch(q)
   }
 })
 
-watch(() => ui.searchRecursive, (recursive) => {
-  if (recursive && ui.searchQuery) {
-    doSearch(ui.searchQuery)
+watch(() => navigation.searchRecursive, (recursive) => {
+  if (recursive && navigation.searchQuery) {
+    doSearch(navigation.searchQuery)
   }
 }, { immediate: true })
 
@@ -82,18 +80,19 @@ async function openResult(result: SearchResult) {
   } else {
     const ok = await navigation.navigateTo(dirSegments)
     if (!ok) return
-    await navigation.openFile(result.name)
+    const filePath = joinPath(result.path || '', result.name)
+    await navigation.openFile(filePath)
   }
-  ui.searchQuery = ''
-  ui.searchRecursive = false
+  navigation.searchQuery = ''
+  navigation.searchRecursive = false
 }
 
 function navigateToDir(path: string) {
   const segments = path ? splitPath(path) : []
   navigation.navigateTo(segments).then(ok => {
     if (!ok) return
-    ui.searchQuery = ''
-    ui.searchRecursive = false
+    navigation.searchQuery = ''
+    navigation.searchRecursive = false
   })
 }
 </script>
@@ -102,7 +101,7 @@ function navigateToDir(path: string) {
   <div class="flex flex-col h-full">
     <div class="flex items-center px-3 h-8 text-sm text-muted-foreground border-b bg-muted/30">
       <Search class="size-3.5 mr-2" />
-      Searching in /{{ navigation.currentPathStr || '(root)' }} for "{{ ui.searchQuery }}"
+      Searching in /{{ navigation.currentPathStr || '(root)' }} for "{{ navigation.searchQuery }}"
     </div>
 
     <div v-if="loading" class="flex-1 flex items-center justify-center">
@@ -111,7 +110,7 @@ function navigateToDir(path: string) {
 
     <div v-else-if="error" class="flex-1 flex flex-col items-center justify-center gap-2 text-sm text-destructive">
       <p>{{ $t('err.' + error.code, error.params ?? {}) }}</p>
-      <button class="text-sm underline text-muted-foreground hover:text-foreground" @click="doSearch(ui.searchQuery)">
+      <button class="text-sm underline text-muted-foreground hover:text-foreground" @click="doSearch(navigation.searchQuery)">
         Retry
       </button>
     </div>

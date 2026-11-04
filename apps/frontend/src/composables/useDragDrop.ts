@@ -1,4 +1,3 @@
-import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
 
 const MIME_TYPE = 'application/filecarton'
@@ -52,16 +51,21 @@ export async function handleDrop(e: DragEvent, targetPath: string) {
 }
 
 export function startDragFromSelection(e: DragEvent) {
-  const fileList = useFileListStore()
   const navigation = useNavigationStore()
+  const curPath = navigation.currentPathStr
 
-  const items = fileList.hasSelection
-    ? Array.from(fileList.selected)
-    : []
+  // Extract bare names from absolute-path selection
+  const prefix = curPath ? curPath + '/' : ''
+  const items: string[] = []
+  for (const p of navigation.selected) {
+    if (prefix ? p.startsWith(prefix) && !p.slice(prefix.length).includes('/') : !p.includes('/')) {
+      items.push(prefix ? p.slice(prefix.length) : p)
+    }
+  }
 
   if (items.length === 0) return
 
-  setDragData(e, navigation.currentPathStr, items)
+  setDragData(e, curPath, items)
 
   if (e.dataTransfer && items.length > 1) {
     const label = document.createElement('div')

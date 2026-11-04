@@ -46,13 +46,13 @@ const props = defineProps<{
 const view = reactive(useFileListView())
 const ui = useUiStore()
 
-const isSelected = computed(() => view.selected.has(props.name))
+const isSelected = computed(() => view.isSelected(props.name))
 const isCut = computed(() => view.isCutItem(props.name))
 const icon = computed(() => getFileIcon(props.name, props.isDir))
 const iconColor = computed(() => getFileIconColor(props.name, props.isDir))
 
 const canModifyPermissions = computed(() => {
-  if (view.selected.has(props.name)) {
+  if (view.isSelected(props.name)) {
     return canModifySelectedPermissions()
   }
   return canModifyItemPermissions({ name: props.name, isDir: props.isDir, owner: props.owner })
@@ -80,7 +80,7 @@ function handleDblClick() {
 }
 
 function handleContextOpen() {
-  if (!view.selected.has(props.name)) {
+  if (!view.isSelected(props.name)) {
     view.clearSelection()
     view.toggleSelect(props.name)
   }
@@ -95,12 +95,12 @@ function handleOpen() {
 }
 
 async function handleCopy() {
-  view.selected.has(props.name) || view.toggleSelect(props.name)
+  view.isSelected(props.name) || view.toggleSelect(props.name)
   copySelected()
 }
 
 async function handleCut() {
-  view.selected.has(props.name) || view.toggleSelect(props.name)
+  view.isSelected(props.name) || view.toggleSelect(props.name)
   cutSelected()
 }
 
@@ -117,7 +117,7 @@ async function handleRename() {
 }
 
 async function handleDelete() {
-  const items = view.selected.has(props.name)
+  const items = view.isSelected(props.name)
     ? Array.from(view.selected)
     : [props.name]
   await deleteItems(view.currentPathStr, items)
@@ -152,7 +152,7 @@ async function handleDownload() {
 }
 
 function handlePermissions() {
-  if (!view.selected.has(props.name)) {
+  if (!view.isSelected(props.name)) {
     view.clearSelection()
     view.toggleSelect(props.name)
   }
@@ -166,7 +166,7 @@ function handleChecksum() {
 const dropHover = ref(false)
 
 function handleDragStart(e: DragEvent) {
-  if (!view.selected.has(props.name)) {
+  if (!view.isSelected(props.name)) {
     view.clearSelection()
     view.toggleSelect(props.name)
   }

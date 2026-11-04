@@ -15,7 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
 import { dialogState, confirm, showOperationReport } from '@/composables/useDialogs'
 import { useUiStore } from '@/stores/ui'
-import { invalidateFileTree } from '@/composables/useFileTree'
+import { handleMutation } from '@/services/treeInvalidation'
 import { apiPost } from '@/api/client'
 import type { ChmodResponse } from '@/api/types'
 import { errorMessage } from '@/utils/errorMessage'
@@ -332,7 +332,7 @@ async function applyPermissions(recursive: boolean) {
       toast.success(`Updated permissions for ${result.completed} item(s)`, { id: toastId })
     }
 
-    invalidateFileTree(
+    handleMutation(
       recursive ? { subtrees: [dirPath] } : { dirs: [dirPath] },
     )
   } catch (e: unknown) {

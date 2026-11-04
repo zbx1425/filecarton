@@ -176,21 +176,15 @@ export function showOperationReport(options: {
 
 export function showPasteConflict(files: string[]): Promise<boolean> {
   let activePath: string | null = null
-  let activeFile: string | null = null
   try {
     const nav = useNavigationStore()
     if (nav.viewMode === 'editor') {
       activePath = nav.activeFilePath
-      activeFile = nav.activeFile
     }
   } catch { /* guard against call before pinia init */ }
 
-  const affectsEditor = activePath != null && (
-    files.includes(activePath) ||
-    (activeFile != null && files.includes(activeFile))
-  )
-  const highlightName = activePath && files.includes(activePath) ? activePath
-    : (activeFile && files.includes(activeFile) ? activeFile : '')
+  const affectsEditor = activePath != null && files.includes(activePath)
+  const highlightName = affectsEditor ? activePath! : ''
 
   return showOperationReport({
     title: 'File Conflict',

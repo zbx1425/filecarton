@@ -2,13 +2,13 @@ import { toast } from 'vue-sonner'
 import i18n from '@/i18n'
 import { apiGet, apiPost, buildDownloadUrl, fetchBatchDownload } from '@/api/client'
 import type { CreateResponse, DeleteResponse, RenameResponse, RemoteDownloadResponse, ChecksumResponse } from '@/api/types'
-import { useFileListStore } from '@/stores/fileList'
+import { useFileTreeCacheStore } from '@/stores/fileTreeCache'
 import { useNavigationStore } from '@/stores/navigation'
 import { useClipboardStore } from '@/stores/clipboard'
 import { useUiStore } from '@/stores/ui'
 import { confirm, prompt, showPasteConflict, showOperationReport, showPermissionsDialog, showChecksumDialog } from '@/composables/useDialogs'
-import { invalidateFileTree } from '@/composables/useFileTree'
-import { joinPath } from '@/utils/path'
+import { handleMutation } from '@/services/treeInvalidation'
+import { joinPath, pathName, parentPath } from '@/utils/path'
 import { validateFileName, isDotFileBlocked, isFilenameBlocked } from '@/utils/pathValidation'
 import { errorMessage } from '@/utils/errorMessage'
 import { withAsyncTaskNotification } from '@/utils/withAsyncTaskNotification'
@@ -18,7 +18,7 @@ const t = (key: string, params?: Record<string, unknown>): string =>
 
 export function refreshCurrent() {
   const path = useNavigationStore().currentPathStr
-  invalidateFileTree({ dirs: [path] })
+  handleMutation({ dirs: [path] })
 }
 
 export async function createItem(type: 'file' | 'dir', targetPath?: string) {
@@ -53,7 +53,7 @@ export async function createItem(type: 'file' | 'dir', targetPath?: string) {
     { loading: t('toast.creating', { name }), success: t('toast.created', { name }) },
   )
   if (result) {
-    invalidateFileTree({ dirs: [path] })
+    handleMutation({ dirs: [path] })
   }
 }
 
@@ -96,7 +96,7 @@ export async function remoteDownload(
 
     toast.success(`Downloaded ${result.name}`, { id: activeToastId })
 
-    invalidateFileTree({ dirs: [targetDir] })
+    handleMutation({ dirs: [targetDir] })
   } catch (e: unknown) {
     toast.error(errorMessage(e), activeToastId !== undefined ? { id: activeToastId } : undefined)
   }
@@ -105,8 +105,11 @@ export async function remoteDownload(
 function isAffectingActiveFile(dirPath: string, itemNames: string[]): boolean {
   const navigation = useNavigationStore()
   if (!navigation.activeFile) return false
-  if (navigation.currentPathStr !== dirPath) return false
-  return itemNames.includes(navigation.activeFile)
+  for (const name of itemNames) {
+    const fullPath = joinPath(dirPath, name)
+    if (navigation.activeFile === fullPath) return true
+  }
+  return false
 }
 
 function isAffectingCurrentPath(dirPath: string, itemNames: string[]): boolean {
@@ -170,8 +173,6 @@ export async function deleteItems(dirPath: string, itemNames: string[]) {
       toast.success(t('toast.deleted', { count: result.deleted }), { id: toastId })
     }
 
-    const fileList = useFileListStore()
-
     const failedNames = new Set(result.failed.map(f => f.name))
     const succeededNames = itemNames.filter(n => !failedNames.has(n))
 
@@ -187,12 +188,12 @@ export async function deleteItems(dirPath: string, itemNames: string[]) {
       await navigation.navigateTo(parentSegments)
     }
 
-    invalidateFileTree({
+    handleMutation({
       dirs: [dirPath],
       removed: succeededNames.map(n => joinPath(dirPath, n)),
     })
 
-    fileList.clearSelection()
+    navigation.clearSelection()
   } catch (e: unknown) {
     toast.error(errorMessage(e), { id: toastId })
   }
@@ -259,7 +260,7 @@ export async function renameItem(dirPath: string, oldName: string, isDir?: boole
       await navigation.navigateTo(newPath.split('/'))
     }
 
-    invalidateFileTree({
+    handleMutation({
       dirs: [dirPath],
       removed: [joinPath(dirPath, oldName)],
     })
@@ -287,20 +288,41 @@ export async function pasteItems(targetPath: string) {
   }
 }
 
+/** Extract bare item names from absolute-path selection set for the given directory */
+function selectedNamesInDir(dirPath: string, selectedPaths: Set<string>): string[] {
+  const prefix = dirPath ? dirPath + '/' : ''
+  const names: string[] = []
+  for (const p of selectedPaths) {
+    if (prefix ? p.startsWith(prefix) && !p.slice(prefix.length).includes('/') : !p.includes('/')) {
+      names.push(prefix ? p.slice(prefix.length) : p)
+    }
+  }
+  return names
+}
+
 export function copySelected() {
   const ui = useUiStore()
   if (ui.readonly) return
 
-  const fileList = useFileListStore()
+  const cache = useFileTreeCacheStore()
   const navigation = useNavigationStore()
   const clipboard = useClipboardStore()
+  const curPath = navigation.currentPathStr
 
-  const items = fileList.allEntries
-    .filter(e => fileList.selected.has(e.name))
-    .map(e => ({ name: e.name, isDir: e.isDir }))
+  const names = selectedNamesInDir(curPath, navigation.selected)
+  if (names.length === 0) return
+
+  const dirData = cache.getDirectory(curPath)
+  const allEntries: Array<{ name: string; isDir: boolean }> = []
+  if (dirData) {
+    for (const d of dirData.dirs) allEntries.push({ name: d.name, isDir: true })
+    for (const f of dirData.files) allEntries.push({ name: f.name, isDir: false })
+  }
+  const nameSet = new Set(names)
+  const items = allEntries.filter(e => nameSet.has(e.name))
 
   if (items.length === 0) return
-  clipboard.copy(items, navigation.currentPathStr)
+  clipboard.copy(items, curPath)
   toast.info(t('toast.copied_items', { count: items.length }))
 }
 
@@ -308,35 +330,47 @@ export function cutSelected() {
   const ui = useUiStore()
   if (ui.readonly) return
 
-  const fileList = useFileListStore()
+  const cache = useFileTreeCacheStore()
   const navigation = useNavigationStore()
   const clipboard = useClipboardStore()
+  const curPath = navigation.currentPathStr
 
-  const items = fileList.allEntries
-    .filter(e => fileList.selected.has(e.name))
-    .map(e => ({ name: e.name, isDir: e.isDir }))
+  const names = selectedNamesInDir(curPath, navigation.selected)
+  if (names.length === 0) return
+
+  const dirData = cache.getDirectory(curPath)
+  const allEntries: Array<{ name: string; isDir: boolean }> = []
+  if (dirData) {
+    for (const d of dirData.dirs) allEntries.push({ name: d.name, isDir: true })
+    for (const f of dirData.files) allEntries.push({ name: f.name, isDir: false })
+  }
+  const nameSet = new Set(names)
+  const items = allEntries.filter(e => nameSet.has(e.name))
 
   if (items.length === 0) return
-  clipboard.cut(items, navigation.currentPathStr)
+  clipboard.cut(items, curPath)
   toast.info(t('toast.cut_items', { count: items.length }))
 }
 
 export async function deleteSelected() {
-  const fileList = useFileListStore()
   const navigation = useNavigationStore()
-  const visible = new Set(fileList.filteredEntries.map(e => e.name))
-  const items = Array.from(fileList.selected).filter(n => visible.has(n))
-  if (items.length === 0) return
-  await deleteItems(navigation.currentPathStr, items)
+  const curPath = navigation.currentPathStr
+  const names = selectedNamesInDir(curPath, navigation.selected)
+  if (names.length === 0) return
+  await deleteItems(curPath, names)
 }
 
 export async function renameSelected() {
-  const fileList = useFileListStore()
+  const cache = useFileTreeCacheStore()
   const navigation = useNavigationStore()
-  if (fileList.selectedCount !== 1) return
-  const name = Array.from(fileList.selected)[0]
-  const entry = fileList.allEntries.find(e => e.name === name)
-  await renameItem(navigation.currentPathStr, name, entry?.isDir)
+  if (navigation.selectedCount !== 1) return
+  const absPath = Array.from(navigation.selected)[0]
+  const name = pathName(absPath)
+  const dirPath = parentPath(absPath)
+
+  const dirData = cache.getDirectory(dirPath)
+  const isDir = dirData?.dirs.some(d => d.name === name)
+  await renameItem(dirPath, name, isDir)
 }
 
 export function canModifyItemPermissions(item: { name: string; isDir: boolean; owner?: string }): boolean {
@@ -352,17 +386,18 @@ export function canModifySelectedPermissions(): boolean {
   const ui = useUiStore()
   if (ui.readonly || !ui.features.unixPermModify) return false
 
-  const fileList = useFileListStore()
-  const visible = new Set(fileList.filteredEntries.map(e => e.name))
-  const selectedNames = Array.from(fileList.selected).filter(n => visible.has(n))
-  if (selectedNames.length === 0) return false
+  const cache = useFileTreeCacheStore()
+  const navigation = useNavigationStore()
+  const curPath = navigation.currentPathStr
+  const names = selectedNamesInDir(curPath, navigation.selected)
+  if (names.length === 0) return false
 
-  return selectedNames.some(name => {
-    const dir = fileList.getDirByName(name)
+  return names.some(name => {
+    const dir = cache.getDirByName(curPath, name)
     if (dir) {
       return canModifyItemPermissions({ name: dir.name, isDir: true, owner: dir.owner })
     }
-    const file = fileList.getFileByName(name)
+    const file = cache.getFileByName(curPath, name)
     return canModifyItemPermissions({ name, isDir: false, owner: file?.owner })
   })
 }
@@ -372,19 +407,19 @@ export function openPermissionsSelected() {
   if (ui.readonly || !ui.features.unixPermModify) return
   if (!canModifySelectedPermissions()) return
 
-  const fileList = useFileListStore()
+  const cache = useFileTreeCacheStore()
   const navigation = useNavigationStore()
-  const visible = new Set(fileList.filteredEntries.map(e => e.name))
-  const selectedNames = Array.from(fileList.selected).filter(n => visible.has(n))
-  if (selectedNames.length === 0) return
+  const curPath = navigation.currentPathStr
+  const names = selectedNamesInDir(curPath, navigation.selected)
+  if (names.length === 0) return
 
-  const items = selectedNames
+  const items = names
     .map(name => {
-      const dir = fileList.getDirByName(name)
+      const dir = cache.getDirByName(curPath, name)
       if (dir) {
         return { name: dir.name, isDir: true, mode: dir.mode, owner: dir.owner, group: dir.group }
       }
-      const file = fileList.getFileByName(name)
+      const file = cache.getFileByName(curPath, name)
       return {
         name,
         isDir: false,
@@ -396,26 +431,27 @@ export function openPermissionsSelected() {
     .filter(item => canModifyItemPermissions(item))
 
   if (items.length === 0) return
-  showPermissionsDialog(navigation.currentPathStr, items)
+  showPermissionsDialog(curPath, items)
 }
 
 export async function downloadSelected() {
-  const fileList = useFileListStore()
   const navigation = useNavigationStore()
+  const cache = useFileTreeCacheStore()
   const ui = useUiStore()
+  const curPath = navigation.currentPathStr
 
-  const items = Array.from(fileList.selected)
-  if (items.length === 0) return
+  const names = selectedNamesInDir(curPath, navigation.selected)
+  if (names.length === 0) return
 
-  const isSingle = items.length === 1 && !!fileList.getFileByName(items[0])
+  const isSingle = names.length === 1 && !!cache.getFileByName(curPath, names[0])
   if (isSingle) {
-    const filePath = joinPath(navigation.currentPathStr, items[0])
+    const filePath = joinPath(curPath, names[0])
     window.open(buildDownloadUrl(filePath), '_blank')
     return
   }
 
   if (!ui.features.archive) return
-  await fetchBatchDownload(navigation.currentPathStr, items)
+  await fetchBatchDownload(curPath, names)
 }
 
 export async function requestChecksum(filePath: string) {
@@ -428,4 +464,3 @@ export async function requestChecksum(filePath: string) {
     toast.error(errorMessage(e), { id: toastId })
   }
 }
-

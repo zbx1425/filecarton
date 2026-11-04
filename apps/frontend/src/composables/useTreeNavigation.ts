@@ -1,5 +1,6 @@
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
-import { useTreeStore } from '@/stores/tree'
+import { useFileTreeCacheStore } from '@/stores/fileTreeCache'
+import { useTreeUiStore } from '@/stores/treeUi'
 import { useNavigationStore } from '@/stores/navigation'
 import { useClipboardStore } from '@/stores/clipboard'
 import { parentPath } from '@/utils/path'
@@ -11,7 +12,8 @@ export interface TreeNodeProps {
 }
 
 export function useTreeNavigation(props: TreeNodeProps) {
-  const tree = useTreeStore()
+  const cache = useFileTreeCacheStore()
+  const treePanel = useTreeUiStore()
   const navigation = useNavigationStore()
   const clipboard = useClipboardStore()
 
@@ -19,9 +21,9 @@ export function useTreeNavigation(props: TreeNodeProps) {
   const pathVal = computed(() => toValue(props.path))
   const nameVal = computed(() => toValue(props.name))
 
-  const isExpanded = computed(() => isDir.value && tree.isExpanded(pathVal.value))
-  const isLoading = computed(() => tree.isLoading(pathVal.value))
-  const children = computed(() => tree.getChildren(pathVal.value) ?? [])
+  const isExpanded = computed(() => isDir.value && treePanel.isExpanded(pathVal.value))
+  const isLoading = computed(() => cache.isTreeLoading(pathVal.value))
+  const children = computed(() => cache.getTreeChildren(pathVal.value) ?? [])
 
   const dirPath = computed(() => {
     if (isDir.value) return parentPath(pathVal.value)
@@ -33,10 +35,7 @@ export function useTreeNavigation(props: TreeNodeProps) {
     if (isDir.value) {
       return navigation.currentPathStr === pathVal.value
     }
-    const parent = pathVal.value.includes('/')
-      ? pathVal.value.slice(0, pathVal.value.lastIndexOf('/'))
-      : ''
-    return navigation.currentPathStr === parent && navigation.activeFile === nameVal.value
+    return navigation.activeFile === pathVal.value
   })
 
   const isCut = computed(() => clipboard.isCutItem(dirPath.value, nameVal.value))
@@ -60,12 +59,12 @@ export function useTreeNavigation(props: TreeNodeProps) {
         const ok = await navigation.navigateTo(segments)
         if (!ok) return
       }
-      await navigation.openFile(nameVal.value)
+      await navigation.openFile(pathVal.value)
     }
   }
 
   function handleToggle() {
-    tree.toggleExpand(pathVal.value)
+    treePanel.toggleExpand(pathVal.value)
   }
 
   function handleCopy() {

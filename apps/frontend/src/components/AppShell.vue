@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { watch } from 'vue'
 import { useNavigationStore } from '@/stores/navigation'
-import { useFileListStore } from '@/stores/fileList'
+import { useFileTreeCacheStore } from '@/stores/fileTreeCache'
 import { useUiStore } from '@/stores/ui'
 import {
   ResizableHandle,
@@ -23,12 +23,12 @@ if (import.meta.env.DEV) import('vue-sonner/style.css')
 
 const ui = useUiStore()
 const navigation = useNavigationStore()
-const fileList = useFileListStore()
+const cache = useFileTreeCacheStore()
 useKeyboard()
 
 watch(
   () => navigation.currentPathStr,
-  (path) => fileList.fetchDir(path),
+  (path) => cache.fetchDirectory(path),
   { immediate: true },
 )
 </script>

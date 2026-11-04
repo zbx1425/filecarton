@@ -38,7 +38,7 @@ watch(() => prefs.editorFontSize, (s) => {
 })
 
 const filePath = computed(() => navigation.activeFilePath ?? '')
-const fileName = computed(() => navigation.activeFile ?? '')
+const fileName = computed(() => navigation.activeFileName ?? '')
 const isReadonly = computed(() => ui.readonly || navigation.viewMode === 'preview')
 const canEdit = computed(() => !isReadonly.value && !isFilenameBlocked(fileName.value))
 

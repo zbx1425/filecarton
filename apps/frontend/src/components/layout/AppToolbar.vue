@@ -162,11 +162,11 @@ watch(
           </BreadcrumbItem>
         </template>
 
-        <template v-if="navigation.activeFile">
+        <template v-if="navigation.activeFileName">
           <BreadcrumbSeparator class="shrink-0" />
           <BreadcrumbItem class="shrink-0">
-            <BreadcrumbPage class="font-mono text-sm max-w-48 truncate block" :title="navigation.activeFile">
-              {{ navigation.activeFile }}
+            <BreadcrumbPage class="font-mono text-sm max-w-48 truncate block" :title="navigation.activeFileName">
+              {{ navigation.activeFileName }}
             </BreadcrumbPage>
           </BreadcrumbItem>
         </template>
@@ -176,7 +176,7 @@ watch(
     <div class="flex items-center gap-2">
       <template v-if="navigation.viewMode === 'list'">
         <SearchBox
-          v-model="ui.searchQuery"
+          v-model="navigation.searchQuery"
           placeholder="Search..."
           input-class="w-36 sm:w-60 max-w-full"
           :input-attrs="{ 'data-search': '' }"
@@ -184,10 +184,10 @@ watch(
         >
           <template #panel>
             <div class="flex justify-end gap-0">
-              <Button :variant="!ui.searchRecursive ? 'default' : 'ghost'" size="sm" @click="ui.searchRecursive = false">
+              <Button :variant="!navigation.searchRecursive ? 'default' : 'ghost'" size="sm" @click="navigation.searchRecursive = false">
                 Here
               </Button>
-              <Button :variant="ui.searchRecursive ? 'default' : 'ghost'" size="sm" @click="ui.searchRecursive = true">
+              <Button :variant="navigation.searchRecursive ? 'default' : 'ghost'" size="sm" @click="navigation.searchRecursive = true">
                 & Subfolders
               </Button>
             </div>

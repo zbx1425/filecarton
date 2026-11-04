@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useNavigationStore } from '@/stores/navigation'
-import { useUiStore } from '@/stores/ui'
 import { isEditable, isMarkdown } from '@/composables/useFileType'
 import FileTable from '@/components/files/FileTable.vue'
 import SearchResults from '@/components/files/SearchResults.vue'
@@ -10,10 +9,9 @@ import EditorView from '@/components/editor/EditorView.vue'
 import MarkdownEditorView from '@/components/editor/MarkdownEditorView.vue'
 
 const navigation = useNavigationStore()
-const ui = useUiStore()
 
 const showRecursiveSearch = computed(
-  () => navigation.viewMode === 'list' && ui.searchRecursive && ui.searchQuery.trim().length > 0,
+  () => navigation.viewMode === 'list' && navigation.searchRecursive && navigation.searchQuery.trim().length > 0,
 )
 
 const isCodeFile = computed(

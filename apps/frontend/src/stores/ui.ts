@@ -18,8 +18,6 @@ export const useUiStore = defineStore('ui', () => {
   })
   const unixPermInfo = ref(config.unixPerm ?? { user: 'unknown', isRoot: false })
 
-  const searchQuery = ref('')
-  const searchRecursive = ref(false)
   const settingsOpen = ref(false)
   const dragOverlayVisible = ref(false)
 
@@ -48,8 +46,6 @@ export const useUiStore = defineStore('ui', () => {
     branding,
     features,
     unixPermInfo,
-    searchQuery,
-    searchRecursive,
     settingsOpen,
     dragOverlayVisible,
     treePanelVisible,

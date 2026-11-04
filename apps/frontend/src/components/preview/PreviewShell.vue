@@ -2,11 +2,12 @@
 import { ref, computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { useNavigationStore } from '@/stores/navigation'
-import { useFileListStore } from '@/stores/fileList'
+import { useFileTreeCacheStore } from '@/stores/fileTreeCache.ts'
 import { useUiStore } from '@/stores/ui'
 import { isEditable, isImage, isAudio, isVideo, isArchive, isPdf } from '@/composables/useFileType'
 import { isFilenameBlocked } from '@/utils/pathValidation'
 import { buildDownloadUrl } from '@/api/client'
+import { parentPath, pathName } from '@/utils/path'
 import { ArrowLeft, Pencil, Download } from '@lucide/vue'
 import ImagePreview from './ImagePreview.vue'
 import AudioPreview from './AudioPreview.vue'
@@ -18,15 +19,18 @@ import PdfPreview from './PdfPreview.vue'
 import FallbackPreview from './FallbackPreview.vue'
 
 const navigation = useNavigationStore()
-const fileList = useFileListStore()
+const cache = useFileTreeCacheStore()
 const ui = useUiStore()
 const archivePreviewRef = ref<InstanceType<typeof ArchivePreview> | null>(null)
 
-const fileName = computed(() => navigation.activeFile ?? '')
+const fileName = computed(() => navigation.activeFileName ?? '')
 const filePath = computed(() => navigation.activeFilePath ?? '')
 
 const fileSize = computed(() => {
-  const entry = fileList.getFileByName(fileName.value)
+  if (!navigation.activeFile) return 0
+  const dirPath = parentPath(navigation.activeFile)
+  const name = pathName(navigation.activeFile)
+  const entry = cache.getFileByName(dirPath, name)
   return entry?.size ?? 0
 })
 

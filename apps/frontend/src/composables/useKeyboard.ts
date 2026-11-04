@@ -1,7 +1,8 @@
 import { onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useNavigationStore } from '@/stores/navigation'
-import { useFileListStore } from '@/stores/fileList'
+import { useFileTreeCacheStore } from '@/stores/fileTreeCache'
 import { useUiStore } from '@/stores/ui'
+import { usePreferencesStore } from '@/stores/preferences'
 import { dialogState } from '@/composables/useDialogs'
 import { lightboxState, closeLightbox } from '@/composables/useLightbox'
 import { handleArchiveBackKey } from '@/composables/useArchiveExplorer'
@@ -18,6 +19,7 @@ import { useUploadStore } from '@/stores/upload'
 import { errorMessage } from '@/utils/errorMessage'
 import { toast } from 'vue-sonner'
 import { useClipboardStore } from '@/stores/clipboard'
+import { joinPath } from '@/utils/path'
 
 function scrollFocusedRowIntoView(name: string) {
   nextTick(() => {
@@ -26,9 +28,34 @@ function scrollFocusedRowIntoView(name: string) {
   })
 }
 
+/** Get the filtered entries for the current directory (same logic as useFileListView) */
+function getFilteredEntries(): Array<{ name: string; isDir: boolean }> {
+  const cache = useFileTreeCacheStore()
+  const navigation = useNavigationStore()
+  const preferences = usePreferencesStore()
+
+  const dirData = cache.getDirectory(navigation.currentPathStr)
+  if (!dirData) return []
+
+  const q = navigation.searchQuery.trim().toLowerCase()
+  const showDot = preferences.showDotFiles
+  const result: Array<{ name: string; isDir: boolean }> = []
+
+  for (const d of dirData.dirs) {
+    if (!showDot && d.name.startsWith('.')) continue
+    if (q && !navigation.searchRecursive && !d.name.toLowerCase().includes(q)) continue
+    result.push({ name: d.name, isDir: true })
+  }
+  for (const f of dirData.files) {
+    if (!showDot && f.name.startsWith('.')) continue
+    if (q && !navigation.searchRecursive && !f.name.toLowerCase().includes(q)) continue
+    result.push({ name: f.name, isDir: false })
+  }
+  return result
+}
+
 export function useKeyboard() {
   const navigation = useNavigationStore()
-  const fileList = useFileListStore()
   const ui = useUiStore()
   const clipboard = useClipboardStore()
   const upload = useUploadStore()
@@ -120,7 +147,15 @@ export function useKeyboard() {
     }
     if (ctrl && e.key === 'a') {
       e.preventDefault()
-      fileList.toggleSelectAll()
+      const entries = getFilteredEntries()
+      const curPath = navigation.currentPathStr
+      const allPaths = entries.map(en => joinPath(curPath, en.name))
+      const allSelected = allPaths.length > 0 && allPaths.every(p => navigation.selected.has(p))
+      if (allSelected) {
+        navigation.clearSelection()
+      } else {
+        navigation.setSelected(new Set(allPaths))
+      }
       return
     }
     if (ctrl && e.key === 'f') {
@@ -137,7 +172,7 @@ export function useKeyboard() {
     }
     if (e.key === 'F6') {
       e.preventDefault()
-      if (fileList.hasSelection) {
+      if (navigation.hasSelection) {
         downloadSelected().catch((err) => {
           toast.error(errorMessage(err))
         })
@@ -145,32 +180,36 @@ export function useKeyboard() {
       return
     }
 
-    if (e.key === 'Delete' && !ui.readonly && fileList.hasSelection) {
+    if (e.key === 'Delete' && !ui.readonly && navigation.hasSelection) {
       e.preventDefault()
       deleteSelected()
       return
     }
-    if (e.key === 'F2' && !ui.readonly && fileList.selectedCount === 1) {
+    if (e.key === 'F2' && !ui.readonly && navigation.selectedCount === 1) {
       e.preventDefault()
       renameSelected()
       return
     }
 
     if (e.key === 'Escape') {
-      if (fileList.hasSelection) {
-        fileList.clearSelection()
+      if (navigation.hasSelection) {
+        navigation.clearSelection()
       }
       return
     }
 
-    if (e.key === 'Enter' && fileList.selectedCount === 1) {
-      const name = Array.from(fileList.selected)[0]
-      const entry = fileList.filteredEntries.find(en => en.name === name)
+    if (e.key === 'Enter' && navigation.selectedCount === 1) {
+      const absPath = Array.from(navigation.selected)[0]
+      const entries = getFilteredEntries()
+      const curPath = navigation.currentPathStr
+      const prefix = curPath ? curPath + '/' : ''
+      const name = prefix ? absPath.slice(prefix.length) : absPath
+      const entry = entries.find(en => en.name === name)
       if (entry) {
         if (entry.isDir) {
           navigation.navigateTo([...navigation.currentPath, entry.name])
         } else {
-          navigation.openFile(entry.name)
+          navigation.openFile(joinPath(curPath, entry.name))
         }
       }
       return
@@ -178,23 +217,27 @@ export function useKeyboard() {
 
     if (e.key === 'ArrowUp') {
       e.preventDefault()
-      fileList.moveFocus(-1)
-      const entries = fileList.filteredEntries
-      if (entries[fileList.focusIndex]) {
-        fileList.clearSelection()
-        fileList.toggleSelect(entries[fileList.focusIndex].name)
-        scrollFocusedRowIntoView(entries[fileList.focusIndex].name)
+      const entries = getFilteredEntries()
+      navigation.moveFocus(-1, entries.length)
+      const curPath = navigation.currentPathStr
+      if (entries[navigation.focusIndex]) {
+        const name = entries[navigation.focusIndex].name
+        navigation.clearSelection()
+        navigation.toggleSelect(joinPath(curPath, name))
+        scrollFocusedRowIntoView(name)
       }
       return
     }
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      fileList.moveFocus(1)
-      const entries = fileList.filteredEntries
-      if (entries[fileList.focusIndex]) {
-        fileList.clearSelection()
-        fileList.toggleSelect(entries[fileList.focusIndex].name)
-        scrollFocusedRowIntoView(entries[fileList.focusIndex].name)
+      const entries = getFilteredEntries()
+      navigation.moveFocus(1, entries.length)
+      const curPath = navigation.currentPathStr
+      if (entries[navigation.focusIndex]) {
+        const name = entries[navigation.focusIndex].name
+        navigation.clearSelection()
+        navigation.toggleSelect(joinPath(curPath, name))
+        scrollFocusedRowIntoView(name)
       }
       return
     }

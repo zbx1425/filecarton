@@ -4,21 +4,16 @@ import { toast } from 'vue-sonner'
 import { apiGet, apiWrite, ApiError } from '@/api/client'
 import type { ReadResponse } from '@/api/types'
 import { useNavigationStore } from '@/stores/navigation'
-import { useFileListStore } from '@/stores/fileList'
+import { useFileTreeCacheStore } from '@/stores/fileTreeCache'
 import { showEditorConflict } from '@/composables/useDialogs'
 import { errorMessage } from '@/utils/errorMessage'
+import { parentPath, pathName } from '@/utils/path'
 
 function updateFileEntry(filePath: string, result: { size: number; mtime: number }) {
-  const navigation = useNavigationStore()
-  const parentPath = filePath.includes('/') ? filePath.slice(0, filePath.lastIndexOf('/')) : ''
-  if (navigation.currentPathStr !== parentPath) return
-  const fileList = useFileListStore()
-  const fileName = filePath.includes('/') ? filePath.slice(filePath.lastIndexOf('/') + 1) : filePath
-  const entry = fileList.files.find(f => f.name === fileName)
-  if (entry) {
-    entry.size = result.size
-    entry.mtime = result.mtime
-  }
+  const cache = useFileTreeCacheStore()
+  const dirPath = parentPath(filePath)
+  const fileName = pathName(filePath)
+  cache.updateFileEntry(dirPath, fileName, result)
 }
 
 export function useEditorSave() {

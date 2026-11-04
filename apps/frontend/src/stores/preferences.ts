@@ -16,6 +16,7 @@ const STORAGE_KEY = 'filecarton_preferences'
 
 type Theme = 'system' | 'light' | 'dark'
 type TabSize = 2 | 4
+export type SortColumn = 'name' | 'size' | 'mtime'
 
 interface StoredPreferences {
   theme: Theme
@@ -33,6 +34,8 @@ interface StoredPreferences {
   showUnixPerm: boolean
   readmePaneHeight: number
   readmePaneCollapsed: boolean
+  sortBy: SortColumn
+  sortAsc: boolean
 }
 
 const DEFAULTS: StoredPreferences = {
@@ -51,6 +54,8 @@ const DEFAULTS: StoredPreferences = {
   showUnixPerm: true,
   readmePaneHeight: 300,
   readmePaneCollapsed: false,
+  sortBy: 'name',
+  sortAsc: true,
 }
 
 const BREAKPOINT_DEFAULTS: Record<string, number | null> = {
@@ -61,9 +66,22 @@ const BREAKPOINT_DEFAULTS: Record<string, number | null> = {
 
 function loadPreferences(): StoredPreferences {
   try {
+    // Migrate legacy sort preference
+    const legacySort = localStorage.getItem('filecarton_sort')
+    let legacySortObj: { sortBy?: SortColumn; sortAsc?: boolean } = {}
+    if (legacySort) {
+      try { legacySortObj = JSON.parse(legacySort) } catch { /* ignore */ }
+      localStorage.removeItem('filecarton_sort')
+    }
+
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
+      // Apply legacy sort if not already in stored prefs
+      if (legacySortObj.sortBy && !parsed.sortBy) {
+        parsed.sortBy = legacySortObj.sortBy
+        parsed.sortAsc = legacySortObj.sortAsc ?? true
+      }
       const merged: StoredPreferences = { ...DEFAULTS, ...parsed }
       if (merged.primaryColor !== 'default' && !isValidColorFamily(merged.primaryColor)) {
         merged.primaryColor = 'default'
@@ -99,6 +117,8 @@ export const usePreferencesStore = defineStore('preferences', () => {
   const tableMaxWidth = ref<number | null>(saved.tableMaxWidth)
   const readmePaneHeight = ref(saved.readmePaneHeight)
   const readmePaneCollapsed = ref(saved.readmePaneCollapsed)
+  const sortBy = ref<SortColumn>(saved.sortBy)
+  const sortAsc = ref(saved.sortAsc)
 
   const config = window.__FILECARTON__
   const dotfilesConfig = config.dotfiles ?? { block: false, forceVisible: false }
@@ -199,6 +219,8 @@ export const usePreferencesStore = defineStore('preferences', () => {
       showUnixPerm: _showUnixPerm.value,
       readmePaneHeight: readmePaneHeight.value,
       readmePaneCollapsed: readmePaneCollapsed.value,
+      sortBy: sortBy.value,
+      sortAsc: sortAsc.value,
     })
   }
 
@@ -223,6 +245,16 @@ export const usePreferencesStore = defineStore('preferences', () => {
     toolbarTokens.value ? toolbarTokens.value.tone : resolvedTheme.value,
   )
 
+  function toggleSort(column: SortColumn) {
+    if (sortBy.value === column) {
+      sortAsc.value = !sortAsc.value
+    } else {
+      sortBy.value = column
+      sortAsc.value = true
+    }
+    persist()
+  }
+
   function setTableMaxWidth(width: number | null) {
     if (width !== null && width > windowWidth.value - 48) {
       tableMaxWidth.value = null
@@ -236,7 +268,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
   watch([theme, primaryColor, toolbarColor], () => persist())
   watch(baseFontSize, () => persist())
   watch(displayDensity, () => persist())
-  watch([editorFontSize, editorWordWrap, editorTabSize, editorLineNumbers, editorAutoDetect, _showDotFiles, _showUnixPerm, readmePaneHeight, readmePaneCollapsed], () => persist())
+  watch([editorFontSize, editorWordWrap, editorTabSize, editorLineNumbers, editorAutoDetect, _showDotFiles, _showUnixPerm, readmePaneHeight, readmePaneCollapsed, sortBy, sortAsc], () => persist())
 
   watch(breakpointBracket, (newBracket) => {
     if (newBracket !== prevBracket) {
@@ -278,6 +310,9 @@ export const usePreferencesStore = defineStore('preferences', () => {
     resolvedTheme,
     readmePaneHeight,
     readmePaneCollapsed,
+    sortBy,
+    sortAsc,
+    toggleSort,
     setTableMaxWidth,
   }
 })

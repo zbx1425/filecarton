@@ -9,7 +9,7 @@ import type { ErrorInfo } from '@/api/client'
 import type { CheckUploadConflictsResponse } from '@/api/types'
 import { showPasteConflict, confirm } from '@/composables/useDialogs'
 import { errorMessage } from '@/utils/errorMessage'
-import { invalidateFileTree } from '@/composables/useFileTree'
+import { handleMutation } from '@/services/treeInvalidation'
 import { joinPath, isAppleJunkName, isAppleJunkPath } from '@/utils/path'
 import { sanitizeFileName, isDotFileBlocked, isFilenameBlocked } from '@/utils/pathValidation'
 import { uploadViaTus } from '@/services/tusUploader'
@@ -477,7 +477,7 @@ export const useUploadStore = defineStore('upload', () => {
     pendingRefreshDirs.clear()
     if (dirs.size === 0) return
 
-    invalidateFileTree({
+    handleMutation({
       subtrees: [...dirs],
       fileListBackground: true,
     })

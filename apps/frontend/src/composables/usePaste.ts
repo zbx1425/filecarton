@@ -3,7 +3,7 @@ import { apiPost } from '@/api/client'
 import type { PasteResponse } from '@/api/types'
 import { useNavigationStore } from '@/stores/navigation'
 import { showPasteConflict, showOperationReport } from '@/composables/useDialogs'
-import { invalidateFileTree, type MutationRefreshOptions } from '@/composables/useFileTree'
+import { handleMutation, type MutationRefreshOptions } from '@/services/treeInvalidation'
 import { errorMessage } from '@/utils/errorMessage'
 
 export interface PasteParams {
@@ -99,7 +99,7 @@ export async function runPaste(params: PasteParams): Promise<number> {
       refreshOpts.dirs = [sourcePath]
       refreshOpts.removed = items.map(n => sourcePath ? `${sourcePath}/${n}` : n)
     }
-    invalidateFileTree(refreshOpts)
+    handleMutation(refreshOpts)
 
     return totalCompleted
   } catch (e: unknown) {

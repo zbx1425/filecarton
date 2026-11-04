@@ -1,53 +1,217 @@
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useFileListStore } from '@/stores/fileList'
+import { useFileTreeCacheStore } from '@/stores/fileTreeCache'
 import { useNavigationStore } from '@/stores/navigation'
 import { useClipboardStore } from '@/stores/clipboard'
 import { usePreferencesStore } from '@/stores/preferences'
 import { useUiStore } from '@/stores/ui'
-import { refreshCurrent } from '@/composables/useFileActions'
+import { joinPath } from '@/utils/path'
+
+const naturalCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
 
 export function useFileListView() {
-  const fileList = useFileListStore()
+  const cache = useFileTreeCacheStore()
   const navigation = useNavigationStore()
   const clipboard = useClipboardStore()
   const preferences = usePreferencesStore()
   const ui = useUiStore()
 
-  // ── Data (refs from stores) ──
+  // ── Raw data from cache ──
+
+  const directoryData = computed(() => cache.getDirectory(navigation.currentPathStr))
+  const dirs = computed(() => directoryData.value?.dirs ?? [])
+  const files = computed(() => directoryData.value?.files ?? [])
+  const loading = computed(() => directoryData.value?.loading ?? false)
+  const error = computed(() => directoryData.value?.error ?? null)
+
+  // ── Sorted ──
 
   const {
-    dirs, files, loading, error,
     sortBy, sortAsc,
-    selected, focusIndex,
-    filteredDirs, filteredFiles, filteredEntries, allEntries,
-    selectedCount, hasSelection, isAllSelected,
-    filteredTotalSize,
-  } = storeToRefs(fileList)
+    showDotFiles, effectiveTableMaxWidth,
+  } = storeToRefs(preferences)
 
   const {
-    currentPath, currentPathStr, activeFile, viewMode, editDirty,
+    currentPath, currentPathStr, activeFile, activeFileName, viewMode, editDirty,
+    selected, focusIndex, selectedCount, hasSelection,
+    searchQuery, searchRecursive,
   } = storeToRefs(navigation)
 
-  // ── Cross-store computed ──
+  const sortedDirs = computed(() => {
+    const arr = [...dirs.value]
+    const dir = sortAsc.value ? 1 : -1
+    if (sortBy.value === 'name') {
+      arr.sort((a, b) => dir * naturalCollator.compare(a.name, b.name))
+    } else if (sortBy.value === 'mtime') {
+      arr.sort((a, b) => dir * (a.mtime - b.mtime))
+    } else {
+      arr.sort((a, b) => dir * naturalCollator.compare(a.name, b.name))
+    }
+    return arr
+  })
+
+  const sortedFiles = computed(() => {
+    const arr = [...files.value]
+    const dir = sortAsc.value ? 1 : -1
+    if (sortBy.value === 'name') {
+      arr.sort((a, b) => dir * naturalCollator.compare(a.name, b.name))
+    } else if (sortBy.value === 'size') {
+      arr.sort((a, b) => dir * (a.size - b.size))
+    } else if (sortBy.value === 'mtime') {
+      arr.sort((a, b) => dir * (a.mtime - b.mtime))
+    }
+    return arr
+  })
+
+  // ── Filtered ──
+
+  const filteredDirs = computed(() => {
+    let result = sortedDirs.value
+    if (!showDotFiles.value) {
+      result = result.filter(d => !d.name.startsWith('.'))
+    }
+    const q = searchQuery.value.trim().toLowerCase()
+    if (q && !searchRecursive.value) {
+      result = result.filter(d => d.name.toLowerCase().includes(q))
+    }
+    return result
+  })
+
+  const filteredFiles = computed(() => {
+    let result = sortedFiles.value
+    if (!showDotFiles.value) {
+      result = result.filter(f => !f.name.startsWith('.'))
+    }
+    const q = searchQuery.value.trim().toLowerCase()
+    if (q && !searchRecursive.value) {
+      result = result.filter(f => f.name.toLowerCase().includes(q))
+    }
+    return result
+  })
+
+  // ── Entries (combined dirs + files) ──
+
+  const allEntries = computed(() => {
+    const result: Array<{ name: string; isDir: boolean }> = []
+    for (const d of sortedDirs.value) result.push({ name: d.name, isDir: true })
+    for (const f of sortedFiles.value) result.push({ name: f.name, isDir: false })
+    return result
+  })
+
+  const filteredEntries = computed(() => {
+    const result: Array<{ name: string; isDir: boolean }> = []
+    for (const d of filteredDirs.value) result.push({ name: d.name, isDir: true })
+    for (const f of filteredFiles.value) result.push({ name: f.name, isDir: false })
+    return result
+  })
+
+  // ── Derived ──
+
+  const filteredTotalSize = computed(() => filteredFiles.value.reduce((sum, f) => sum + f.size, 0))
 
   const showUnixPerm = computed(() => ui.features.unixPerm && preferences.showUnixPerm)
   const canPaste = computed(() => clipboard.hasContent)
 
-  const { effectiveTableMaxWidth } = storeToRefs(preferences)
+  const isAllSelected = computed(() => {
+    const entries = filteredEntries.value
+    if (entries.length === 0) return false
+    const curPath = currentPathStr.value
+    return entries.every(e => selected.value.has(joinPath(curPath, e.name)))
+  })
 
-  // ── Methods ──
+  // ── Selection helpers (build absolute paths) ──
+
+  function toggleSelect(name: string) {
+    const absPath = joinPath(currentPathStr.value, name)
+    navigation.toggleSelect(absPath)
+  }
+
+  function rangeSelect(name: string) {
+    const curPath = currentPathStr.value
+    if (!navigation.lastClickedPath) {
+      toggleSelect(name)
+      return
+    }
+    const entries = filteredEntries.value
+    const lastIdx = entries.findIndex(e => joinPath(curPath, e.name) === navigation.lastClickedPath)
+    const curIdx = entries.findIndex(e => e.name === name)
+    if (lastIdx < 0 || curIdx < 0) {
+      toggleSelect(name)
+      return
+    }
+    const start = Math.min(lastIdx, curIdx)
+    const end = Math.max(lastIdx, curIdx)
+    const s = new Set(selected.value)
+    for (let i = start; i <= end; i++) {
+      s.add(joinPath(curPath, entries[i].name))
+    }
+    navigation.setSelected(s)
+  }
+
+  function selectAll() {
+    const curPath = currentPathStr.value
+    const s = new Set<string>()
+    for (const entry of filteredEntries.value) s.add(joinPath(curPath, entry.name))
+    navigation.setSelected(s)
+  }
+
+  function toggleSelectAll() {
+    if (isAllSelected.value) navigation.clearSelection()
+    else selectAll()
+  }
+
+  function setFocusByName(name: string) {
+    const idx = filteredEntries.value.findIndex(e => e.name === name)
+    if (idx >= 0) navigation.setFocusIndex(idx)
+  }
+
+  function moveFocus(delta: number) {
+    navigation.moveFocus(delta, filteredEntries.value.length)
+  }
+
+  function isSelected(name: string): boolean {
+    return selected.value.has(joinPath(currentPathStr.value, name))
+  }
 
   function isCutItem(name: string): boolean {
     return clipboard.isCutItem(currentPathStr.value, name)
   }
+
+  // ── Watch: prune selection and adjust focus when filtered entries change ──
+
+  watch(filteredEntries, (entries) => {
+    const len = entries.length
+    if (len === 0) {
+      navigation.setFocusIndex(-1)
+    } else if (focusIndex.value >= len) {
+      navigation.setFocusIndex(len - 1)
+    }
+    if (selected.value.size > 0) {
+      const curPath = currentPathStr.value
+      const validPaths = new Set(entries.map(e => joinPath(curPath, e.name)))
+      navigation.pruneSelection(validPaths)
+    }
+  })
+
+  // ── Query helpers ──
+
+  function getFileByName(name: string) {
+    return cache.getFileByName(currentPathStr.value, name)
+  }
+
+  function getDirByName(name: string) {
+    return cache.getDirByName(currentPathStr.value, name)
+  }
+
+  // ── Pass-through actions ──
 
   function navigateTo(path: string[]) {
     return navigation.navigateTo(path)
   }
 
   function openFile(fileName: string) {
-    return navigation.openFile(fileName)
+    const filePath = joinPath(currentPathStr.value, fileName)
+    return navigation.openFile(filePath)
   }
 
   function goUp() {
@@ -63,23 +227,6 @@ export function useFileListView() {
     return navigation.checkDirty()
   }
 
-  // Sort
-  const toggleSort = fileList.toggleSort
-
-  // Selection
-  const toggleSelect = fileList.toggleSelect
-  const rangeSelect = fileList.rangeSelect
-  const clearSelection = fileList.clearSelection
-  const selectAll = fileList.selectAll
-  const toggleSelectAll = fileList.toggleSelectAll
-  const setFocusByName = fileList.setFocusByName
-  const moveFocus = fileList.moveFocus
-
-  // Query
-  const getFileByName = fileList.getFileByName
-  const getDirByName = fileList.getDirByName
-
-  // Clipboard
   function copyEntries(entries: Array<{ name: string; isDir: boolean }>, fromPath: string) {
     clipboard.copy(entries, fromPath)
   }
@@ -87,9 +234,6 @@ export function useFileListView() {
   function cutEntries(entries: Array<{ name: string; isDir: boolean }>, fromPath: string) {
     clipboard.cut(entries, fromPath)
   }
-
-  // Table width
-  const setTableMaxWidth = preferences.setTableMaxWidth
 
   return {
     // File list data
@@ -100,9 +244,11 @@ export function useFileListView() {
 
     // Selection
     selected, selectedCount, hasSelection, isAllSelected, focusIndex,
+    isSelected,
 
     // Navigation
-    currentPath, currentPathStr, activeFile, viewMode, editDirty,
+    currentPath, currentPathStr, activeFile, activeFileName, viewMode, editDirty,
+    searchQuery, searchRecursive,
 
     // Cross-store derived
     showUnixPerm,
@@ -113,22 +259,25 @@ export function useFileListView() {
     navigateTo, openFile, goUp, backToList, checkDirty,
 
     // Sort actions
-    toggleSort,
+    toggleSort: preferences.toggleSort,
 
     // Selection actions
-    toggleSelect, rangeSelect, clearSelection, selectAll, toggleSelectAll,
+    toggleSelect, rangeSelect, selectAll, toggleSelectAll,
+    clearSelection: navigation.clearSelection,
     setFocusByName, moveFocus,
 
     // Query
     getFileByName, getDirByName,
 
-    // Refresh
-    refreshCurrent,
+    // Refresh (placeholder — will be wired in handleMutation)
+    refreshCurrent: () => {
+      cache.fetchDirectory(navigation.currentPathStr)
+    },
 
     // Clipboard
     isCutItem, copyEntries, cutEntries,
 
     // Table width
-    setTableMaxWidth,
+    setTableMaxWidth: preferences.setTableMaxWidth,
   }
 }
