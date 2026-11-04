@@ -1,4 +1,5 @@
 import { toast } from 'vue-sonner'
+import i18n from '@/i18n'
 import { apiGet, apiPost, buildDownloadUrl, fetchBatchDownload } from '@/api/client'
 import type { CreateResponse, DeleteResponse, RenameResponse, RemoteDownloadResponse, ChecksumResponse } from '@/api/types'
 import { useFileListStore } from '@/stores/fileList'
@@ -7,9 +8,13 @@ import { useNavigationStore } from '@/stores/navigation'
 import { useClipboardStore } from '@/stores/clipboard'
 import { useUiStore } from '@/stores/ui'
 import { confirm, prompt, showPasteConflict, showOperationReport, showPermissionsDialog, showChecksumDialog } from '@/composables/useDialogs'
-import { usePreferencesStore } from '@/stores/preferences'
-import { joinPath, validateFileName } from '@/utils/path'
+import { joinPath } from '@/utils/path'
+import { validateFileName, isDotFileBlocked, isFilenameBlocked } from '@/utils/pathValidation'
 import { errorMessage } from '@/utils/errorMessage'
+import { withAsyncTaskNotification } from '@/utils/withAsyncTaskNotification'
+
+const t = (key: string, params?: Record<string, unknown>): string =>
+  (i18n.global as any).t(key, params ?? {})
 
 export function refreshCurrent() {
   const navigation = useNavigationStore()
@@ -21,11 +26,12 @@ export function refreshCurrent() {
   tree.loadChildren(path)
 }
 
-export async function createItem(type: 'file' | 'dir') {
+export async function createItem(type: 'file' | 'dir', targetPath?: string) {
   const ui = useUiStore()
   if (ui.readonly) return
 
   const navigation = useNavigationStore()
+  const path = targetPath ?? navigation.currentPathStr
   const label = type === 'file' ? 'New File' : 'New Folder'
   const placeholder = type === 'file' ? 'filename.txt' : 'folder-name'
 
@@ -38,27 +44,27 @@ export async function createItem(type: 'file' | 'dir') {
     return
   }
 
-  const prefs = usePreferencesStore()
-  if (prefs.isDotFileBlocked(name)) {
-    toast.error('Dot files (hidden files) are not allowed')
+  if (isDotFileBlocked(name)) {
+    toast.error(t('toast.dotfile_blocked'))
     return
   }
-  if (type === 'file' && prefs.isFilenameBlocked(name)) {
-    toast.error('This file type is restricted')
+  if (type === 'file' && isFilenameBlocked(name)) {
+    toast.error(t('toast.filetype_restricted'))
     return
   }
 
-  const toastId = toast.loading(`Creating ${name}...`)
-  try {
-    await apiPost<CreateResponse>('create', {
-      path: navigation.currentPathStr,
-      name,
-      type,
-    })
-    toast.success(`Created ${name}`, { id: toastId })
-    refreshCurrent()
-  } catch (e: unknown) {
-    toast.error(errorMessage(e), { id: toastId })
+  const result = await withAsyncTaskNotification(
+    () => apiPost<CreateResponse>('create', { path, name, type }),
+    { loading: t('toast.creating', { name }), success: t('toast.created', { name }) },
+  )
+  if (result) {
+    const tree = useTreeStore()
+    tree.invalidate(path)
+    tree.loadChildren(path)
+    if (navigation.currentPathStr === path) {
+      const fileList = useFileListStore()
+      fileList.fetchDir(path)
+    }
   }
 }
 
@@ -168,7 +174,7 @@ export async function deleteItems(dirPath: string, itemNames: string[]) {
   }
   if (!confirmed) return
 
-  const toastId = toast.loading(`Deleting ${count} item(s)...`)
+  const toastId = toast.loading(t('toast.deleting', { count }))
   try {
     const result = await apiPost<DeleteResponse>('delete', {
       path: dirPath,
@@ -182,7 +188,7 @@ export async function deleteItems(dirPath: string, itemNames: string[]) {
         items: result.failed.map(f => ({ name: f.name, reason: f.error })),
       })
     } else {
-      toast.success(`Deleted ${result.deleted} item(s)`, { id: toastId })
+      toast.success(t('toast.deleted', { count: result.deleted }), { id: toastId })
     }
 
     const fileList = useFileListStore()
@@ -252,25 +258,24 @@ export async function renameItem(dirPath: string, oldName: string, isDir?: boole
     return
   }
 
-  const prefs = usePreferencesStore()
-  if (prefs.isDotFileBlocked(newName)) {
-    toast.error('Dot files (hidden files) are not allowed')
+  if (isDotFileBlocked(newName)) {
+    toast.error(t('toast.dotfile_blocked'))
     return
   }
-  if (!isDir && prefs.isFilenameBlocked(newName)) {
-    toast.error('This file type is restricted')
+  if (!isDir && isFilenameBlocked(newName)) {
+    toast.error(t('toast.filetype_restricted'))
     return
   }
 
-  const toastId = toast.loading(`Renaming to ${newName}...`)
-  try {
-    await apiPost<RenameResponse>('rename', {
+  const result = await withAsyncTaskNotification(
+    () => apiPost<RenameResponse>('rename', {
       path: dirPath,
       oldName,
       newName,
-    })
-    toast.success(`Renamed to ${newName}`, { id: toastId })
-
+    }),
+    { loading: t('toast.renaming', { name: newName }), success: t('toast.renamed', { name: newName }) },
+  )
+  if (result) {
     if (isAffectingActiveFile(dirPath, [oldName])) {
       navigation.editDirty = false
       navigation.backToList()
@@ -290,8 +295,6 @@ export async function renameItem(dirPath: string, oldName: string, isDir?: boole
     refreshCurrent()
     tree.invalidate(dirPath)
     tree.loadChildren(dirPath)
-  } catch (e: unknown) {
-    toast.error(errorMessage(e), { id: toastId })
   }
 }
 
@@ -330,7 +333,7 @@ export function copySelected() {
 
   if (items.length === 0) return
   clipboard.copy(items, navigation.currentPathStr)
-  toast.info(`Copied ${items.length} item(s)`)
+  toast.info(t('toast.copied_items', { count: items.length }))
 }
 
 export function cutSelected() {
@@ -347,7 +350,7 @@ export function cutSelected() {
 
   if (items.length === 0) return
   clipboard.cut(items, navigation.currentPathStr)
-  toast.info(`Cut ${items.length} item(s)`)
+  toast.info(t('toast.cut_items', { count: items.length }))
 }
 
 export async function deleteSelected() {
@@ -448,7 +451,7 @@ export async function downloadSelected() {
 }
 
 export async function requestChecksum(filePath: string) {
-  const toastId = toast.loading('Computing checksums…')
+  const toastId = toast.loading(t('toast.checksum_computing'))
   try {
     const result = await apiGet<ChecksumResponse>('checksum', { path: filePath })
     toast.dismiss(toastId)

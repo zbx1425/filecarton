@@ -1,12 +1,12 @@
 import { ref, watch, onBeforeUnmount } from 'vue'
 import type * as Monaco from 'monaco-editor'
 import { toast } from 'vue-sonner'
-import { useI18n } from 'vue-i18n'
-import { apiGet, apiWrite, ApiError, toErrorInfo } from '@/api/client'
+import { apiGet, apiWrite, ApiError } from '@/api/client'
 import type { ReadResponse } from '@/api/types'
 import { useNavigationStore } from '@/stores/navigation'
 import { useFileListStore } from '@/stores/fileList'
 import { showEditorConflict } from '@/composables/useDialogs'
+import { errorMessage } from '@/utils/errorMessage'
 
 function updateFileEntry(filePath: string, result: { size: number; mtime: number }) {
   const navigation = useNavigationStore()
@@ -23,8 +23,6 @@ function updateFileEntry(filePath: string, result: { size: number; mtime: number
 
 export function useEditorSave() {
   const navigation = useNavigationStore()
-  const { t } = useI18n()
-
   const saving = ref(false)
   let currentMtime = 0
   let beforeUnloadHandler: ((e: BeforeUnloadEvent) => void) | null = null
@@ -87,16 +85,14 @@ export function useEditorSave() {
             if (e2 instanceof ApiError && e2.authError) {
               /* handled by the global onUnauthorized handler */
             } else {
-              const info2 = toErrorInfo(e2)
-              toast.error(t(`err.${info2.code}`, (info2.params as Record<string, unknown>) ?? {}))
+              toast.error(errorMessage(e2))
             }
           }
         } else if (choice === 'reload') {
           await reload(editor, savedPath)
         }
       } else {
-        const info = toErrorInfo(e)
-        toast.error(t(`err.${info.code}`, (info.params as Record<string, unknown>) ?? {}))
+        toast.error(errorMessage(e))
       }
     } finally {
       saving.value = false
@@ -114,7 +110,7 @@ export function useEditorSave() {
       if (e instanceof ApiError && e.authError) {
         /* handled by maybeUnauthorized */
       } else {
-        toast.error(t(`err.${toErrorInfo(e).code}`))
+        toast.error(errorMessage(e))
       }
     }
   }

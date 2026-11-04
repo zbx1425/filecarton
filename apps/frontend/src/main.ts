@@ -7,6 +7,7 @@ import { useNavigationStore } from './stores/navigation'
 import { useUiStore } from './stores/ui'
 import { usePreferencesStore } from './stores/preferences'
 import { useAuthStore } from './stores/auth'
+import { initTheme } from './utils/themeApplication'
 import { onUnauthorized } from './api/client'
 import { confirm } from './composables/useDialogs'
 
@@ -73,6 +74,6 @@ auth.initError()
 
 navigation.init()
 ui.initResponsive()
-preferences.init()
+initTheme(preferences)
 
 app.mount('#app')

@@ -13,11 +13,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Link, Info } from '@lucide/vue'
 import { dialogState } from '@/composables/useDialogs'
-import { usePreferencesStore } from '@/stores/preferences'
-import { validateFileName } from '@/utils/path'
+import { validateFileName, isDotFileBlocked, isFilenameBlocked } from '@/utils/pathValidation'
 import { remoteDownload } from '@/composables/useFileActions'
-
-const prefs = usePreferencesStore()
 
 const state = computed(() => dialogState.remoteDownload)
 const urlInput = ref('')
@@ -64,10 +61,10 @@ const nameError = computed(() => {
 
   const vErr = validateFileName(custom)
   if (vErr) return vErr
-  if (prefs.isDotFileBlocked(custom)) {
+  if (isDotFileBlocked(custom)) {
     return 'Dot files (hidden files) are not allowed'
   }
-  if (prefs.isFilenameBlocked(custom)) {
+  if (isFilenameBlocked(custom)) {
     return 'This file type is restricted'
   }
   return ''

@@ -8,15 +8,13 @@ import {
   type TailwindColorFamily,
   isValidColorFamily,
   isValidToolbarColor,
-  getPrimaryThemeTokens,
   getToolbarThemeTokens,
-  ensureSwatchStyles,
 } from '@/utils/themeColors'
+import { DENSITY_ROW_HEIGHT_REM, type Density } from '@/utils/themeApplication'
 
 const STORAGE_KEY = 'filecarton_preferences'
 
 type Theme = 'system' | 'light' | 'dark'
-type Density = 'compact' | 'default' | 'comfortable'
 type TabSize = 2 | 4
 
 interface StoredPreferences {
@@ -53,12 +51,6 @@ const DEFAULTS: StoredPreferences = {
   showUnixPerm: true,
   readmePaneHeight: 300,
   readmePaneCollapsed: false,
-}
-
-const DENSITY_ROW_HEIGHT_REM: Record<Density, number> = {
-  compact: 1.5,
-  default: 2,
-  comfortable: 2.5,
 }
 
 const BREAKPOINT_DEFAULTS: Record<string, number | null> = {
@@ -130,28 +122,6 @@ export const usePreferencesStore = defineStore('preferences', () => {
     if (toolbarColor.value === 'default') return backendDefaultToolbar.value
     return isValidToolbarColor(toolbarColor.value) ? toolbarColor.value : backendDefaultToolbar.value
   })
-
-  // ── Filename blocklist (precompiled) ──
-  const rules = config.filenameBlocklist ?? []
-  let _blockAll = false
-  let _allowAll = false
-  const _blockSuffixes: string[] = []
-  const _allowSuffixes: string[] = []
-  const _blockExact = new Set<string>()
-  const _allowExact = new Set<string>()
-  for (const rule of rules) {
-    if (typeof rule !== 'string' || rule === '') continue
-    const allow = rule[0] === '!'
-    const pattern = allow ? rule.slice(1) : rule
-    if (pattern === '') continue
-    if (pattern === '*') {
-      allow ? (_allowAll = true) : (_blockAll = true)
-    } else if (pattern[0] === '*') {
-      ;(allow ? _allowSuffixes : _blockSuffixes).push(pattern.slice(1).toLowerCase())
-    } else {
-      ;(allow ? _allowExact : _blockExact).add(pattern.toLowerCase())
-    }
-  }
 
   const _showDotFiles = ref(saved.showDotFiles)
 
@@ -232,34 +202,12 @@ export const usePreferencesStore = defineStore('preferences', () => {
     })
   }
 
-  function isFilenameBlocked(filename: string): boolean {
-    const lower = filename.toLowerCase()
-    const len = lower.length
-    // Phase 1: Allow rules — any match permits the file
-    if (_allowAll) return false
-    if (_allowExact.has(lower)) return false
-    for (const s of _allowSuffixes) {
-      if (len >= s.length && lower.endsWith(s)) return false
-    }
-    // Phase 2: Block rules — any match blocks the file
-    if (_blockAll) return true
-    if (_blockExact.has(lower)) return true
-    for (const s of _blockSuffixes) {
-      if (len >= s.length && lower.endsWith(s)) return true
-    }
-    return false
-  }
-
-  function isDotFileBlocked(filename: string): boolean {
-    return dotfilesConfig.block && filename.length > 0 && filename[0] === '.' && filename !== '.' && filename !== '..'
-  }
-
+  // System dark-mode: the listener only updates data; DOM application is
+  // handled by useThemeApplication composable.
   const systemDarkQuery = window.matchMedia('(prefers-color-scheme: dark)')
   const _systemDark = ref(systemDarkQuery.matches)
-
   systemDarkQuery.addEventListener('change', (e) => {
     _systemDark.value = e.matches
-    if (theme.value === 'system') applyTheme()
   })
 
   const resolvedTheme = computed<'light' | 'dark'>(() => {
@@ -275,106 +223,19 @@ export const usePreferencesStore = defineStore('preferences', () => {
     toolbarTokens.value ? toolbarTokens.value.tone : resolvedTheme.value,
   )
 
-  function applyTheme() {
-    const isDark = resolvedTheme.value === 'dark'
-    document.documentElement.classList.toggle('dark', isDark)
-
-    const root = document.documentElement.style
-    const activePrimary = effectivePrimaryColor.value
-    if (activePrimary) {
-      const pTokens = getPrimaryThemeTokens(activePrimary, isDark)
-      root.setProperty('--primary', pTokens.primary)
-      root.setProperty('--primary-foreground', pTokens.primaryForeground)
-      root.setProperty('--ring', pTokens.ring)
-      root.setProperty('--selected', pTokens.selected)
-      root.setProperty('--sidebar-primary', pTokens.primary)
-      root.setProperty('--sidebar-primary-foreground', pTokens.primaryForeground)
-      root.setProperty('--sidebar-ring', pTokens.ring)
-      root.setProperty('--login-from', pTokens.loginFrom)
-      root.setProperty('--login-via', pTokens.loginVia)
-      root.setProperty('--login-to', pTokens.loginTo)
-    } else {
-      root.removeProperty('--primary')
-      root.removeProperty('--primary-foreground')
-      root.removeProperty('--ring')
-      root.removeProperty('--selected')
-      root.removeProperty('--sidebar-primary')
-      root.removeProperty('--sidebar-primary-foreground')
-      root.removeProperty('--sidebar-ring')
-      root.removeProperty('--login-from')
-      root.removeProperty('--login-via')
-      root.removeProperty('--login-to')
-    }
-
-    const tTokens = toolbarTokens.value
-    if (tTokens) {
-      root.setProperty('--toolbar-bg', tTokens.bg)
-      root.setProperty('--toolbar-fg', tTokens.fg)
-      root.setProperty('--toolbar-muted-fg', tTokens.mutedFg)
-      root.setProperty('--toolbar-border', tTokens.border)
-      root.setProperty('--toolbar-input', tTokens.input)
-      root.setProperty('--toolbar-accent', tTokens.accent)
-      root.setProperty('--toolbar-accent-fg', tTokens.accentFg)
-    } else {
-      root.removeProperty('--toolbar-bg')
-      root.removeProperty('--toolbar-fg')
-      root.removeProperty('--toolbar-muted-fg')
-      root.removeProperty('--toolbar-border')
-      root.removeProperty('--toolbar-input')
-      root.removeProperty('--toolbar-accent')
-      root.removeProperty('--toolbar-accent-fg')
-    }
-  }
-
-  function applyTypography() {
-    const root = document.documentElement.style
-    const size = baseFontSize.value
-    root.setProperty('--fc-size', `${size}px`)
-    const leading = Math.min(1.4 + (size - 12) * 0.02, 1.8)
-    root.setProperty('--fc-leading', String(leading))
-  }
-
-  function applyDensity() {
-    document.documentElement.style.setProperty(
-      '--fc-row-height',
-      `${DENSITY_ROW_HEIGHT_REM[displayDensity.value]}rem`,
-    )
-  }
-
-  function applyTableMaxWidth() {
-    const root = document.documentElement.style
-    const maxW = effectiveTableMaxWidth.value
-    if (maxW != null) {
-      root.setProperty('--fc-table-max-w', `${maxW}px`)
-      root.setProperty('--fc-table-resize-left', `${maxW}px`)
-    } else {
-      root.setProperty('--fc-table-max-w', 'none')
-      root.setProperty('--fc-table-resize-left', '0px')
-    }
-  }
-
   function setTableMaxWidth(width: number | null) {
     if (width !== null && width > windowWidth.value - 48) {
       tableMaxWidth.value = null
     } else {
       tableMaxWidth.value = width
     }
-    applyTableMaxWidth()
     persist()
   }
 
-  function init() {
-    ensureSwatchStyles()
-    applyTheme()
-    applyTypography()
-    applyDensity()
-    applyTableMaxWidth()
-  }
-
-  watch([theme, primaryColor, toolbarColor], () => { applyTheme(); persist() })
-  watch(baseFontSize, () => { applyTypography(); persist() })
-  watch(displayDensity, () => { applyDensity(); persist() })
-  watch(effectiveTableMaxWidth, () => { applyTableMaxWidth() })
+  // Persistence watches — no DOM side-effects
+  watch([theme, primaryColor, toolbarColor], () => persist())
+  watch(baseFontSize, () => persist())
+  watch(displayDensity, () => persist())
   watch([editorFontSize, editorWordWrap, editorTabSize, editorLineNumbers, editorAutoDetect, _showDotFiles, _showUnixPerm, readmePaneHeight, readmePaneCollapsed], () => persist())
 
   watch(breakpointBracket, (newBracket) => {
@@ -395,6 +256,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
     effectiveToolbarColor,
     isToolbarCustom,
     toolbarTone,
+    toolbarTokens,
     baseFontSize,
     editorFontSize,
     editorWordWrap,
@@ -416,9 +278,6 @@ export const usePreferencesStore = defineStore('preferences', () => {
     resolvedTheme,
     readmePaneHeight,
     readmePaneCollapsed,
-    isFilenameBlocked,
-    isDotFileBlocked,
     setTableMaxWidth,
-    init,
   }
 })

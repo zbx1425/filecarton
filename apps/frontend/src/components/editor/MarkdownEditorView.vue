@@ -8,6 +8,7 @@ import type { ReadResponse } from '@/api/types'
 import { useNavigationStore } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
 import { usePreferencesStore } from '@/stores/preferences'
+import { isFilenameBlocked } from '@/utils/pathValidation'
 import { loadMonaco } from '@/composables/useMonaco'
 import { monacoLanguage } from '@/composables/useFileType'
 import { useEditorSave } from '@/composables/useEditorSave'
@@ -39,7 +40,7 @@ watch(() => prefs.editorFontSize, (s) => {
 const filePath = computed(() => navigation.activeFilePath ?? '')
 const fileName = computed(() => navigation.activeFile ?? '')
 const isReadonly = computed(() => ui.readonly || navigation.viewMode === 'preview')
-const canEdit = computed(() => !isReadonly.value && !prefs.isFilenameBlocked(fileName.value))
+const canEdit = computed(() => !isReadonly.value && !isFilenameBlocked(fileName.value))
 
 const showPreview = ref(true)
 const rawContent = ref('')

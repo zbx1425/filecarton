@@ -5,7 +5,7 @@ import { EDITABLE_EXTENSIONS } from '@/utils/constants'
 import { pathExtension, joinPath } from '@/utils/path'
 import { confirm } from '@/composables/useDialogs'
 import { useUiStore } from '@/stores/ui'
-import { usePreferencesStore } from '@/stores/preferences'
+import { isFilenameBlocked } from '@/utils/pathValidation'
 
 export const useNavigationStore = defineStore('navigation', () => {
   const currentPath = ref<string[]>([])
@@ -56,8 +56,7 @@ export const useNavigationStore = defineStore('navigation', () => {
     const editable = EDITABLE_EXTENSIONS.has(ext)
       || fileName.toLowerCase() === 'makefile' || fileName.toLowerCase() === 'dockerfile'
     const ui = useUiStore()
-    const prefs = usePreferencesStore()
-    const blocked = prefs.isFilenameBlocked(fileName)
+    const blocked = isFilenameBlocked(fileName)
     viewMode.value = (editable && !ui.readonly && !blocked) ? 'editor' : 'preview'
     editDirty.value = false
     return true
@@ -136,8 +135,7 @@ export const useNavigationStore = defineStore('navigation', () => {
       activeFile.value = fileName ?? null
       if (view === 'editor') {
         const ui = useUiStore()
-        const prefs = usePreferencesStore()
-        viewMode.value = (fileName && !ui.readonly && !prefs.isFilenameBlocked(fileName))
+        viewMode.value = (fileName && !ui.readonly && !isFilenameBlocked(fileName))
           ? 'editor' : 'preview'
       } else {
         viewMode.value = view

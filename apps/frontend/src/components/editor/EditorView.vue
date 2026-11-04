@@ -14,6 +14,7 @@ import { useEditorSave } from '@/composables/useEditorSave'
 import { ArrowLeft, Save, Loader2, ClipboardCopy, Download, Pencil } from '@lucide/vue'
 import { buildDownloadUrl } from '@/api/client'
 import { usePreferencesStore } from '@/stores/preferences'
+import { isFilenameBlocked } from '@/utils/pathValidation'
 import EditorStatusBar from './EditorStatusBar.vue'
 import { toast } from 'vue-sonner'
 
@@ -42,7 +43,7 @@ const fileName = computed(() => navigation.activeFile ?? '')
 
 const isReadonly = computed(() => ui.readonly || navigation.viewMode === 'preview')
 const canEdit = computed(
-  () => !ui.readonly && isEditable(fileName.value) && !prefs.isFilenameBlocked(fileName.value),
+  () => !ui.readonly && isEditable(fileName.value) && !isFilenameBlocked(fileName.value),
 )
 
 watch(isReadonly, (val) => {

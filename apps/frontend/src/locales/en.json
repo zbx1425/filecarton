@@ -82,5 +82,31 @@
   "err.network_error": "Network error",
 
   "auth.oauth_continue": "Continue with {service}",
-  "auth.register": "Register"
+  "auth.register": "Register",
+
+  "toast.creating": "Creating {name}...",
+  "toast.created": "Created {name}",
+  "toast.deleting": "Deleting {count} item(s)...",
+  "toast.deleted": "Deleted {count} item(s)",
+  "toast.renaming": "Renaming to {name}...",
+  "toast.renamed": "Renamed to {name}",
+  "toast.downloading": "Downloading {name}...",
+  "toast.downloaded": "Downloaded {name}",
+  "toast.copied_items": "Copied {count} item(s)",
+  "toast.cut_items": "Cut {count} item(s)",
+  "toast.file_saved": "File saved",
+  "toast.file_saved_overwritten": "File saved (overwritten)",
+  "toast.file_reloaded": "File reloaded",
+  "toast.copied_clipboard": "Copied to clipboard",
+  "toast.copy_clipboard_failed": "Failed to copy to clipboard",
+  "toast.checksum_computing": "Computing checksums...",
+  "toast.archive_creating": "Creating {format} archive...",
+  "toast.archive_created": "Archive created: {name}",
+  "toast.archive_inspecting": "Inspecting archive...",
+  "toast.archive_extracting": "Extracting archive...",
+  "toast.archive_extracted": "Extracted {count} files",
+  "toast.perm_updating": "Updating permissions...",
+  "toast.perm_updated": "Updated permissions for {count} item(s)",
+  "toast.dotfile_blocked": "Dot files (hidden files) are not allowed",
+  "toast.filetype_restricted": "This file type is restricted"
 }

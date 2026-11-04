@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth'
+import { useThemeApplication } from '@/composables/useThemeApplication'
 import { Toaster } from '@/components/ui/sonner'
 import AuthView from '@/components/AuthView.vue'
 import AppShell from '@/components/AppShell.vue'
 
 const auth = useAuthStore()
+useThemeApplication()
 </script>
 
 <template>

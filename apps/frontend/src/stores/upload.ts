@@ -3,18 +3,19 @@ import { ref, computed, markRaw } from 'vue'
 import { toast } from 'vue-sonner'
 import { useThrottleFn } from '@vueuse/core'
 import UploadToast from '@/components/upload/UploadToast.vue'
-import { Upload as TusUpload, DetailedError } from 'tus-js-client'
-import { apiPost, toErrorInfo, ApiError, maybeUnauthorized, buildTusEndpointUrl, getCsrfToken } from '@/api/client'
+import type { Upload as TusUpload } from 'tus-js-client'
+import { apiPost, toErrorInfo, ApiError, maybeUnauthorized } from '@/api/client'
 import type { ErrorInfo } from '@/api/client'
 import type { CheckUploadConflictsResponse } from '@/api/types'
-import { createPostOnlyHttpStack } from '@/utils/tusHttpStack'
 import { showPasteConflict, confirm } from '@/composables/useDialogs'
 import { errorMessage } from '@/utils/errorMessage'
 import { useFileListStore } from '@/stores/fileList'
 import { useNavigationStore } from '@/stores/navigation'
 import { useTreeStore } from '@/stores/tree'
-import { usePreferencesStore } from '@/stores/preferences'
-import { joinPath, parentPath, isAppleJunkName, isAppleJunkPath, sanitizeFileName } from '@/utils/path'
+import { joinPath, parentPath, isAppleJunkName, isAppleJunkPath } from '@/utils/path'
+import { sanitizeFileName, isDotFileBlocked, isFilenameBlocked } from '@/utils/pathValidation'
+import { uploadViaTus } from '@/services/tusUploader'
+import { useSpeedSampling } from '@/composables/useSpeedSampling'
 import { CHUNK_SIZE as DEFAULT_CHUNK_SIZE, MAX_CONCURRENT_UPLOADS } from '@/utils/constants'
 import { formatSize } from '@/utils/format'
 
@@ -76,51 +77,14 @@ export const useUploadStore = defineStore('upload', () => {
     tasks.value.filter(t => t.status === 'success').length,
   )
 
-  const speed = ref(0)
-  const eta = ref(-1)
-  let speedSamples: { time: number; bytes: number }[] = []
-  let speedInterval: ReturnType<typeof setInterval> | null = null
-
-  function startSpeedSampling() {
-    if (speedInterval) return
-    speedSamples = [{ time: Date.now(), bytes: bytesSent.value }]
-    speed.value = 0
-    eta.value = -1
-    speedInterval = setInterval(() => {
-      const now = Date.now()
-      const sent = bytesSent.value
-      speedSamples.push({ time: now, bytes: sent })
-      const cutoff = now - 5000
-      while (speedSamples.length > 1 && speedSamples[0].time < cutoff) {
-        speedSamples.shift()
-      }
-      if (speedSamples.length >= 2) {
-        const first = speedSamples[0]
-        const last = speedSamples[speedSamples.length - 1]
-        const dt = (last.time - first.time) / 1000
-        if (dt > 0) {
-          speed.value = (last.bytes - first.bytes) / dt
-          const remaining = totalBytes.value - sent
-          eta.value = speed.value > 0 ? remaining / speed.value : -1
-        }
-      }
-      if (!hasActive.value) stopSpeedSampling()
-    }, 500)
-  }
-
-  function stopSpeedSampling() {
-    if (speedInterval) {
-      clearInterval(speedInterval)
-      speedInterval = null
-    }
-    speedSamples = []
-    speed.value = 0
-    eta.value = -1
-  }
+  // ── Speed / ETA (delegated to composable) ──
+  const { speed, eta, start: startSpeedSampling } =
+    useSpeedSampling(bytesSent, totalBytes, hasActive)
 
   function show() { visible.value = true }
   function hide() { visible.value = false }
 
+  // ── Upload progress toast ──
   let dismissTimer: ReturnType<typeof setTimeout> | null = null
 
   function showUploadToast() {
@@ -166,6 +130,8 @@ export const useUploadStore = defineStore('upload', () => {
     })
   }
 
+  // ── Path helpers ──
+
   function computeTargetPath(targetDir: string, relativePath: string, fileName: string): string {
     const safeName = sanitizeFileName(fileName) || fileName
     if (relativePath) {
@@ -175,6 +141,8 @@ export const useUploadStore = defineStore('upload', () => {
     }
     return joinPath(targetDir, safeName)
   }
+
+  // ── Validation ──
 
   async function checkConflicts(
     entries: Array<{ fileName: string; relativePath: string; targetDir: string }>,
@@ -211,6 +179,41 @@ export const useUploadStore = defineStore('upload', () => {
     return false
   }
 
+  function hasBlockedPathComponent(relativePath: string): boolean {
+    if (!relativePath) return false
+    const segments = relativePath.split('/').slice(0, -1)
+    return segments.some(seg => isDotFileBlocked(seg))
+  }
+
+  /**
+   * Filter out restricted entries and show a warning toast if any were blocked.
+   */
+  function filterEntries(
+    entries: { file: File; relativePath: string }[],
+  ): { file: File; relativePath: string }[] {
+    const blocked: string[] = []
+    const passed: typeof entries = []
+    for (const entry of entries) {
+      if (
+        isDotFileBlocked(entry.file.name) ||
+        isFilenameBlocked(entry.file.name) ||
+        hasBlockedPathComponent(entry.relativePath)
+      ) {
+        blocked.push(entry.relativePath || entry.file.name)
+      } else {
+        passed.push(entry)
+      }
+    }
+    if (blocked.length > 0) {
+      const listing = blocked.slice(0, 5).join(', ')
+      const suffix = blocked.length > 5 ? ` and ${blocked.length - 5} more` : ''
+      toast.warning(`${blocked.length} file(s) not uploaded due to restrictions: ${listing}${suffix}`)
+    }
+    return passed
+  }
+
+  // ── Queue management ──
+
   function enqueueTasks(batchId: string, newTasks: UploadTask[]) {
     latestBatchId.value = batchId
     latestBatchResult.value = null
@@ -237,149 +240,19 @@ export const useUploadStore = defineStore('upload', () => {
     processQueue()
   }
 
-  function hasBlockedPathComponent(relativePath: string): boolean {
-    if (!relativePath) return false
-    const prefs = usePreferencesStore()
-    const segments = relativePath.split('/').slice(0, -1)
-    return segments.some(seg => prefs.isDotFileBlocked(seg))
-  }
-
-  function filterRestricted(files: File[]): File[] {
-    const prefs = usePreferencesStore()
-    const blocked: string[] = []
-    const passed: File[] = []
-    for (const file of files) {
-      const relPath = (file as any).webkitRelativePath || ''
-      if (
-        prefs.isDotFileBlocked(file.name) ||
-        prefs.isFilenameBlocked(file.name) ||
-        hasBlockedPathComponent(relPath)
-      ) {
-        blocked.push(relPath || file.name)
-      } else {
-        passed.push(file)
-      }
-    }
-    if (blocked.length > 0) {
-      const listing = blocked.slice(0, 5).join(', ')
-      const suffix = blocked.length > 5 ? ` and ${blocked.length - 5} more` : ''
-      toast.warning(`${blocked.length} file(s) not uploaded due to restrictions: ${listing}${suffix}`)
-    }
-    return passed
-  }
-
-  async function addFiles(fileList: FileList | File[], targetDir: string) {
-    let allFiles = filterRestricted(Array.from(fileList).filter(f => !isAppleJunkName(f.name)))
-    if (allFiles.length === 0) return
-
-    // Deduplicate by sanitized target path (last wins)
-    const byTarget = new Map<string, File>()
-    let dupes = 0
-    for (const f of allFiles) {
-      const key = computeTargetPath(targetDir, '', f.name)
-      if (byTarget.has(key)) dupes++
-      byTarget.set(key, f)
-    }
-    allFiles = [...byTarget.values()]
-    if (dupes > 0) {
-      toast.warning(`${dupes} file(s) with duplicate names were skipped`)
-    }
-
-    if (!await checkOversized(allFiles)) return
-
-    const entries = allFiles.map(f => ({ fileName: f.name, relativePath: '', targetDir }))
-    if (!await checkConflicts(entries)) return
-
-    const batchId = crypto.randomUUID()
-    enqueueTasks(batchId, allFiles.map(file => ({
-      id: crypto.randomUUID(),
-      batchId,
-      file,
-      relativePath: '',
-      targetDir,
-      progress: 0,
-      status: 'pending' as const,
-    })))
-  }
-
-  async function addFolderFiles(fileList: FileList, targetDir: string) {
-    const rawFiles = Array.from(fileList).filter(f => {
-      const rel = (f as any).webkitRelativePath || ''
-      return !isAppleJunkName(f.name) && (!rel || !isAppleJunkPath(rel))
-    })
-    const allowedSet = new Set(filterRestricted(rawFiles))
-    let allFiles = rawFiles.filter(f => allowedSet.has(f))
-    if (allFiles.length === 0) return
-
-    // Deduplicate by sanitized target path (last wins)
-    const byTarget = new Map<string, File>()
-    let dupes = 0
-    for (const f of allFiles) {
-      const rel = (f as any).webkitRelativePath || ''
-      const key = computeTargetPath(targetDir, rel, f.name)
-      if (byTarget.has(key)) dupes++
-      byTarget.set(key, f)
-    }
-    allFiles = [...byTarget.values()]
-    if (dupes > 0) {
-      toast.warning(`${dupes} file(s) with duplicate target paths were skipped`)
-    }
-
-    if (!await checkOversized(allFiles)) return
-
-    const entries = allFiles.map(file => ({
-      fileName: file.name,
-      relativePath: (file as any).webkitRelativePath || '',
-      targetDir,
-    }))
-    if (!await checkConflicts(entries)) return
-
-    const batchId = crypto.randomUUID()
-    enqueueTasks(batchId, allFiles.map(file => ({
-      id: crypto.randomUUID(),
-      batchId,
-      file,
-      relativePath: (file as any).webkitRelativePath || '',
-      targetDir,
-      progress: 0,
-      status: 'pending' as const,
-    })))
-  }
-
-  async function addFilesWithPaths(
-    files: { file: File; relativePath: string }[],
+  /**
+   * Common pipeline: deduplicate → check oversize → check conflicts → enqueue.
+   */
+  async function prepareAndEnqueue(
+    entries: { file: File; relativePath: string }[],
     targetDir: string,
-  ) {
-    if (files.length === 0) return
-    const nonJunk = files.filter(e =>
-      !isAppleJunkName(e.file.name) && (!e.relativePath || !isAppleJunkPath(e.relativePath)),
-    )
-    if (nonJunk.length === 0) return
-    const prefs = usePreferencesStore()
-    const blocked: string[] = []
-    const passed: typeof files = []
-    for (const entry of nonJunk) {
-      if (
-        prefs.isDotFileBlocked(entry.file.name) ||
-        prefs.isFilenameBlocked(entry.file.name) ||
-        hasBlockedPathComponent(entry.relativePath)
-      ) {
-        blocked.push(entry.relativePath || entry.file.name)
-      } else {
-        passed.push(entry)
-      }
-    }
-    if (blocked.length > 0) {
-      const listing = blocked.slice(0, 5).join(', ')
-      const suffix = blocked.length > 5 ? ` and ${blocked.length - 5} more` : ''
-      toast.warning(`${blocked.length} file(s) not uploaded due to restrictions: ${listing}${suffix}`)
-    }
-    if (passed.length === 0) return
+  ): Promise<void> {
+    if (entries.length === 0) return
 
     // Deduplicate by sanitized target path (last wins)
-    const byTarget = new Map<string, typeof passed[0]>()
+    const byTarget = new Map<string, (typeof entries)[0]>()
     let dupes = 0
-    for (const entry of passed) {
+    for (const entry of entries) {
       const key = computeTargetPath(targetDir, entry.relativePath, entry.file.name)
       if (byTarget.has(key)) dupes++
       byTarget.set(key, entry)
@@ -389,14 +262,14 @@ export const useUploadStore = defineStore('upload', () => {
       toast.warning(`${dupes} file(s) with duplicate target paths were skipped`)
     }
 
-    if (!await checkOversized(deduped.map(f => f.file))) return
+    if (!await checkOversized(deduped.map(e => e.file))) return
 
-    const entries = deduped.map(({ file, relativePath }) => ({
-      fileName: file.name,
-      relativePath,
+    const conflictEntries = deduped.map(e => ({
+      fileName: e.file.name,
+      relativePath: e.relativePath,
       targetDir,
     }))
-    if (!await checkConflicts(entries)) return
+    if (!await checkConflicts(conflictEntries)) return
 
     const batchId = crypto.randomUUID()
     enqueueTasks(batchId, deduped.map(({ file, relativePath }) => ({
@@ -410,18 +283,54 @@ export const useUploadStore = defineStore('upload', () => {
     })))
   }
 
+  // ── Public entry points ──
+
+  async function addFiles(fileList: FileList | File[], targetDir: string) {
+    const rawFiles = Array.from(fileList).filter(f => !isAppleJunkName(f.name))
+    const filtered = filterEntries(rawFiles.map(f => ({ file: f, relativePath: '' })))
+    await prepareAndEnqueue(filtered, targetDir)
+  }
+
+  async function addFolderFiles(fileList: FileList, targetDir: string) {
+    const rawFiles = Array.from(fileList).filter(f => {
+      const rel = (f as any).webkitRelativePath || ''
+      return !isAppleJunkName(f.name) && (!rel || !isAppleJunkPath(rel))
+    })
+    const entries = rawFiles.map(f => ({
+      file: f,
+      relativePath: (f as any).webkitRelativePath || '',
+    }))
+    const filtered = filterEntries(entries)
+    await prepareAndEnqueue(filtered, targetDir)
+  }
+
+  async function addFilesWithPaths(
+    files: { file: File; relativePath: string }[],
+    targetDir: string,
+  ) {
+    if (files.length === 0) return
+    const nonJunk = files.filter(e =>
+      !isAppleJunkName(e.file.name) && (!e.relativePath || !isAppleJunkPath(e.relativePath)),
+    )
+    const filtered = filterEntries(nonJunk)
+    await prepareAndEnqueue(filtered, targetDir)
+  }
+
+  // ── Upload execution ──
+
   async function processQueue() {
     while (activeTasks.value < MAX_CONCURRENT_UPLOADS) {
       const next = tasks.value.find(t => t.status === 'pending')
       if (!next) break
       next.status = 'uploading'
-      uploadTask(next)
+      runUploadTask(next)
     }
   }
 
-  async function uploadTask(task: UploadTask) {
+  async function runUploadTask(task: UploadTask) {
     try {
-      await uploadViaTus(task)
+      const { chunkSize } = getUploadConfig()
+      await uploadViaTus(task, { chunkSize })
       if (task.status !== 'cancelled') {
         task.status = 'success'
         task.progress = 100
@@ -463,80 +372,7 @@ export const useUploadStore = defineStore('upload', () => {
     }
   }
 
-  function uploadViaTus(task: UploadTask): Promise<void> {
-    const { chunkSize } = getUploadConfig()
-    let targetDir = task.targetDir
-    if (task.relativePath) {
-      const dir = task.relativePath.split('/').slice(0, -1).join('/')
-      if (dir) targetDir = joinPath(task.targetDir, dir)
-    }
-
-    return new Promise<void>((resolve, reject) => {
-      const upload = new TusUpload(task.file, {
-        endpoint: buildTusEndpointUrl(),
-        chunkSize,
-        retryDelays: [0, 1000, 3000, 5000],
-        uploadDataDuringCreation: true,
-        overridePatchMethod: true,
-        httpStack: createPostOnlyHttpStack(),
-        storeFingerprintForResuming: false,
-        removeFingerprintOnSuccess: true,
-        headers: {
-          'X-CSRF-Token': getCsrfToken(),
-        },
-        metadata: {
-          filename: sanitizeFileName(task.file.name) || task.file.name,
-          targetPath: targetDir,
-        },
-        onProgress(bytesSent, bytesTotal) {
-          task.progress = bytesTotal === 0 ? 100 : Math.round((bytesSent / bytesTotal) * 100)
-        },
-        onSuccess() {
-          task.tusUpload = undefined
-          task.progress = 100
-          resolve()
-        },
-        onError(error) {
-          task.tusUpload = undefined
-          if (task.status === 'cancelled') {
-            resolve()
-            return
-          }
-          if (error instanceof DetailedError) {
-            const resp = error.originalResponse
-            if (resp) {
-              const status = resp.getStatus()
-              let body: any = null
-              try { body = JSON.parse(resp.getBody()) } catch { /* non-JSON */ }
-              const fallback = status === 413 ? 'upload.content_too_large'
-                : status === 403 ? 'access_denied'
-                : 'server_error'
-              const code = body?.error ?? fallback
-              reject(new ApiError(code, status, body?.params, body?.authError))
-              return
-            }
-          }
-          reject(new ApiError('network_error', 0))
-        },
-        onShouldRetry(error) {
-          if (task.status === 'cancelled') return false
-          const resp = error.originalResponse
-          if (!resp) return true
-          const status = resp.getStatus()
-          if (status === 409) {
-            try {
-              const body = JSON.parse(resp.getBody())
-              if (body?.error) return false
-            } catch { /* non-JSON body = offset mismatch, retryable */ }
-            return true
-          }
-          return status === 423 || status === 429 || status >= 500
-        },
-      })
-      task.tusUpload = markRaw(upload)
-      upload.start()
-    })
-  }
+  // ── Retry / Remove / Cancel ──
 
   function retry(taskId: string) {
     const task = tasks.value.find(t => t.id === taskId)
@@ -622,18 +458,19 @@ export const useUploadStore = defineStore('upload', () => {
   }
 
   // Warn before closing the page while uploads are in progress
-  function onBeforeUnload(e: BeforeUnloadEvent) {
+  window.addEventListener('beforeunload', (e: BeforeUnloadEvent) => {
     if (hasActive.value) {
       e.preventDefault()
     }
-  }
-  window.addEventListener('beforeunload', onBeforeUnload)
+  })
 
   const uploadDialogOpen = ref(false)
   function openUploadDialog() { uploadDialogOpen.value = true }
   function closeUploadDialog() { uploadDialogOpen.value = false }
   function openErrorDialog() { errorDialogOpen.value = true }
   function closeErrorDialog() { errorDialogOpen.value = false }
+
+  // ── Post-upload directory refresh ──
 
   const pendingRefreshDirs = new Set<string>()
 

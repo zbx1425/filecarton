@@ -18,19 +18,15 @@ import { useNavigationStore } from '@/stores/navigation'
 import { useClipboardStore } from '@/stores/clipboard'
 import { useUiStore } from '@/stores/ui'
 import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
-import { joinPath, parentPath, validateFileName, archiveSubdirName } from '@/utils/path'
+import { joinPath, parentPath, archiveSubdirName } from '@/utils/path'
 import {
-  deleteItems, renameItem, pasteItems, canModifyItemPermissions,
+  createItem, deleteItems, renameItem, pasteItems, canModifyItemPermissions,
 } from '@/composables/useFileActions'
 import { isInternalDrag, handleDrop as dndHandleDrop } from '@/composables/useDragDrop'
 import { createArchive, extractArchive } from '@/composables/useArchive'
 import { isArchive } from '@/composables/useFileType'
-import { apiPost } from '@/api/client'
-import type { CreateResponse } from '@/api/types'
 import { toast } from 'vue-sonner'
-import { prompt, showPermissionsDialog } from '@/composables/useDialogs'
-import { usePreferencesStore } from '@/stores/preferences'
-import { errorMessage } from '@/utils/errorMessage'
+import { showPermissionsDialog } from '@/composables/useDialogs'
 
 const props = defineProps<{
   name: string
@@ -202,33 +198,9 @@ function handlePermissions() {
   }])
 }
 
-async function handleNewFolder() {
+function handleNewFolder() {
   if (!isDir.value) return
-  const name = await prompt('New Folder', { placeholder: 'folder-name', submitLabel: 'Create' })
-  if (!name) return
-  const validationError = validateFileName(name)
-  if (validationError) {
-    toast.error(validationError)
-    return
-  }
-  const prefs = usePreferencesStore()
-  if (prefs.isDotFileBlocked(name)) {
-    toast.error('Dot files (hidden files) are not allowed')
-    return
-  }
-  const toastId = toast.loading(`Creating ${name}...`)
-  try {
-    await apiPost<CreateResponse>('create', { path: props.path, name, type: 'dir' })
-    toast.success(`Created ${name}`, { id: toastId })
-    tree.invalidate(props.path)
-    tree.loadChildren(props.path)
-    if (navigation.currentPathStr === props.path) {
-      const fileList = await import('@/stores/fileList')
-      fileList.useFileListStore().fetchDir(props.path)
-    }
-  } catch (e: unknown) {
-    toast.error(errorMessage(e), { id: toastId })
-  }
+  createItem('dir', props.path)
 }
 </script>
 

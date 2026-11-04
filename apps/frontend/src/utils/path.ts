@@ -49,27 +49,5 @@ export function isAppleJunkPath(relativePath: string): boolean {
   return relativePath.split('/').some(isAppleJunkName)
 }
 
-/**
- * Mirror the server-side PathSecurity::sanitizeFileName logic:
- * strip control chars + filesystem-unsafe chars, trim trailing dots/spaces.
- */
-export function sanitizeFileName(name: string): string {
-  // eslint-disable-next-line no-control-regex
-  let result = name.replace(/[\x00-\x1f\x7f]/g, '')
-  result = result.replace(/[/\\:*?"<>|]/g, '')
-  result = result.replace(/[.\s]+$/, '')
-  if (!result || result === '.' || result === '..') return ''
-  return result
-}
-
-const INVALID_CHARS = /[/\\:*?"<>|]/
-// eslint-disable-next-line no-control-regex
-const CONTROL_CHARS = /[\x00-\x1f\x7f]/
-export function validateFileName(name: string): string | null {
-  if (!name || !name.trim()) return 'Name cannot be empty'
-  if (name === '.' || name === '..') return `"${name}" is not a valid name`
-  if (CONTROL_CHARS.test(name)) return 'Name contains invalid control characters'
-  if (INVALID_CHARS.test(name)) return 'Name contains invalid characters: / \\ : * ? " < > |'
-  if (name.endsWith('.') || name.endsWith(' ')) return 'Name cannot end with a dot or space'
-  return null
-}
+// sanitizeFileName and validateFileName have moved to @/utils/pathValidation
+export { sanitizeFileName, validateFileName } from '@/utils/pathValidation'
