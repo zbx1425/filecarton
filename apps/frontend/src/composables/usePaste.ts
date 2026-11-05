@@ -1,4 +1,5 @@
 import { toast } from 'vue-sonner'
+import { translate } from '@/i18n'
 import { apiPost } from '@/api/client'
 import type { PasteResponse } from '@/api/types'
 import { useNavigationStore } from '@/stores/navigation'
@@ -13,36 +14,37 @@ export interface PasteParams {
   targetPath: string
 }
 
-function verb(mode: 'copy' | 'cut', past: boolean) {
-  return past
-    ? (mode === 'copy' ? 'Copied' : 'Moved')
-    : (mode === 'copy' ? 'Copy' : 'Move')
-}
-
 function reportResult(
   result: PasteResponse,
   mode: 'copy' | 'cut',
   toastId: string | number | undefined,
 ) {
-  const v = verb(mode, true)
-  const vNoun = verb(mode, false)
-  if (result.failed.length > 0 && result.completed === 0) {
+  const failed = result.failed.length
+  const completed = result.completed
+  if (failed > 0 && completed === 0) {
     if (toastId !== undefined) toast.dismiss(toastId)
     return showOperationReport({
-      title: `${vNoun} Failed`,
-      description: 'All items failed.',
+      title: translate(mode === 'copy' ? 'paste.failed_copy' : 'paste.failed_move'),
+      description: translate('paste.all_failed'),
       items: result.failed.map(f => ({ name: f.name, reason: f.error })),
     })
   }
-  if (result.failed.length > 0) {
+  if (failed > 0) {
     if (toastId !== undefined) toast.dismiss(toastId)
     return showOperationReport({
-      title: `Partial ${vNoun}`,
-      description: `${v} ${result.completed} item(s), ${result.failed.length} failed.`,
+      title: translate(mode === 'copy' ? 'paste.partial_copy_title' : 'paste.partial_move_title'),
+      description: translate(
+        mode === 'copy' ? 'paste.partial_copy' : 'paste.partial_move',
+        { completed, failed },
+      ),
       items: result.failed.map(f => ({ name: f.name, reason: f.error })),
     })
   }
-  toast.success(`${v} ${result.completed} item(s)`, toastId !== undefined ? { id: toastId } : undefined)
+  const successKey = mode === 'copy' ? 'paste.success_copy' : 'paste.success_move'
+  toast.success(
+    translate(successKey, { count: completed }, completed),
+    toastId !== undefined ? { id: toastId } : undefined,
+  )
 }
 
 /**
@@ -51,7 +53,11 @@ function reportResult(
  */
 export async function runPaste(params: PasteParams): Promise<number> {
   const { mode, sourcePath, items, targetPath } = params
-  const loadingText = `${verb(mode, false) === 'Copy' ? 'Copying' : 'Moving'} ${items.length} item(s)...`
+  const loadingText = translate(
+    mode === 'copy' ? 'paste.copying' : 'paste.moving',
+    { count: items.length },
+    items.length,
+  )
   let activeToastId: string | number | undefined = toast.loading(loadingText)
 
   try {

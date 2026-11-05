@@ -1,4 +1,5 @@
 import { reactive, computed } from 'vue'
+import { translate } from '@/i18n'
 import { useNavigationStore } from '@/stores/navigation'
 
 export interface ConfirmState {
@@ -73,10 +74,10 @@ export interface ChecksumDialogState {
 
 export const dialogState = reactive({
   confirm: {
-    open: false, title: '', message: '', actionLabel: 'Confirm', danger: false, hideCancel: false, resolve: null,
+    open: false, title: '', message: '', actionLabel: translate('common.action.confirm'), danger: false, hideCancel: false, resolve: null,
   } as ConfirmState,
   prompt: {
-    open: false, title: '', placeholder: '', initialValue: '', submitLabel: 'OK', selectBaseName: false, resolve: null,
+    open: false, title: '', placeholder: '', initialValue: '', submitLabel: translate('common.action.ok'), selectBaseName: false, resolve: null,
   } as PromptState,
   editorConflict: {
     open: false, resolve: null,
@@ -136,7 +137,7 @@ export function confirm(
   return new Promise(resolve => {
     dialogState.confirm.title = title
     dialogState.confirm.message = message
-    dialogState.confirm.actionLabel = options?.actionLabel ?? 'Confirm'
+    dialogState.confirm.actionLabel = options?.actionLabel ?? translate('common.action.confirm')
     dialogState.confirm.danger = options?.danger ?? false
     dialogState.confirm.hideCancel = options?.hideCancel ?? false
     dialogState.confirm.resolve = resolve
@@ -158,7 +159,7 @@ export function prompt(
     dialogState.prompt.title = title
     dialogState.prompt.placeholder = options?.placeholder ?? ''
     dialogState.prompt.initialValue = options?.initialValue ?? ''
-    dialogState.prompt.submitLabel = options?.submitLabel ?? 'OK'
+    dialogState.prompt.submitLabel = options?.submitLabel ?? translate('common.action.ok')
     dialogState.prompt.selectBaseName = options?.selectBaseName ?? false
     dialogState.prompt.resolve = resolve
     dialogState.prompt.open = true
@@ -201,14 +202,14 @@ export function showPasteConflict(files: string[]): Promise<boolean> {
   const highlightName = affectsEditor ? activePath! : ''
 
   return showOperationReport({
-    title: 'File Conflict',
-    description: `The following ${files.length} file(s) already exist in the target directory:`,
+    title: translate('conflict.title'),
+    description: translate('conflict.description', { count: files.length }, files.length),
     items: files.map(f => ({ name: f, reason: 'already_exists' })),
-    continueLabel: 'Overwrite All',
+    continueLabel: translate('common.action.overwrite_all'),
     dangerContinue: true,
     highlightItem: highlightName,
     warningBanner: affectsEditor
-      ? 'One of these files is currently open in the editor. Overwriting will discard your changes.'
+      ? translate('conflict.overwrite_editor')
       : '',
   })
 }

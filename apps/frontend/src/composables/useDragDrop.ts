@@ -1,3 +1,4 @@
+import { translate } from '@/i18n'
 import { useNavigationStore } from '@/stores/navigation'
 
 const MIME_TYPE = 'application/filecarton'
@@ -69,7 +70,7 @@ export function startDragFromSelection(e: DragEvent) {
 
   if (e.dataTransfer && items.length > 1) {
     const label = document.createElement('div')
-    label.textContent = `${items.length} items`
+    label.textContent = translate('files.drag.count', { count: items.length }, items.length)
     label.style.cssText = 'position:fixed;top:-100px;padding:4px 8px;background:#333;color:#fff;font-size:12px;border-radius:4px;'
     document.body.appendChild(label)
     e.dataTransfer.setDragImage(label, 0, 0)

@@ -26,10 +26,10 @@ function handleOpenChange(open: boolean) {
       <DialogHeader>
         <DialogTitle class="flex items-center gap-2">
           <AlertTriangle class="size-5 text-destructive" />
-          Upload Failures
+          {{ $t('upload.error.title') }}
         </DialogTitle>
         <DialogDescription>
-          {{ upload.errorTasks.length }} file(s) failed to upload.
+          {{ $t('upload.error.summary', { count: upload.errorTasks.length }, upload.errorTasks.length) }}
         </DialogDescription>
       </DialogHeader>
 
@@ -55,7 +55,7 @@ function handleOpenChange(open: boolean) {
                 variant="ghost"
                 size="icon-xs"
                 class="size-6"
-                title="Retry"
+                :title="$t('common.action.retry')"
                 @click="upload.retry(task.id)"
               >
                 <RotateCcw class="size-3" />
@@ -64,7 +64,7 @@ function handleOpenChange(open: boolean) {
                 variant="ghost"
                 size="icon-xs"
                 class="size-6 text-destructive hover:text-destructive"
-                title="Remove"
+                :title="$t('common.action.remove')"
                 @click="upload.remove(task.id)"
               >
                 <Trash2 class="size-3" />
@@ -82,7 +82,7 @@ function handleOpenChange(open: boolean) {
           @click="upload.retryAllErrors()"
         >
           <RotateCcw class="size-3.5 mr-1.5" />
-          Retry All
+          {{ $t('common.action.retry_all') }}
         </Button>
         <Button
           variant="destructive"
@@ -90,7 +90,7 @@ function handleOpenChange(open: boolean) {
           @click="upload.clearErrors()"
         >
           <Trash2 class="size-3.5 mr-1.5" />
-          Clear All
+          {{ $t('common.action.clear_all') }}
         </Button>
       </DialogFooter>
     </DialogContent>

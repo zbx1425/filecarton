@@ -1,3 +1,4 @@
+import { translate } from '@/i18n'
 import { defineStore } from 'pinia'
 import { ref, computed, markRaw } from 'vue'
 import { toast } from 'vue-sonner'
@@ -169,11 +170,12 @@ export const useUploadStore = defineStore('upload', () => {
       .slice(0, 10)
       .map(f => `${f.name} (${formatSize(f.size)})`)
       .join('\n')
-    const suffix = oversized.length > 10 ? `\n...and ${oversized.length - 10} more` : ''
+    const extra = oversized.length - 10
+    const suffix = extra > 0 ? `\n${translate('common.list.and_more', { count: extra })}` : ''
     await confirm(
-      'Files Too Large',
-      `${oversized.length} file(s) exceed the ${limit} upload limit:\n\n${listing}${suffix}\n\nPlease remove or compress these files before uploading.`,
-      { actionLabel: 'OK', hideCancel: true },
+      translate('upload.too_large.title'),
+      translate('upload.too_large.message', { count: oversized.length, limit, listing: listing + suffix }, oversized.length),
+      { actionLabel: translate('common.action.ok'), hideCancel: true },
     )
     return false
   }
@@ -205,8 +207,10 @@ export const useUploadStore = defineStore('upload', () => {
     }
     if (blocked.length > 0) {
       const listing = blocked.slice(0, 5).join(', ')
-      const suffix = blocked.length > 5 ? ` and ${blocked.length - 5} more` : ''
-      toast.warning(`${blocked.length} file(s) not uploaded due to restrictions: ${listing}${suffix}`)
+      const extra = blocked.length - 5
+      toast.warning(extra > 0
+        ? translate('upload.blocked_more', { count: blocked.length, names: listing, extra })
+        : translate('upload.blocked', { count: blocked.length, names: listing }, blocked.length))
     }
     return passed
   }
@@ -258,7 +262,7 @@ export const useUploadStore = defineStore('upload', () => {
     }
     const deduped = [...byTarget.values()]
     if (dupes > 0) {
-      toast.warning(`${dupes} file(s) with duplicate target paths were skipped`)
+      toast.warning(translate('upload.duplicate', { count: dupes }, dupes))
     }
 
     if (!await checkOversized(deduped.map(e => e.file))) return

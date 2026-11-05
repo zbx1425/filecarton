@@ -57,7 +57,7 @@ function handleDownload() {
     <div class="flex items-center h-10 px-3 border-b gap-2 shrink-0">
       <Button variant="ghost" size="sm" @click="navigation.backToList()">
         <ArrowLeft class="size-4" />
-        Back
+        {{ $t('common.action.back') }}
       </Button>
 
       <span class="text-sm font-mono truncate flex-1 text-muted-foreground">
@@ -66,7 +66,7 @@ function handleDownload() {
 
       <Button v-if="canEdit" variant="outline" size="sm" @click="navigation.openEditor()">
         <Pencil class="size-4" />
-        Edit
+        {{ $t('common.action.edit') }}
       </Button>
 
       <ArchiveExtractButton
@@ -77,7 +77,7 @@ function handleDownload() {
 
       <Button variant="outline" size="sm" @click="handleDownload">
         <Download class="size-4" />
-        Download
+        {{ $t('common.action.download') }}
       </Button>
     </div>
 

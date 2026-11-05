@@ -146,26 +146,26 @@ function startResize(e: MouseEvent) {
           class="flex items-center gap-1 flex-1 min-w-0 cursor-pointer hover:text-foreground"
           @click="view.toggleSort('name')"
         >
-          Name
+          {{ $t('common.field.name') }}
           <component :is="sortIcon('name')" v-if="sortIcon('name')" class="size-3" />
         </div>
         <div
           class="w-22 cursor-pointer hover:text-foreground flex items-center gap-1"
           @click="view.toggleSort('size')"
         >
-          Size
+          {{ $t('common.field.size') }}
           <component :is="sortIcon('size')" v-if="sortIcon('size')" class="size-3" />
         </div>
         <div
           class="w-28 cursor-pointer hover:text-foreground flex items-center gap-1"
           @click="view.toggleSort('mtime')"
         >
-          Modified
+          {{ $t('common.field.modified') }}
           <component :is="sortIcon('mtime')" v-if="sortIcon('mtime')" class="size-3" />
         </div>
         <template v-if="view.showUnixPerm">
-          <div class="w-28 shrink-0">Permissions</div>
-          <div class="w-36 shrink-0">Owner</div>
+          <div class="w-28 shrink-0">{{ $t('files.action.permissions') }}</div>
+          <div class="w-36 shrink-0">{{ $t('common.field.owner') }}</div>
         </template>
       </div>
       <!-- Resize handle on header -->
@@ -190,7 +190,7 @@ function startResize(e: MouseEvent) {
       <div v-else-if="view.error" class="flex-1 flex flex-col items-center justify-center gap-2 text-sm text-destructive">
         <p>{{ $t('err.' + view.error.code, view.error.params ?? {}) }}</p>
         <Button variant="outline" size="sm" @click="view.refreshCurrent()">
-          Retry
+          {{ $t('common.action.retry') }}
         </Button>
       </div>
 
@@ -245,12 +245,12 @@ function startResize(e: MouseEvent) {
 
             <!-- Empty state -->
             <div v-if="isFilteredEmpty" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <p v-if="view.searchQuery?.trim()" class="text-sm">No matches for "{{ view.searchQuery }}"</p>
-              <p v-else class="text-sm">All files under this directory are hidden files</p>
+              <p v-if="view.searchQuery?.trim()" class="text-sm">{{ $t('files.empty.no_matches', { query: view.searchQuery }) }}</p>
+              <p v-else class="text-sm">{{ $t('files.empty.hidden_only') }}</p>
             </div>
             <div v-else-if="isActuallyEmpty" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <p class="text-sm">This folder is empty</p>
-              <p v-if="!ui.readonly" class="text-sm mt-1">Drag files here to upload</p>
+              <p class="text-sm">{{ $t('files.empty.empty') }}</p>
+              <p v-if="!ui.readonly" class="text-sm mt-1">{{ $t('files.empty.drop_hint') }}</p>
             </div>
 
           </div>
@@ -273,7 +273,7 @@ function startResize(e: MouseEvent) {
       v-else-if="!view.loading && !view.error"
       class="flex items-center h-9 px-3 text-sm shrink-0 bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
     >
-      {{ view.filteredDirs.length }} folders, {{ view.filteredFiles.length }} files
+      {{ $t('files.status.summary', { folders: view.filteredDirs.length, files: view.filteredFiles.length }) }}
       <span class="ml-1">({{ formatSize(view.filteredTotalSize) }})</span>
       <span class="flex-1"></span>
       <span class="text-muted-foreground/60">FileCarton by Zbx1425</span>

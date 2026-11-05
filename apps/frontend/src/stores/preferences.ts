@@ -1,3 +1,4 @@
+import i18n, { applyLocale, browserLocaleEpoch, isLocalePreference, translate } from '@/i18n'
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { useWindowSize } from '@vueuse/core'
@@ -36,6 +37,8 @@ interface StoredPreferences {
   readmePaneCollapsed: boolean
   sortBy: SortColumn
   sortAsc: boolean
+  /** `"auto"` means the user has never chosen a language. */
+  locale: 'auto' | string
 }
 
 const DEFAULTS: StoredPreferences = {
@@ -56,6 +59,7 @@ const DEFAULTS: StoredPreferences = {
   readmePaneCollapsed: false,
   sortBy: 'name',
   sortAsc: true,
+  locale: 'auto',
 }
 
 const BREAKPOINT_DEFAULTS: Record<string, number | null> = {
@@ -106,6 +110,7 @@ function loadPreferences(): StoredPreferences {
       if (typeof merged.showUnixPerm !== 'boolean') merged.showUnixPerm = DEFAULTS.showUnixPerm
       if (typeof merged.readmePaneCollapsed !== 'boolean') merged.readmePaneCollapsed = DEFAULTS.readmePaneCollapsed
       if (typeof merged.sortAsc !== 'boolean') merged.sortAsc = DEFAULTS.sortAsc
+      if (!isLocalePreference(merged.locale)) merged.locale = 'auto'
       return merged
     }
   } catch { /* ignore */ }
@@ -136,6 +141,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
   const readmePaneCollapsed = ref(saved.readmePaneCollapsed)
   const sortBy = ref<SortColumn>(saved.sortBy)
   const sortAsc = ref(saved.sortAsc)
+  const locale = ref(saved.locale)
 
   const config = window.__FILECARTON__
   const dotfilesConfig = config.dotfiles ?? { block: false, forceVisible: false }
@@ -177,16 +183,17 @@ export const usePreferencesStore = defineStore('preferences', () => {
 
   const dotFilesLocked = computed(() => dotfilesConfig.block || dotfilesConfig.forceVisible)
   const dotFilesLockedReason = computed(() => {
-    if (dotfilesConfig.block) return 'Setting managed by administrator.'
-    if (dotfilesConfig.forceVisible) return 'Setting managed by administrator.'
+    void i18n.global.locale.value
+    if (dotfilesConfig.block || dotfilesConfig.forceVisible) return translate('settings.locked')
     return ''
   })
 
   const _showUnixPerm = ref(saved.showUnixPerm)
   const unixPermLocked = computed(() => !config.features?.unixPerm)
-  const unixPermLockedReason = computed(() =>
-    unixPermLocked.value ? 'Setting managed by administrator.' : '',
-  )
+  const unixPermLockedReason = computed(() => {
+    void i18n.global.locale.value
+    return unixPermLocked.value ? translate('settings.locked') : ''
+  })
 
   const showUnixPerm = computed({
     get() {
@@ -238,6 +245,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
       readmePaneCollapsed: readmePaneCollapsed.value,
       sortBy: sortBy.value,
       sortAsc: sortAsc.value,
+      locale: locale.value,
     })
   }
 
@@ -282,6 +290,15 @@ export const usePreferencesStore = defineStore('preferences', () => {
   }
 
   // Persistence watches — no DOM side-effects
+  applyLocale(locale.value)
+  watch(locale, (value) => {
+    applyLocale(value)
+    persist()
+  })
+  watch(browserLocaleEpoch, () => {
+    if (locale.value === 'auto') applyLocale('auto')
+  })
+
   watch([theme, primaryColor, toolbarColor], () => persist())
   watch(baseFontSize, () => persist())
   watch(displayDensity, () => persist())
@@ -329,6 +346,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
     readmePaneCollapsed,
     sortBy,
     sortAsc,
+    locale,
     toggleSort,
     setTableMaxWidth,
   }

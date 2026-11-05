@@ -108,7 +108,7 @@ function handleRedirect(pluginId: string) {
           >
             {{ ui.branding }}
           </div>
-          <h2 class="text-2xl font-semibold tracking-tight text-foreground">Sign in</h2>
+          <h2 class="text-2xl font-semibold tracking-tight text-foreground">{{ $t('auth.sign_in') }}</h2>
         </div>
 
         <!-- Error -->
@@ -126,26 +126,26 @@ function handleRedirect(pluginId: string) {
           @submit.prevent="handlePasswordLogin"
         >
           <div class="space-y-2">
-            <label for="fc-username" class="sr-only">Username</label>
+            <label for="fc-username" class="sr-only">{{ $t('common.field.username') }}</label>
             <Input
               id="fc-username"
               v-model="username"
               type="text"
               autocomplete="username"
-              placeholder="Username"
+              :placeholder="$t('common.field.username')"
               required
               autofocus
               :disabled="submitting"
             />
           </div>
           <div class="space-y-2">
-            <label for="fc-password" class="sr-only">Password</label>
+            <label for="fc-password" class="sr-only">{{ $t('common.field.password') }}</label>
             <Input
               id="fc-password"
               v-model="password"
               type="password"
               autocomplete="current-password"
-              placeholder="Password"
+              :placeholder="$t('common.field.password')"
               required
               :disabled="submitting"
             />
@@ -197,7 +197,7 @@ function handleRedirect(pluginId: string) {
 
           <Button type="submit" class="w-full" :disabled="submitting">
             <LogIn class="size-4" />
-            {{ submitting ? 'Signing in...' : 'Sign in' }}
+            {{ submitting ? $t('auth.signing_in') : $t('auth.sign_in') }}
           </Button>
         </form>
 
@@ -207,7 +207,7 @@ function handleRedirect(pluginId: string) {
           class="my-6 flex items-center gap-3"
         >
           <Separator class="flex-1" />
-          <span class="text-sm text-muted-foreground">or</span>
+          <span class="text-sm text-muted-foreground">{{ $t('auth.divider') }}</span>
           <Separator class="flex-1" />
         </div>
 

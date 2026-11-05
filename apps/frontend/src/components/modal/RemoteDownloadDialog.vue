@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,8 @@ import { Link, Info } from '@lucide/vue'
 import { dialogState } from '@/services/dialogs'
 import { validateFileName, isDotFileBlocked, isFilenameBlocked } from '@/utils/pathValidation'
 import { remoteDownload } from '@/services/fileActions'
+
+const { t } = useI18n()
 
 const state = computed(() => dialogState.remoteDownload)
 const urlInput = ref('')
@@ -51,7 +54,7 @@ const isUrlValid = computed(() => parsedUrl.value !== null)
 const urlError = computed(() => {
   const trimmed = urlInput.value.trim()
   if (!trimmed) return ''
-  if (!isUrlValid.value) return 'Please enter a valid HTTP or HTTPS URL'
+  if (!isUrlValid.value) return t('remote_download.url_invalid')
   return ''
 })
 
@@ -62,10 +65,10 @@ const nameError = computed(() => {
   const vErr = validateFileName(custom)
   if (vErr) return vErr
   if (isDotFileBlocked(custom)) {
-    return 'Dot files (hidden files) are not allowed'
+    return t('toast.dotfile_blocked')
   }
   if (isFilenameBlocked(custom)) {
-    return 'This file type is restricted'
+    return t('toast.filetype_restricted')
   }
   return ''
 })
@@ -91,16 +94,20 @@ function handleSubmit() {
     <DialogContent class="sm:max-w-md">
       <form @submit.prevent="handleSubmit">
         <DialogHeader>
-          <DialogTitle>Remote Download</DialogTitle>
+          <DialogTitle>{{ $t('files.action.remote_download') }}</DialogTitle>
           <DialogDescription>
-            To <span class="font-mono text-foreground">/{{ state.targetDir || '' }}</span>
+            <i18n-t keypath="remote_download.to" tag="span">
+              <template #path>
+                <span class="font-mono text-foreground">/{{ state.targetDir || '' }}</span>
+              </template>
+            </i18n-t>
           </DialogDescription>
         </DialogHeader>
 
         <div class="space-y-4 py-4">
           <!-- URL Field -->
           <div class="space-y-1.5">
-            <Label for="fc-remote-url" class="text-sm font-medium">URL</Label>
+            <Label for="fc-remote-url" class="text-sm font-medium">{{ $t('common.field.url') }}</Label>
             <div class="relative">
               <Link class="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
               <Input
@@ -120,13 +127,13 @@ function handleSubmit() {
 
           <!-- Target Filename Field -->
           <div class="space-y-1.5">
-            <Label for="fc-remote-name" class="text-sm font-medium">Save as 
-              <span class="text-muted-foreground">(Optional)</span>
+            <Label for="fc-remote-name" class="text-sm font-medium">{{ $t('remote_download.save_as') }} 
+              <span class="text-muted-foreground">{{ $t('common.state.optional') }}</span>
             </Label>
             <Input
               id="fc-remote-name"
               v-model="nameInput"
-              placeholder="(Auto-detect)"
+              :placeholder="$t('remote_download.name_placeholder')"
               class="text-sm"
               autocomplete="off"
               spellcheck="false"
@@ -139,19 +146,16 @@ function handleSubmit() {
           <!-- Timeout / Gateway Notice -->
           <div class="flex items-start gap-2.5 rounded-md border bg-muted/40 px-3 py-2.5 text-sm text-muted-foreground leading-relaxed">
             <Info class="size-4 shrink-0 mt-0.5 text-muted-foreground" />
-            <span>
-              The file is fetched directly by the server. <br/>
-              Downloads that exceed PHP's execution time limit or your web server / proxy timeout may fail.
-            </span>
+            <span class="whitespace-pre-line">{{ $t('remote_download.notice') }}</span>
           </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" type="button" @click="closeDialog">
-            Cancel
+            {{ $t('common.action.cancel') }}
           </Button>
           <Button type="submit" :disabled="!canSubmit">
-            Download
+            {{ $t('common.action.download') }}
           </Button>
         </DialogFooter>
       </form>

@@ -101,7 +101,7 @@ function navigateToDir(path: string) {
   <div class="flex flex-col h-full">
     <div class="flex items-center px-3 h-8 text-sm text-muted-foreground border-b bg-muted/30">
       <Search class="size-3.5 mr-2" />
-      Searching in /{{ navigation.currentPathStr || '(root)' }} for "{{ navigation.searchQuery }}"
+      {{ navigation.currentPathStr ? $t('files.search.banner', { path: navigation.currentPathStr, query: navigation.searchQuery }) : $t('files.search.banner_root', { query: navigation.searchQuery }) }}
     </div>
 
     <div v-if="loading" class="flex-1 flex items-center justify-center">
@@ -111,12 +111,12 @@ function navigateToDir(path: string) {
     <div v-else-if="error" class="flex-1 flex flex-col items-center justify-center gap-2 text-sm text-destructive">
       <p>{{ $t('err.' + error.code, error.params ?? {}) }}</p>
       <button class="text-sm underline text-muted-foreground hover:text-foreground" @click="doSearch(navigation.searchQuery)">
-        Retry
+        {{ $t('common.action.retry') }}
       </button>
     </div>
 
     <div v-else-if="results.length === 0" class="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-      No results found
+      {{ $t('files.search.no_results') }}
     </div>
 
     <div v-else class="flex-1 overflow-auto">
@@ -136,7 +136,7 @@ function navigateToDir(path: string) {
           class="text-muted-foreground truncate cursor-pointer hover:underline"
           @click.stop="navigateToDir(result.path)"
         >
-          /{{ result.path || '(root)' }}
+          /{{ result.path || $t('common.path.root') }}
         </span>
         <span v-if="result.size != null" class="text-muted-foreground shrink-0 tabular-nums ml-auto">
           {{ formatSize(result.size) }}
@@ -144,8 +144,8 @@ function navigateToDir(path: string) {
       </div>
 
       <div v-if="truncated || scanLimitReached" class="px-3 py-2 text-sm text-muted-foreground text-center border-t space-y-0.5">
-        <p v-if="truncated">Results truncated. Refine your search for more specific results.</p>
-        <p v-if="scanLimitReached">Too many files to scan, results may be incomplete. Try searching within a subdirectory.</p>
+        <p v-if="truncated">{{ $t('files.search.truncated') }}</p>
+        <p v-if="scanLimitReached">{{ $t('files.search.scan_limit') }}</p>
       </div>
     </div>
   </div>

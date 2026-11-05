@@ -35,11 +35,13 @@ function handleDirClick(pathStr: string) {
   <div class="flex flex-col h-full">
     <div class="flex items-center px-3 h-8 text-sm text-muted-foreground border-b bg-muted/30 shrink-0">
       <Search class="size-3.5 mr-2" />
-      Searching in /{{ currentPathStr || '(archive root)' }} for "{{ searchQuery }}"
+      {{ currentPathStr
+        ? $t('archive.search.banner', { path: currentPathStr, query: searchQuery })
+        : $t('archive.search.banner_root', { query: searchQuery }) }}
     </div>
 
     <div v-if="results.length === 0" class="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-      No results found
+      {{ $t('files.search.no_results') }}
     </div>
 
     <div v-else class="flex-1 overflow-auto">
@@ -59,7 +61,7 @@ function handleDirClick(pathStr: string) {
               class="text-muted-foreground truncate cursor-pointer hover:underline"
               @click.stop="handleDirClick(item.path)"
             >
-              /{{ parentPath(item.path) || '(root)' }}
+              /{{ parentPath(item.path) || $t('common.path.root') }}
             </span>
             <span v-if="!item.isDir" class="text-muted-foreground shrink-0 tabular-nums ml-auto">
               {{ formatSize(item.size) }}
@@ -70,13 +72,13 @@ function handleDirClick(pathStr: string) {
           <ContextMenuItem @select="emit('openNode', item)">
             <FolderOpen v-if="item.isDir" class="size-4" />
             <Eye v-else class="size-4" />
-            Open
+            {{ $t('common.action.open') }}
           </ContextMenuItem>
           <template v-if="!item.isDir && randomAccess">
             <ContextMenuSeparator />
             <ContextMenuItem @select="emit('downloadNode', item)">
               <Download class="size-4" />
-              Download
+              {{ $t('common.action.download') }}
             </ContextMenuItem>
           </template>
         </ContextMenuContent>

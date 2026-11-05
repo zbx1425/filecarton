@@ -121,21 +121,21 @@ onBeforeUnmount(() => {
           class="flex items-center gap-1 flex-1 min-w-0 cursor-pointer hover:text-foreground"
           @click="emit('toggleSort', 'name')"
         >
-          Name
+          {{ $t('common.field.name') }}
           <component :is="sortIcon('name')" v-if="sortIcon('name')" class="size-3" />
         </div>
         <div
           class="w-22 cursor-pointer hover:text-foreground flex items-center gap-1"
           @click="emit('toggleSort', 'size')"
         >
-          Size
+          {{ $t('common.field.size') }}
           <component :is="sortIcon('size')" v-if="sortIcon('size')" class="size-3" />
         </div>
         <div
           class="w-28 cursor-pointer hover:text-foreground flex items-center gap-1"
           @click="emit('toggleSort', 'mtime')"
         >
-          Modified
+          {{ $t('common.field.modified') }}
           <component :is="sortIcon('mtime')" v-if="sortIcon('mtime')" class="size-3" />
         </div>
       </div>
@@ -206,24 +206,24 @@ onBeforeUnmount(() => {
           <ContextMenuItem @select="emit('openNode', item)">
             <FolderOpen v-if="item.isDir" class="size-4" />
             <Eye v-else class="size-4" />
-            Open
+            {{ $t('common.action.open') }}
           </ContextMenuItem>
           <template v-if="!item.isDir && randomAccess">
             <ContextMenuSeparator />
             <ContextMenuItem @select="emit('downloadNode', item)">
               <Download class="size-4" />
-              Download
+              {{ $t('common.action.download') }}
             </ContextMenuItem>
           </template>
         </ContextMenuContent>
       </ContextMenu>
 
       <div v-if="isFilteredEmpty" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
-        <p v-if="searchQuery.trim()" class="text-sm">No matches for "{{ searchQuery }}"</p>
-        <p v-else class="text-sm">All files under this directory are hidden files</p>
+        <p v-if="searchQuery.trim()" class="text-sm">{{ $t('files.empty.no_matches', { query: searchQuery }) }}</p>
+        <p v-else class="text-sm">{{ $t('files.empty.hidden_only') }}</p>
       </div>
       <div v-else-if="isActuallyEmpty" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
-        <p class="text-sm">This folder is empty</p>
+        <p class="text-sm">{{ $t('files.empty.empty') }}</p>
       </div>
     </div>
 

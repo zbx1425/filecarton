@@ -17,7 +17,9 @@ import { usePreferencesStore } from '@/stores/preferences'
 import { isFilenameBlocked } from '@/utils/pathValidation'
 import EditorStatusBar from './EditorStatusBar.vue'
 import { toast } from 'vue-sonner'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const navigation = useNavigationStore()
 const ui = useUiStore()
 const prefs = usePreferencesStore()
@@ -54,9 +56,9 @@ async function copyAll() {
   if (!editor) return
   try {
     await navigator.clipboard.writeText(editor.getValue())
-    toast.success('Copied to clipboard')
+    toast.success(t('toast.copied_clipboard'))
   } catch {
-    toast.error('Failed to copy')
+    toast.error(t('toast.copy_clipboard_failed'))
   }
 }
 
@@ -135,7 +137,7 @@ onBeforeUnmount(() => {
     <div class="flex items-center h-10 px-3 border-b gap-2 shrink-0">
       <Button variant="ghost" size="sm" @click="navigation.backToList()">
         <ArrowLeft class="size-4" />
-        Back
+        {{ $t('common.action.back') }}
       </Button>
 
       <span class="text-sm font-mono truncate flex-1 text-muted-foreground">
@@ -145,16 +147,16 @@ onBeforeUnmount(() => {
 
       <Button v-if="isReadonly && canEdit" variant="outline" size="sm" @click="navigation.openEditor()">
         <Pencil class="size-4" />
-        Edit
+        {{ $t('common.action.edit') }}
       </Button>
 
       <Button variant="ghost" size="sm" @click="copyAll">
         <ClipboardCopy class="size-4" />
-        Copy All
+        {{ $t('common.action.copy_all') }}
       </Button>
       <Button variant="ghost" size="sm" as="a" :href="buildDownloadUrl(filePath)" target="_blank">
         <Download class="size-4" />
-        Download
+        {{ $t('common.action.download') }}
       </Button>
       <Button
         v-if="!isReadonly"
@@ -164,7 +166,7 @@ onBeforeUnmount(() => {
       >
         <Loader2 v-if="saving" class="size-4 animate-spin" />
         <Save v-else class="size-4" />
-        Save
+        {{ $t('common.action.save') }}
       </Button>
     </div>
 

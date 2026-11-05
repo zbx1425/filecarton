@@ -1,3 +1,5 @@
+import { translate } from '@/i18n'
+
 export const TAILWIND_SCALES = [
   '50', '100', '200', '300', '400', '500', '600', '700', '800', '900', '950',
 ] as const
@@ -413,9 +415,9 @@ export function isValidToolbarColor(val: unknown): val is ToolbarSwatchId {
 export function formatToolbarColorLabel(val: ToolbarSwatchId): string {
   if (val.endsWith('-solid')) {
     const base = val.slice(0, -6) as TailwindColorFamily
-    return `${COLOR_SCALES[base].label} Solid`
+    return translate('settings.swatch_solid', { color: translate(`settings.color.${base}`) })
   }
-  return COLOR_SCALES[val as TailwindColorFamily].label
+  return translate(`settings.color.${val}`)
 }
 
 function adjustChroma(oklchStr: string, factor: number): string {

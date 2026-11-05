@@ -111,7 +111,7 @@ async function handleCopyDirectLink() {
         <ContextMenuItem @select="handleOpen">
           <FolderOpen v-if="contextTarget.isDir" class="size-4" />
           <Eye v-else class="size-4" />
-          Open
+          {{ $t('common.action.open') }}
         </ContextMenuItem>
         <ContextMenuSeparator v-if="!ui.readonly" />
       </template>
@@ -119,29 +119,29 @@ async function handleCopyDirectLink() {
       <template v-if="!ui.readonly">
         <ContextMenuItem @select="copySelected">
           <Copy class="size-4" />
-          Copy
-          <ContextMenuShortcut>Ctrl+C</ContextMenuShortcut>
+          {{ $t('common.action.copy') }}
+          <ContextMenuShortcut>{{ $t('common.shortcut.copy') }}</ContextMenuShortcut>
         </ContextMenuItem>
         <ContextMenuItem @select="cutSelected">
           <Scissors class="size-4" />
-          Cut
-          <ContextMenuShortcut>Ctrl+X</ContextMenuShortcut>
+          {{ $t('common.action.cut') }}
+          <ContextMenuShortcut>{{ $t('common.shortcut.cut') }}</ContextMenuShortcut>
         </ContextMenuItem>
         <ContextMenuItem v-if="ctx.canPaste" @select="handlePaste">
           <ClipboardPaste class="size-4" />
-          Paste
-          <ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
+          {{ $t('common.action.paste') }}
+          <ContextMenuShortcut>{{ $t('common.shortcut.paste') }}</ContextMenuShortcut>
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem v-if="ctx.selectedCount <= 1" @select="handleRename">
           <Pencil class="size-4" />
-          Rename
-          <ContextMenuShortcut>F2</ContextMenuShortcut>
+          {{ $t('common.action.rename') }}
+          <ContextMenuShortcut>{{ $t('common.shortcut.rename') }}</ContextMenuShortcut>
         </ContextMenuItem>
         <ContextMenuItem class="text-destructive focus:text-destructive" @select="deleteSelected">
           <Trash2 class="size-4" />
-          Delete
-          <ContextMenuShortcut>Del</ContextMenuShortcut>
+          {{ $t('common.action.delete') }}
+          <ContextMenuShortcut>{{ $t('common.shortcut.delete') }}</ContextMenuShortcut>
         </ContextMenuItem>
       </template>
 
@@ -149,7 +149,7 @@ async function handleCopyDirectLink() {
         <ContextMenuSeparator />
         <ContextMenuItem @select="downloadSelected">
           <Download class="size-4" />
-          {{ isBulkDownload ? 'Download All' : 'Download' }}
+          {{ isBulkDownload ? $t('common.action.download_all') : $t('common.action.download') }}
         </ContextMenuItem>
       </template>
 
@@ -157,7 +157,7 @@ async function handleCopyDirectLink() {
         <ContextMenuSeparator v-if="isBulkDownload && !ui.features.archive" />
         <ContextMenuItem @select="handleCopyDirectLink">
           <Link class="size-4" />
-          Copy Direct Link
+          {{ $t('files.action.copy_link') }}
         </ContextMenuItem>
       </template>
 
@@ -165,7 +165,7 @@ async function handleCopyDirectLink() {
         <ContextMenuSeparator v-if="!ui.features.archive" />
         <ContextMenuItem :disabled="!canModifyPermissions" @select="openPermissionsSelected">
           <Shield class="size-4" />
-          Permissions
+          {{ $t('files.action.permissions') }}
         </ContextMenuItem>
       </template>
 
@@ -173,7 +173,7 @@ async function handleCopyDirectLink() {
         <ContextMenuSeparator />
         <ContextMenuItem @select="handleChecksum">
           <Hash class="size-4" />
-          Checksum
+          {{ $t('files.action.checksum') }}
         </ContextMenuItem>
       </template>
 
@@ -183,17 +183,17 @@ async function handleCopyDirectLink() {
           <ContextMenuSub>
             <ContextMenuSubTrigger class="gap-2">
               <PackageOpen class="size-4" />
-              Extract
+              {{ $t('common.action.extract') }}
             </ContextMenuSubTrigger>
             <ContextMenuSubContent>
               <ContextMenuItem @select="handleExtract(false)">
-                Here
+                {{ $t('archive.extract.here') }}
               </ContextMenuItem>
               <ContextMenuItem
                 v-if="archiveSubdirName(contextTarget.name)"
                 @select="handleExtract(true)"
               >
-                To "{{ archiveSubdirName(contextTarget.name) }}/"
+                {{ $t('archive.extract.to_folder', { folder: archiveSubdirName(contextTarget.name) }) }}
               </ContextMenuItem>
             </ContextMenuSubContent>
           </ContextMenuSub>
@@ -202,11 +202,11 @@ async function handleCopyDirectLink() {
           <ContextMenuSub>
             <ContextMenuSubTrigger class="gap-2">
               <FileArchive class="size-4" />
-              Archive
+              {{ $t('common.action.archive') }}
             </ContextMenuSubTrigger>
             <ContextMenuSubContent>
-              <ContextMenuItem @select="createArchive('zip')">Create .zip</ContextMenuItem>
-              <ContextMenuItem @select="createArchive('tar')">Create .tar</ContextMenuItem>
+              <ContextMenuItem @select="createArchive('zip')">{{ $t('files.action.create_archive', { format: '.zip' }) }}</ContextMenuItem>
+              <ContextMenuItem @select="createArchive('tar')">{{ $t('files.action.create_archive', { format: '.tar' }) }}</ContextMenuItem>
             </ContextMenuSubContent>
           </ContextMenuSub>
         </template>
@@ -217,35 +217,35 @@ async function handleCopyDirectLink() {
     <template v-else>
       <ContextMenuItem @select="refreshCurrent">
         <RefreshCw class="size-4" />
-        Refresh
+        {{ $t('common.action.refresh') }}
       </ContextMenuItem>
       <ContextMenuSeparator />
       <template v-if="!ui.readonly">
         <ContextMenuItem v-if="ctx.canPaste" @select="pasteItems(ctx.currentPathStr)">
           <ClipboardPaste class="size-4" />
-          Paste
-          <ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
+          {{ $t('common.action.paste') }}
+          <ContextMenuShortcut>{{ $t('common.shortcut.paste') }}</ContextMenuShortcut>
         </ContextMenuItem>
         <ContextMenuSeparator v-if="ctx.canPaste" />
         <ContextMenuItem @select="createItem('file')">
           <File class="size-4" />
-          New File
+          {{ $t('files.action.new_file') }}
         </ContextMenuItem>
         <ContextMenuItem @select="createItem('dir')">
           <Folder class="size-4" />
-          New Folder
+          {{ $t('files.action.new_folder') }}
         </ContextMenuItem>
         <ContextMenuItem v-if="ui.features.remoteDownload" @select="showRemoteDownloadDialog()">
           <CloudDownload class="size-4" />
-          Remote Download
+          {{ $t('files.action.remote_download') }}
         </ContextMenuItem>
         <ContextMenuSeparator />
       </template>
       <ContextMenuItem @select="ctx.toggleSelectAll()">
         <CheckSquare v-if="!ctx.isAllSelected" class="size-4" />
         <Square v-else class="size-4" />
-        {{ ctx.isAllSelected ? 'Deselect All' : 'Select All' }}
-        <ContextMenuShortcut>Ctrl+A</ContextMenuShortcut>
+        {{ ctx.isAllSelected ? $t('common.action.deselect_all') : $t('common.action.select_all') }}
+        <ContextMenuShortcut>{{ $t('common.shortcut.select_all') }}</ContextMenuShortcut>
       </ContextMenuItem>
     </template>
   </ContextMenuContent>

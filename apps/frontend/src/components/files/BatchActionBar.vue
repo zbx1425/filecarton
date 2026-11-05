@@ -84,40 +84,40 @@ function handleSelectAll(checked: boolean | "indeterminate") {
       @update:model-value="handleSelectAll"
     />
     <span class="text-sm text-muted-foreground">
-      {{ view.selectedCount }} selected
+      {{ $t('files.selection.count', { count: view.selectedCount }) }}
     </span>
 
     <div class="flex-1" />
 
     <Button v-if="isSingleFile || ui.features.archive" variant="ghost" size="sm" :disabled="downloading" @click="downloadSelected">
       <Download class="size-3.5" />
-      {{ isSingleFile ? 'Download' : 'Download All' }}
+      {{ isSingleFile ? $t('common.action.download') : $t('common.action.download_all') }}
     </Button>
 
     <template v-if="!ui.readonly">
       <Button variant="ghost" size="sm" @click="copySelected">
         <Copy class="size-3.5" />
-        Copy
+        {{ $t('common.action.copy') }}
       </Button>
       <Button variant="ghost" size="sm" @click="cutSelected">
         <Scissors class="size-3.5" />
-        Cut
+        {{ $t('common.action.cut') }}
       </Button>
       <Button variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="deleteSelected">
         <Trash2 class="size-3.5" />
-        Delete
+        {{ $t('common.action.delete') }}
       </Button>
 
       <DropdownMenu v-if="ui.features.archive">
         <DropdownMenuTrigger as-child>
           <Button variant="ghost" size="sm">
             <FileArchive class="size-3.5" />
-            Archive
+            {{ $t('common.action.archive') }}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          <DropdownMenuItem @select="createArchive('zip')">Create .zip</DropdownMenuItem>
-          <DropdownMenuItem @select="createArchive('tar')">Create .tar</DropdownMenuItem>
+          <DropdownMenuItem @select="createArchive('zip')">{{ $t('files.action.create_archive', { format: '.zip' }) }}</DropdownMenuItem>
+          <DropdownMenuItem @select="createArchive('tar')">{{ $t('files.action.create_archive', { format: '.tar' }) }}</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -129,11 +129,11 @@ function handleSelectAll(checked: boolean | "indeterminate") {
         @click="openPermissionsSelected"
       >
         <Shield class="size-3.5" />
-        Permissions
+        {{ $t('files.action.permissions') }}
       </Button>
     </template>
 
-    <Button variant="ghost" size="sm" aria-label="Clear selection" @click="view.clearSelection()">
+    <Button variant="ghost" size="sm" :aria-label="$t('common.a11y.clear_selection')" @click="view.clearSelection()">
       <X class="size-3.5" />
     </Button>
   </div>

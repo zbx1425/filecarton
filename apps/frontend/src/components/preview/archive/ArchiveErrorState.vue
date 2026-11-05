@@ -34,7 +34,7 @@ function handleDownloadArchive() {
       />
       <Button variant="outline" size="sm" @click="handleDownloadArchive">
         <Download class="size-4" />
-        Download
+        {{ $t('common.action.download') }}
       </Button>
     </div>
   </div>

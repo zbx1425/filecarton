@@ -96,7 +96,7 @@ function handleEditorConflictOpenChange(open: boolean) {
           <AlertDialogDescription class="whitespace-pre-line">{{ dialogState.confirm.message }}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter class="mt-4">
-          <Button v-if="!dialogState.confirm.hideCancel" variant="outline" type="button" @click="resolveConfirm(false)">Cancel</Button>
+          <Button v-if="!dialogState.confirm.hideCancel" variant="outline" type="button" @click="resolveConfirm(false)">{{ $t('common.action.cancel') }}</Button>
           <Button
             ref="confirmBtnRef"
             type="submit"
@@ -114,7 +114,7 @@ function handleEditorConflictOpenChange(open: boolean) {
     <DialogContent>
       <DialogHeader>
         <DialogTitle>{{ dialogState.prompt.title }}</DialogTitle>
-        <DialogDescription class="sr-only">Enter a value</DialogDescription>
+        <DialogDescription class="sr-only">{{ $t('common.a11y.enter_value') }}</DialogDescription>
       </DialogHeader>
       <form @submit.prevent="handlePromptSubmit">
         <Input
@@ -124,7 +124,7 @@ function handleEditorConflictOpenChange(open: boolean) {
           class="mt-2"
         />
         <DialogFooter class="mt-4">
-          <Button variant="outline" type="button" @click="resolvePrompt(null)">Cancel</Button>
+          <Button variant="outline" type="button" @click="resolvePrompt(null)">{{ $t('common.action.cancel') }}</Button>
           <Button type="submit" :disabled="!promptValue.trim()">{{ dialogState.prompt.submitLabel }}</Button>
         </DialogFooter>
       </form>
@@ -148,15 +148,15 @@ function handleEditorConflictOpenChange(open: boolean) {
     <DialogContent>
       <form @submit.prevent="resolveEditorConflict('overwrite')">
         <DialogHeader>
-          <DialogTitle>File Modified</DialogTitle>
+          <DialogTitle>{{ $t('editor.conflict.title') }}</DialogTitle>
           <DialogDescription>
-            This file was modified since you opened it.
+            {{ $t('editor.conflict.message') }}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter class="mt-4">
-          <Button variant="outline" type="button" @click="resolveEditorConflict('cancel')">Cancel</Button>
-          <Button variant="secondary" type="button" @click="resolveEditorConflict('reload')">Reload</Button>
-          <Button type="submit">Overwrite</Button>
+          <Button variant="outline" type="button" @click="resolveEditorConflict('cancel')">{{ $t('common.action.cancel') }}</Button>
+          <Button variant="secondary" type="button" @click="resolveEditorConflict('reload')">{{ $t('common.action.reload') }}</Button>
+          <Button type="submit">{{ $t('common.action.overwrite') }}</Button>
         </DialogFooter>
       </form>
     </DialogContent>

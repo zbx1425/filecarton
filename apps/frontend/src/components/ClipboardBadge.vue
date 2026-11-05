@@ -41,10 +41,10 @@ function handleClear() {
     </PopoverTrigger>
     <PopoverContent class="w-64" align="end">
       <div class="text-sm font-medium mb-1">
-        Clipboard ({{ clipboard.mode === 'cut' ? 'Cut' : 'Copy' }})
+        {{ clipboard.mode === 'cut' ? $t('files.clipboard.title_cut') : $t('files.clipboard.title_copy') }}
       </div>
       <div class="text-sm text-muted-foreground mb-2">
-        From: /{{ clipboard.sourcePath || '(root)' }}
+        {{ clipboard.sourcePath ? $t('files.clipboard.from', { path: clipboard.sourcePath }) : $t('files.clipboard.from_root') }}
       </div>
       <Separator class="mb-2" />
       <div class="space-y-0.5 text-sm max-h-40 overflow-auto">
@@ -56,16 +56,16 @@ function handleClear() {
           {{ item.name }}{{ item.isDir ? '/' : '' }}
         </div>
         <div v-if="clipboard.items.length > MAX_DISPLAY" class="text-muted-foreground">
-          and {{ clipboard.items.length - MAX_DISPLAY }} more...
+          {{ $t('files.clipboard.more', { count: clipboard.items.length - MAX_DISPLAY }) }}
         </div>
       </div>
       <Separator class="my-2" />
       <div class="flex items-center gap-2">
         <Button size="sm" class="flex-1" @click="handlePaste">
           <ClipboardPaste class="size-3.5" />
-          Paste Here
+          {{ $t('common.action.paste_here') }}
         </Button>
-        <Button variant="ghost" size="sm" @click="handleClear">Clear</Button>
+        <Button variant="ghost" size="sm" @click="handleClear">{{ $t('common.action.clear') }}</Button>
       </div>
     </PopoverContent>
   </Popover>

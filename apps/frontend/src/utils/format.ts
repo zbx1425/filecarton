@@ -1,3 +1,5 @@
+import i18n, { translate } from '@/i18n'
+
 const SIZE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'] as const
 
 export function formatSize(bytes: number): string {
@@ -14,10 +16,11 @@ export function formatTime(timestamp: number): string {
   const diffMs = now.getTime() - date.getTime()
   const diffSec = Math.floor(diffMs / 1000)
 
-  if (diffSec < 60) return 'just now'
-  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`
-  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`
-  if (diffSec < 604800) return `${Math.floor(diffSec / 86400)}d ago`
+  const rtf = new Intl.RelativeTimeFormat(i18n.global.locale.value, { numeric: 'auto', style: 'narrow' })
+  if (diffSec < 60) return translate('time.just_now')
+  if (diffSec < 3600) return rtf.format(-Math.floor(diffSec / 60), 'minute')
+  if (diffSec < 86400) return rtf.format(-Math.floor(diffSec / 3600), 'hour')
+  if (diffSec < 604800) return rtf.format(-Math.floor(diffSec / 86400), 'day')
 
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')

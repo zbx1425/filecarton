@@ -113,7 +113,7 @@ watch(
       v-if="ui.showTreeToggle"
       variant="ghost"
       size="icon-sm"
-      aria-label="Toggle tree panel"
+      :aria-label="$t('common.a11y.toggle_tree')"
       @click="ui.toggleTreePanel()"
     >
       <PanelLeft class="size-4" />
@@ -177,7 +177,7 @@ watch(
       <template v-if="navigation.viewMode === 'list'">
         <SearchBox
           v-model="navigation.searchQuery"
-          placeholder="Search..."
+          :placeholder="$t('files.search.placeholder')"
           input-class="w-36 sm:w-60 max-w-full"
           :input-attrs="{ 'data-search': '' }"
           class="me-1"
@@ -185,10 +185,10 @@ watch(
           <template #panel>
             <div class="flex justify-end gap-0">
               <Button :variant="!navigation.searchRecursive ? 'default' : 'ghost'" size="sm" @click="navigation.searchRecursive = false">
-                Here
+                {{ $t('files.search.scope_here') }}
               </Button>
               <Button :variant="navigation.searchRecursive ? 'default' : 'ghost'" size="sm" @click="navigation.searchRecursive = true">
-                & Subfolders
+                {{ $t('files.search.scope_subfolders') }}
               </Button>
             </div>
           </template>
@@ -201,23 +201,23 @@ watch(
             <DropdownMenuTrigger as-child>
               <Button variant="outline" size="sm">
                 <Plus class="size-4" />
-                New
+                {{ $t('common.action.new') }}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem @select="createItem('file')">
                 <File class="size-4" />
-                New File
+                {{ $t('files.action.new_file') }}
               </DropdownMenuItem>
               <DropdownMenuItem @select="createItem('dir')">
                 <Folder class="size-4" />
-                New Folder
+                {{ $t('files.action.new_folder') }}
               </DropdownMenuItem>
               <template v-if="ui.features.remoteDownload">
                 <DropdownMenuSeparator />
                 <DropdownMenuItem @select="showRemoteDownloadDialog()">
                   <CloudDownload class="size-4" />
-                  Remote Download
+                  {{ $t('files.action.remote_download') }}
                 </DropdownMenuItem>
               </template>
             </DropdownMenuContent>
@@ -225,7 +225,7 @@ watch(
 
           <Button variant="outline" size="sm" @click="upload.openUploadDialog()">
             <Upload class="size-4" />
-            Upload
+            {{ $t('common.action.upload') }}
           </Button>
         </template>
       </template>
@@ -256,13 +256,13 @@ watch(
             <DropdownMenuSeparator />
             <DropdownMenuItem @select="handleLogout">
               <LogOut class="size-4" />
-              Log out
+              {{ $t('common.action.log_out') }}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </template>
 
-      <Button variant="ghost" size="icon-sm" class="-ms-2" aria-label="Settings" @click="ui.settingsOpen = true">
+      <Button variant="ghost" size="icon-sm" class="-ms-2" :aria-label="$t('common.action.settings')" @click="ui.settingsOpen = true">
         <Settings2 class="size-4" />
       </Button>
     </div>

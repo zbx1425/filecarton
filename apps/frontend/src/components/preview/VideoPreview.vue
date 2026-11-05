@@ -94,11 +94,11 @@ async function handleError() {
       </p>
       <template v-else>
         <p class="text-sm text-muted-foreground">
-          This video format or codec cannot be played directly in your browser ({{ formatSize(size) }}).
+          {{ $t('preview.video.unsupported', { size: formatSize(size) }) }}
         </p>
         <Button variant="outline" as="a" :href="downloadUrl" target="_blank">
           <Download class="size-4" />
-          Download
+          {{ $t('common.action.download') }}
         </Button>
       </template>
     </template>

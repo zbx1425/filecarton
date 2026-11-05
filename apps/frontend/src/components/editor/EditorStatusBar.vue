@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type * as Monaco from 'monaco-editor'
 import {
   Popover,
@@ -18,6 +19,7 @@ const props = defineProps<{
 }>()
 
 const prefs = usePreferencesStore()
+const { t } = useI18n()
 
 const cursorLine = ref(1)
 const cursorCol = ref(1)
@@ -69,13 +71,13 @@ const displayLanguage = computed(() => {
     go: 'Go',
     rust: 'Rust',
     sql: 'SQL',
-    shell: 'Shell',
-    bat: 'Batch',
+    shell: t('editor.language.shell'),
+    bat: t('editor.language.batch'),
     powershell: 'PowerShell',
     lua: 'Lua',
-    plaintext: 'Plain Text',
+    plaintext: t('editor.language.plaintext'),
     ini: 'INI',
-    properties: 'Properties',
+    properties: t('editor.language.properties'),
     scss: 'SCSS',
     less: 'LESS',
   }
@@ -84,8 +86,8 @@ const displayLanguage = computed(() => {
 
 const indentLabel = computed(() => {
   return insertSpaces.value
-    ? `Spaces: ${tabSize.value}`
-    : `Tabs: ${tabSize.value}`
+    ? t('editor.indent.spaces_with_size', { size: tabSize.value })
+    : t('editor.indent.tabs_with_size', { size: tabSize.value })
 })
 
 function toggleLineNumbers() {
@@ -149,7 +151,7 @@ onBeforeUnmount(() => {
     class="flex items-center h-9 px-2 text-sm select-none shrink-0 gap-0.5 bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
   >
     <span class="px-2 tabular-nums">
-      Ln {{ cursorLine }}, Col {{ cursorCol }}
+      {{ $t('editor.status.cursor', { line: cursorLine, column: cursorCol }) }}
     </span>
 
     <div class="flex-1" />
@@ -157,7 +159,7 @@ onBeforeUnmount(() => {
     <button
       class="px-2 h-full transition-colors rounded-sm hover:bg-statusbar-hover"
       :class="lineNumbers ? 'opacity-100' : 'opacity-50'"
-      title="Toggle Line Numbers"
+      :title="$t('editor.a11y.toggle_line_numbers')"
       @click="toggleLineNumbers"
     >
       LN
@@ -166,10 +168,10 @@ onBeforeUnmount(() => {
     <button
       class="px-2 h-full transition-colors rounded-sm hover:bg-statusbar-hover"
       :class="wordWrap ? 'opacity-100' : 'opacity-50'"
-      title="Toggle Word Wrap"
+      :title="$t('editor.a11y.toggle_word_wrap')"
       @click="toggleWordWrap"
     >
-      Wrap
+      {{ $t('editor.status.wrap') }}
     </button>
 
     <Popover v-if="!readonly">
@@ -182,7 +184,7 @@ onBeforeUnmount(() => {
       </PopoverTrigger>
       <PopoverContent align="end" :side-offset="4" class="w-52 p-3 space-y-3">
         <div class="flex items-center justify-between">
-          <label class="text-sm">Auto Detect</label>
+          <label class="text-sm">{{ $t('editor.language.auto') }}</label>
           <Switch
             :model-value="autoDetect"
             @update:model-value="setAutoDetect"
@@ -192,7 +194,7 @@ onBeforeUnmount(() => {
         <Separator />
 
         <div class="flex flex-col gap-2">
-          <label class="text-sm text-muted-foreground">Indent Using</label>
+          <label class="text-sm text-muted-foreground">{{ $t('editor.indent.using') }}</label>
           <div class="flex gap-1">
             <Button
               size="sm"
@@ -201,7 +203,7 @@ onBeforeUnmount(() => {
               class="flex-1 h-7 text-sm"
               @click="setIndentSpaces(true)"
             >
-              Spaces
+              {{ $t('editor.indent.spaces') }}
             </Button>
             <Button
               size="sm"
@@ -210,7 +212,7 @@ onBeforeUnmount(() => {
               class="flex-1 h-7 text-sm"
               @click="setIndentSpaces(false)"
             >
-              Tabs
+              {{ $t('editor.indent.tabs') }}
             </Button>
           </div>
         </div>
@@ -218,7 +220,7 @@ onBeforeUnmount(() => {
         <Separator />
 
         <div class="flex flex-col gap-2">
-          <label class="text-sm text-muted-foreground">Tab Size</label>
+          <label class="text-sm text-muted-foreground">{{ $t('editor.indent.tab_size') }}</label>
           <div class="flex gap-1">
             <Button
               v-for="size in [2, 4] as const"

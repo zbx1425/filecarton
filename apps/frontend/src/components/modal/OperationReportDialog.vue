@@ -100,7 +100,7 @@ function handleOpenChange(open: boolean) {
               <span
                 v-if="name === state.highlightItem"
                 class="text-destructive opacity-70 font-sans"
-              >(editing)</span>
+              >{{ $t('common.state.editing') }}</span>
             </div>
           </div>
         </div>
@@ -134,7 +134,7 @@ function handleOpenChange(open: boolean) {
                   <span
                     v-if="name === state.highlightItem"
                     class="text-destructive opacity-70 font-sans"
-                  >(editing)</span>
+                  >{{ $t('common.state.editing') }}</span>
                 </div>
               </div>
             </AccordionContent>
@@ -144,7 +144,7 @@ function handleOpenChange(open: boolean) {
 
       <DialogFooter>
         <template v-if="state.continueLabel">
-          <Button variant="outline" @click="resolve(false)">Cancel</Button>
+          <Button variant="outline" @click="resolve(false)">{{ $t('common.action.cancel') }}</Button>
           <Button
             :variant="state.dangerContinue ? 'destructive' : 'default'"
             @click="resolve(true)"
@@ -152,7 +152,7 @@ function handleOpenChange(open: boolean) {
             {{ state.continueLabel }}
           </Button>
         </template>
-        <Button v-else @click="resolve(false)">OK</Button>
+        <Button v-else @click="resolve(false)">{{ $t('common.action.ok') }}</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>

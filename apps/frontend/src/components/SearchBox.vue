@@ -34,7 +34,7 @@ function handleBlur(e: FocusEvent) {
       <Search class="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
       <Input
         :model-value="modelValue"
-        :placeholder="placeholder ?? 'Search...'"
+        :placeholder="placeholder ?? $t('files.search.placeholder')"
         :class="['h-8 pl-7 text-sm', inputClass]"
         v-bind="inputAttrs"
         @update:model-value="emit('update:modelValue', String($event))"

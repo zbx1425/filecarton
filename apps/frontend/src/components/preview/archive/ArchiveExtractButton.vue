@@ -33,16 +33,16 @@ async function handleExtract(createSubdir: boolean) {
     <DropdownMenuTrigger as-child>
       <Button variant="outline" size="sm">
         <PackageOpen class="size-4" />
-        Extract
+        {{ $t('common.action.extract') }}
         <ChevronDown class="size-3.5" />
       </Button>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end">
       <DropdownMenuItem @select="handleExtract(false)">
-        Extract Here
+        {{ $t('archive.extract.here') }}
       </DropdownMenuItem>
       <DropdownMenuItem v-if="subdirName" @select="handleExtract(true)">
-        Extract to "{{ subdirName }}/"
+        {{ $t('archive.extract.to_folder', { folder: subdirName }) }}
       </DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>

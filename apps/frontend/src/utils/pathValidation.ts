@@ -2,6 +2,8 @@
  * Centralized path and filename validation utilities.
  */
 
+import { translate } from '@/i18n'
+
 // ── Sanitize & Validate ──
 
 const INVALID_CHARS = /[/\\:*?"<>|]/
@@ -22,11 +24,11 @@ export function sanitizeFileName(name: string): string {
 }
 
 export function validateFileName(name: string): string | null {
-  if (!name || !name.trim()) return 'Name cannot be empty'
-  if (name === '.' || name === '..') return `"${name}" is not a valid name`
-  if (CONTROL_CHARS.test(name)) return 'Name contains invalid control characters'
-  if (INVALID_CHARS.test(name)) return 'Name contains invalid characters: / \\ : * ? " < > |'
-  if (name.endsWith('.') || name.endsWith(' ')) return 'Name cannot end with a dot or space'
+  if (!name || !name.trim()) return translate('validation.name.empty')
+  if (name === '.' || name === '..') return translate('validation.name.invalid', { name })
+  if (CONTROL_CHARS.test(name)) return translate('validation.name.control_chars')
+  if (INVALID_CHARS.test(name)) return translate('validation.name.invalid_chars')
+  if (name.endsWith('.') || name.endsWith(' ')) return translate('validation.name.trailing')
   return null
 }
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useUploadStore } from '@/stores/upload'
 import { useNavigationStore } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
@@ -7,6 +8,7 @@ import { Upload } from '@lucide/vue'
 import { readEntryRecursive } from '@/utils/fileEntry'
 import { toast } from 'vue-sonner'
 
+const { t } = useI18n()
 const upload = useUploadStore()
 const navigation = useNavigationStore()
 const ui = useUiStore()
@@ -117,11 +119,11 @@ async function handleDrop(e: DragEvent) {
   }
 
   if (readErrors > 0 && allFiles.length === 0) {
-    toast.error('Failed to read dropped items')
+    toast.error(t('upload.read_failed'))
     return
   }
   if (readErrors > 0) {
-    toast.warning(`${readErrors} item(s) could not be read and were skipped`)
+    toast.warning(t('upload.read_skipped', { count: readErrors }, readErrors))
   }
   if (allFiles.length > 0) {
     upload.addFilesWithPaths(allFiles, targetDir)
@@ -157,7 +159,9 @@ onBeforeUnmount(() => {
       <div class="flex flex-col items-center gap-3 text-primary">
         <Upload class="size-12" />
         <p class="text-lg font-medium">
-          Drop to upload to /{{ navigation.currentPathStr || '(root)' }}
+          {{ navigation.currentPathStr
+            ? $t('upload.overlay', { path: '/' + navigation.currentPathStr })
+            : $t('upload.overlay', { path: $t('common.path.root') }) }}
         </p>
       </div>
     </div>

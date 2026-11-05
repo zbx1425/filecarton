@@ -58,7 +58,7 @@ function handleClick() {
       <FileImage class="size-16 text-muted-foreground" />
       <p class="text-sm text-muted-foreground">{{ name }}</p>
       <p class="text-sm text-muted-foreground">
-        File too large to preview ({{ formatSize(size) }}). Use Download.
+        {{ $t('preview.image.too_large', { size: formatSize(size) }) }}
       </p>
     </template>
   </div>

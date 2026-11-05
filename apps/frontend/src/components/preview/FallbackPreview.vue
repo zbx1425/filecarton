@@ -28,7 +28,7 @@ const effectiveDownloadUrl = computed(() =>
     <p v-if="hint" class="text-sm text-muted-foreground max-w-md">{{ hint }}</p>
     <Button v-if="effectiveDownloadUrl" variant="outline" as="a" :href="effectiveDownloadUrl" target="_blank">
       <Download class="size-4" />
-      Download
+      {{ $t('common.action.download') }}
     </Button>
   </div>
 </template>

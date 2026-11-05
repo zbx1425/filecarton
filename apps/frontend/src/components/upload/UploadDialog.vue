@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   Dialog,
   DialogContent,
@@ -14,6 +15,7 @@ import { Upload, File, FolderOpen } from '@lucide/vue'
 import { readEntryRecursive } from '@/utils/fileEntry'
 import { toast } from 'vue-sonner'
 
+const { t } = useI18n()
 const upload = useUploadStore()
 const navigation = useNavigationStore()
 
@@ -102,11 +104,11 @@ async function handleDrop(e: DragEvent) {
   }
 
   if (readErrors > 0 && allFiles.length === 0) {
-    toast.error('Failed to read dropped items')
+    toast.error(t('upload.read_failed'))
     return
   }
   if (readErrors > 0) {
-    toast.warning(`${readErrors} item(s) could not be read and were skipped`)
+    toast.warning(t('upload.read_skipped', { count: readErrors }, readErrors))
   }
   if (allFiles.length > 0) {
     upload.addFilesWithPaths(allFiles, targetDir)
@@ -118,9 +120,13 @@ async function handleDrop(e: DragEvent) {
   <Dialog :open="upload.uploadDialogOpen" @update:open="handleOpenChange">
     <DialogContent class="max-w-md" :show-close-button="true">
       <DialogHeader>
-        <DialogTitle>Upload</DialogTitle>
+        <DialogTitle>{{ $t('common.action.upload') }}</DialogTitle>
         <DialogDescription>
-          Upload to <span class="font-mono text-foreground">/{{ navigation.currentPathStr || '' }}</span>
+          <i18n-t keypath="upload.to">
+            <template #path>
+              <span class="font-mono text-foreground">/{{ navigation.currentPathStr || '' }}</span>
+            </template>
+          </i18n-t>
         </DialogDescription>
       </DialogHeader>
 
@@ -142,21 +148,21 @@ async function handleDrop(e: DragEvent) {
         </div>
 
         <p class="text-sm font-medium mb-1" :class="isDragging ? 'text-primary' : 'text-foreground'">
-          {{ isDragging ? 'Release to upload' : 'Drag and drop files here' }}
+          {{ isDragging ? $t('upload.release') : $t('upload.drop') }}
         </p>
         <p class="text-sm text-muted-foreground">
-          or use the buttons below
+          {{ $t('upload.or_buttons') }}
         </p>
       </div>
 
       <div class="flex gap-2">
         <Button variant="outline" class="flex-1" @click="fileInputRef?.click()">
           <File class="size-4 mr-1.5" />
-          Select Files
+          {{ $t('upload.select_files') }}
         </Button>
         <Button variant="outline" class="flex-1" @click="folderInputRef?.click()">
           <FolderOpen class="size-4 mr-1.5" />
-          Select Folder
+          {{ $t('upload.select_folder') }}
         </Button>
       </div>
 

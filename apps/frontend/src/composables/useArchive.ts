@@ -1,4 +1,5 @@
 import { toast } from 'vue-sonner'
+import { translate } from '@/i18n'
 import { apiPost } from '@/api/client'
 import type { ArchiveCreateResponse, ArchiveExtractResponse, ArchiveExtractDryRunResponse } from '@/api/types'
 import { useNavigationStore } from '@/stores/navigation'
@@ -34,7 +35,7 @@ export async function createArchive(
   const effectiveItems = items ?? selectedNamesInCurrentDir()
   if (effectiveItems.length === 0) return
 
-  const toastId = toast.loading(`Creating .${format} archive...`)
+  const toastId = toast.loading(translate('toast.archive_creating', { format: `.${format}` }))
   try {
     const result = await apiPost<ArchiveCreateResponse>('archive_create', {
       format,
@@ -45,12 +46,12 @@ export async function createArchive(
     if (result.skipped && result.skipped.length > 0) {
       toast.dismiss(toastId)
       await showOperationReport({
-        title: 'Archive Created',
-        description: `${archiveName} created. ${result.skipped.length} item(s) were skipped due to restrictions.`,
+        title: translate('archive.report.created_title'),
+        description: translate('archive.report.created_skipped', { name: archiveName, count: result.skipped.length }, result.skipped.length),
         items: result.skipped.map(s => ({ name: s, reason: 'blocked.ignored' })),
       })
     } else {
-      toast.success(`Archive created: ${archiveName}`, { id: toastId })
+      toast.success(translate('toast.archive_created', { name: archiveName }), { id: toastId })
     }
     handleMutation({ dirs: [effectiveDirPath] })
   } catch (e: unknown) {
@@ -66,7 +67,7 @@ export async function extractArchive(
   const ui = useUiStore()
   if (ui.readonly || !ui.features.archive) return
 
-  let activeToastId: string | number | undefined = toast.loading('Inspecting archive...')
+  let activeToastId: string | number | undefined = toast.loading(translate('toast.archive_inspecting'))
   try {
     const dryRun = await apiPost<ArchiveExtractDryRunResponse>('archive_extract', {
       path: archivePath,
@@ -82,8 +83,8 @@ export async function extractArchive(
 
     if (hasFailed && !hasConflicts && dryRun.wouldExtract === 0) {
       await showOperationReport({
-        title: 'Extraction Failed',
-        description: 'All entries were rejected due to restrictions.',
+        title: translate('archive.report.extract_failed_title'),
+        description: translate('archive.report.extract_failed'),
         items: dryRun.failed.map(f => ({ name: f.path, reason: f.reason })),
       })
       return
@@ -97,22 +98,24 @@ export async function extractArchive(
     const displayTarget = dryRun.targetPath || targetDir
     if (hasFailed) {
       const proceed = await showOperationReport({
-        title: 'Entries Restricted',
-        description: `${dryRun.failed.length} entry(ies) will be skipped during extraction.`,
+        title: translate('archive.report.restricted_title'),
+        description: translate('archive.report.restricted', { count: dryRun.failed.length }, dryRun.failed.length),
         items: dryRun.failed.map(f => ({ name: f.path, reason: f.reason })),
-        continueLabel: `Extract ${dryRun.wouldExtract} file(s)`,
+        continueLabel: translate('archive.report.continue', { count: dryRun.wouldExtract }, dryRun.wouldExtract),
       })
       if (!proceed) return
     } else if (!hasConflicts) {
       const confirmed = await confirm(
-        'Extract Archive',
-        `Extract ${dryRun.wouldExtract} file(s) to /${displayTarget || '(root)'}?`,
-        { actionLabel: 'Extract' },
+        translate('archive.confirm.title'),
+        displayTarget
+          ? translate('archive.confirm.message', { count: dryRun.wouldExtract, path: displayTarget }, dryRun.wouldExtract)
+          : translate('archive.confirm.message_root', { count: dryRun.wouldExtract }, dryRun.wouldExtract),
+        { actionLabel: translate('common.action.extract') },
       )
       if (!confirmed) return
     }
 
-    activeToastId = toast.loading('Extracting archive...')
+    activeToastId = toast.loading(translate('toast.archive_extracting'))
     const result = await apiPost<ArchiveExtractResponse>('archive_extract', {
       path: archivePath,
       targetPath: targetDir,
@@ -122,12 +125,12 @@ export async function extractArchive(
       toast.dismiss(activeToastId)
       activeToastId = undefined
       await showOperationReport({
-        title: 'Partial Extraction',
-        description: `Extracted ${result.extracted} file(s), ${result.failed.length} skipped.`,
+        title: translate('archive.report.partial_title'),
+        description: translate('archive.report.partial', { extracted: result.extracted, skipped: result.failed.length }),
         items: result.failed.map(f => ({ name: f.path, reason: f.reason })),
       })
     } else {
-      toast.success(`Extracted ${result.extracted} files`, { id: activeToastId })
+      toast.success(translate('toast.archive_extracted', { count: result.extracted }, result.extracted), { id: activeToastId })
     }
     handleMutation({ subtrees: [targetDir] })
   } catch (e: unknown) {

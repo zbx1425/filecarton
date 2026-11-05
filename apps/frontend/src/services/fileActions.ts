@@ -1,5 +1,5 @@
 import { toast } from 'vue-sonner'
-import i18n from '@/i18n'
+import { translate as t } from '@/i18n'
 import { apiGet, apiPost, buildDownloadUrl, fetchBatchDownload } from '@/api/client'
 import type { CreateResponse, DeleteResponse, RenameResponse, RemoteDownloadResponse, ChecksumResponse } from '@/api/types'
 import { useFileTreeCacheStore } from '@/stores/fileTreeCache'
@@ -12,9 +12,6 @@ import { joinPath, pathName, parentPath } from '@/utils/path'
 import { validateFileName, isDotFileBlocked, isFilenameBlocked } from '@/utils/pathValidation'
 import { errorMessage } from '@/utils/errorMessage'
 import { withAsyncTaskNotification } from '@/utils/withAsyncTaskNotification'
-
-const t = (key: string, params?: Record<string, unknown>): string =>
-  (i18n.global as any).t(key, params ?? {})
 
 // ── Shared helpers ──
 
@@ -102,10 +99,10 @@ export async function createItem(type: 'file' | 'dir', targetPath?: string) {
 
   const navigation = useNavigationStore()
   const path = targetPath ?? navigation.currentPathStr
-  const label = type === 'file' ? 'New File' : 'New Folder'
-  const placeholder = type === 'file' ? 'filename.txt' : 'folder-name'
+  const label = type === 'file' ? t('files.action.new_file') : t('files.action.new_folder')
+  const placeholder = type === 'file' ? t('files.create.file_placeholder') : t('files.create.folder_placeholder')
 
-  const name = await prompt(label, { placeholder, submitLabel: 'Create' })
+  const name = await prompt(label, { placeholder, submitLabel: t('common.action.create') })
   if (!name) return
 
   const validationError = validateFileName(name)
@@ -140,8 +137,8 @@ export async function remoteDownload(
   const ui = useUiStore()
   if (ui.readonly || !ui.features.remoteDownload) return
 
-  const displayLabel = customName || 'remote file'
-  let activeToastId: string | number | undefined = toast.loading(`Downloading ${displayLabel}...`)
+  const displayLabel = customName || t('remote_download.default_name')
+  let activeToastId: string | number | undefined = toast.loading(t('toast.downloading', { name: displayLabel }))
 
   try {
     let result = await apiPost<RemoteDownloadResponse>('remote_download', {
@@ -160,7 +157,7 @@ export async function remoteDownload(
       const overwrite = await showPasteConflict([conflictPath])
       if (!overwrite) return
 
-      activeToastId = toast.loading(`Downloading ${conflictFile}...`)
+      activeToastId = toast.loading(t('toast.downloading', { name: conflictFile }))
       result = await apiPost<RemoteDownloadResponse>('remote_download', {
         path: targetDir,
         url,
@@ -169,7 +166,7 @@ export async function remoteDownload(
       })
     }
 
-    toast.success(`Downloaded ${result.name}`, { id: activeToastId })
+    toast.success(t('toast.downloaded', { name: result.name }), { id: activeToastId })
 
     handleMutation({ dirs: [targetDir] })
   } catch (e: unknown) {
@@ -189,27 +186,27 @@ export async function deleteItems(dirPath: string, itemNames: string[]) {
   let confirmed: boolean
   if (count === 1) {
     const message = affectsEditor
-      ? `"${itemNames[0]}" is currently being edited with unsaved changes. Deleting it will discard your changes. Continue?`
-      : `Are you sure you want to delete "${itemNames[0]}"?`
-    confirmed = await confirm('Delete', message, {
-      actionLabel: 'Delete',
+      ? t('files.delete.confirm_one_dirty', { name: itemNames[0] })
+      : t('files.delete.confirm_one', { name: itemNames[0] })
+    confirmed = await confirm(t('common.action.delete'), message, {
+      actionLabel: t('common.action.delete'),
       danger: true,
     })
   } else {
     confirmed = await showOperationReport({
-      title: 'Delete',
-      description: `Are you sure you want to delete ${count} items?`,
+      title: t('common.action.delete'),
+      description: t('files.delete.confirm_many', { count }, count),
       items: itemNames.map(n => ({ name: n, reason: '' })),
-      continueLabel: 'Delete',
+      continueLabel: t('common.action.delete'),
       dangerContinue: true,
       warningBanner: affectsEditor
-        ? 'One of these items is currently being edited. Unsaved changes will be lost.'
+        ? t('files.delete.dirty_banner')
         : '',
     })
   }
   if (!confirmed) return
 
-  const toastId = toast.loading(t('toast.deleting', { count }))
+  const toastId = toast.loading(t('toast.deleting', { count }, count))
   try {
     const result = await apiPost<DeleteResponse>('delete', {
       path: dirPath,
@@ -218,12 +215,12 @@ export async function deleteItems(dirPath: string, itemNames: string[]) {
     if (result.failed.length > 0) {
       toast.dismiss(toastId)
       await showOperationReport({
-        title: 'Delete Failed',
-        description: `${result.failed.length} of ${itemNames.length} item(s) could not be deleted.`,
+        title: t('files.delete.failed_title'),
+        description: t('files.delete.failed_summary', { failed: result.failed.length, total: itemNames.length }, result.failed.length),
         items: result.failed.map(f => ({ name: f.name, reason: f.error })),
       })
     } else {
-      toast.success(t('toast.deleted', { count: result.deleted }), { id: toastId })
+      toast.success(t('toast.deleted', { count: result.deleted }, result.deleted), { id: toastId })
     }
 
     const failedNames = new Set(result.failed.map(f => f.name))
@@ -251,16 +248,16 @@ export async function renameItem(dirPath: string, oldName: string, isDir?: boole
 
   if (affectsEditor) {
     const canProceed = await confirm(
-      'Unsaved Changes',
-      'Renaming this item will discard unsaved changes in the editor. Continue?',
-      { actionLabel: 'Continue', danger: true },
+      t('common.dialog.unsaved_changes'),
+      t('files.rename.discard_unsaved'),
+      { actionLabel: t('common.action.continue'), danger: true },
     )
     if (!canProceed) return
   }
 
-  const newName = await prompt('Rename', {
+  const newName = await prompt(t('common.action.rename'), {
     initialValue: oldName,
-    submitLabel: 'Rename',
+    submitLabel: t('common.action.rename'),
     selectBaseName: true,
   })
   if (!newName || newName === oldName) return
@@ -345,10 +342,10 @@ function clipboardAction(mode: 'copy' | 'cut') {
 
   if (mode === 'copy') {
     clipboard.copy(items, curPath)
-    toast.info(t('toast.copied_items', { count: items.length }))
+    toast.info(t('toast.copied_items', { count: items.length }, items.length))
   } else {
     clipboard.cut(items, curPath)
-    toast.info(t('toast.cut_items', { count: items.length }))
+    toast.info(t('toast.cut_items', { count: items.length }, items.length))
   }
 }
 

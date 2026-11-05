@@ -87,7 +87,7 @@ function handleKeydown(e: KeyboardEvent) {
     >
       <button
         class="absolute top-4 right-4 text-white/70 hover:text-white z-10"
-        aria-label="Close"
+        :aria-label="$t('common.action.close')"
         @click="closeLightbox"
       >
         <X class="size-6" />

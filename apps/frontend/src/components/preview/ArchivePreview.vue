@@ -88,7 +88,7 @@ defineExpose({ canExtract })
       >
         <AlertTriangle class="size-3.5 shrink-0" />
         <span>
-          Archive file list truncated to the first {{ data.entryLimit.toLocaleString() }} entries (total {{ data.totalFiles.toLocaleString() }} files). Extract or download the archive to view all files.
+          {{ $t('archive.truncated', { limit: data.entryLimit.toLocaleString(), total: data.totalFiles.toLocaleString() }) }}
         </span>
       </div>
 
@@ -98,7 +98,7 @@ defineExpose({ canExtract })
       >
         <Info class="size-3.5 shrink-0" />
         <span>
-          Single-file preview and direct download are disabled for TAR archives with many files ({{ data.totalFiles.toLocaleString() }} files). You can still browse folders or extract the archive.
+          {{ $t('archive.random_access_disabled', { count: data.totalFiles.toLocaleString() }) }}
         </span>
       </div>
 
@@ -184,12 +184,12 @@ defineExpose({ canExtract })
         class="flex items-center h-9 px-3 text-sm shrink-0 gap-2 bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
       >
         <span>
-          {{ statusDirsCount }} folders, {{ statusFilesCount }} files
+          {{ $t('files.status.summary', { folders: statusDirsCount, files: statusFilesCount }) }}
           <span class="ml-1">({{ formatSize(statusTotalSize) }})</span>
         </span>
         <span class="flex-1" />
         <span class="text-muted-foreground/80 truncate">
-          Archive total: {{ data.totalFiles }} files ({{ formatSize(data.totalSize) }} uncompressed, {{ formatSize(data.compressedSize) }} compressed)
+          {{ $t('archive.status.total', { count: data.totalFiles, uncompressed: formatSize(data.totalSize), compressed: formatSize(data.compressedSize) }, data.totalFiles) }}
         </span>
       </div>
     </template>

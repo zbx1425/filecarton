@@ -62,13 +62,13 @@ function handleOpen() {
 function handleCopy() {
   if (!props.contextTarget) return
   clipboard.copy([{ name: props.contextTarget.name, isDir: props.contextTarget.isDir }], dirPath.value)
-  toast.info(`Copied ${props.contextTarget.name}`)
+  toast.info(t('toast.copied_items', { count: 1 }, 1))
 }
 
 function handleCut() {
   if (!props.contextTarget) return
   clipboard.cut([{ name: props.contextTarget.name, isDir: props.contextTarget.isDir }], dirPath.value)
-  toast.info(`Cut ${props.contextTarget.name}`)
+  toast.info(t('toast.cut_items', { count: 1 }, 1))
 }
 
 async function handlePaste() {
@@ -123,19 +123,19 @@ async function handleCopyDirectLink() {
     <template v-if="!contextTarget" />
     <template v-else-if="editDirty">
       <ContextMenuItem disabled class="text-xs text-muted-foreground">
-        Please save editor content first
+        {{ $t('editor.save_first') }}
       </ContextMenuItem>
     </template>
     <template v-else-if="isRoot">
       <template v-if="!ui.readonly">
         <ContextMenuItem v-if="canPaste" @select="handlePaste">
           <ClipboardPaste class="size-4" />
-          Paste
+          {{ $t('common.action.paste') }}
         </ContextMenuItem>
         <ContextMenuSeparator v-if="canPaste" />
         <ContextMenuItem @select="handleNewFolder">
           <FolderPlus class="size-4" />
-          New Folder
+          {{ $t('files.action.new_folder') }}
         </ContextMenuItem>
       </template>
     </template>
@@ -156,7 +156,7 @@ async function handleCopyDirectLink() {
         <template v-if="ui.features.copyLink && !contextTarget.isDir">
           <ContextMenuItem @select="handleCopyDirectLink">
             <Link class="size-4" />
-            Copy Direct Link
+            {{ $t('files.action.copy_link') }}
           </ContextMenuItem>
         </template>
         <template v-if="!ui.readonly && (ui.features.archive || contextTarget.isDir)">
@@ -166,14 +166,14 @@ async function handleCopyDirectLink() {
               <ContextMenuSub>
                 <ContextMenuSubTrigger class="gap-2">
                   <PackageOpen class="size-4" />
-                  Extract
+                  {{ $t('common.action.extract') }}
                 </ContextMenuSubTrigger>
                 <ContextMenuSubContent>
                   <ContextMenuItem @select="handleExtract(false)">
-                    Here
+                    {{ $t('archive.extract.here') }}
                   </ContextMenuItem>
                   <ContextMenuItem v-if="archiveSubdirName(contextTarget.name)" @select="handleExtract(true)">
-                    To "{{ archiveSubdirName(contextTarget.name) }}/"
+                    {{ $t('archive.extract.to_folder', { folder: archiveSubdirName(contextTarget.name) }) }}
                   </ContextMenuItem>
                 </ContextMenuSubContent>
               </ContextMenuSub>
@@ -182,18 +182,18 @@ async function handleCopyDirectLink() {
               <ContextMenuSub>
                 <ContextMenuSubTrigger class="gap-2">
                   <FileArchive class="size-4" />
-                  Archive
+                  {{ $t('common.action.archive') }}
                 </ContextMenuSubTrigger>
                 <ContextMenuSubContent>
-                  <ContextMenuItem @select="handleCreateArchive('zip')">Create .zip</ContextMenuItem>
-                  <ContextMenuItem @select="handleCreateArchive('tar')">Create .tar</ContextMenuItem>
+                  <ContextMenuItem @select="handleCreateArchive('zip')">{{ $t('files.action.create_archive', { format: '.zip' }) }}</ContextMenuItem>
+                  <ContextMenuItem @select="handleCreateArchive('tar')">{{ $t('files.action.create_archive', { format: '.tar' }) }}</ContextMenuItem>
                 </ContextMenuSubContent>
               </ContextMenuSub>
             </template>
           </template>
           <ContextMenuItem v-if="contextTarget.isDir" @select="handleNewFolder">
             <FolderPlus class="size-4" />
-            New Folder
+            {{ $t('files.action.new_folder') }}
           </ContextMenuItem>
         </template>
       </FileItemMenu>

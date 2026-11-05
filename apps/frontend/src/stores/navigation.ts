@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { EDITABLE_EXTENSIONS } from '@/utils/constants'
 import { pathExtension, pathName } from '@/utils/path'
+import { translate } from '@/i18n'
 import { confirm } from '@/services/dialogs'
 import { useUiStore } from '@/stores/ui'
 import { isFilenameBlocked } from '@/utils/pathValidation'
@@ -13,8 +14,8 @@ import { useBrowserState } from '@/composables/useBrowserState'
  */
 export async function checkDirty(isDirty: boolean): Promise<boolean> {
   if (!isDirty) return true
-  return confirm('Unsaved Changes', 'You have unsaved changes. Leave without saving?', {
-    actionLabel: 'Leave',
+  return confirm(translate('common.dialog.unsaved_changes'), translate('files.leave.message'), {
+    actionLabel: translate('common.action.leave'),
     danger: true,
   })
 }

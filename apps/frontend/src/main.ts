@@ -2,7 +2,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import './style.css'
 import App from './App.vue'
-import i18n from './i18n'
+import i18n, { translate } from './i18n'
 import { useNavigationStore } from './stores/navigation'
 import { useUiStore } from './stores/ui'
 import { usePreferencesStore } from './stores/preferences'
@@ -61,9 +61,9 @@ onUnauthorized((_action, authError) => {
     // a loss of work that's too easy to accidentally trigger. 
     // The user must manually copy their work from the editor, then refresh the page themselves.
     confirm(
-      'Session unavailable',
-      'Your session is no longer valid. Please copy any unsaved content, then refresh this page.',
-      { actionLabel: 'Cancel', hideCancel: true },
+      translate('session.unavailable_title'),
+      translate('session.unavailable_message'),
+      { actionLabel: translate('common.action.cancel'), hideCancel: true },
     )
     return
   }

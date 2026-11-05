@@ -56,7 +56,7 @@ const etaText = computed(() => {
       <div class="flex items-center gap-2.5">
         <Loader2 class="size-4 animate-spin text-primary shrink-0" />
         <div class="flex-1 min-w-0 text-sm font-medium">
-          Uploading files
+          {{ $t('upload.toast.title') }}
           <span class="tabular-nums">({{ upload.completedCount }}/{{ upload.activeTotal }})</span>
         </div>
         <span class="text-sm tabular-nums text-muted-foreground shrink-0 w-10 text-right">{{ totalProgress }}%</span>
@@ -64,7 +64,7 @@ const etaText = computed(() => {
           variant="ghost"
           size="icon-xs"
           class="size-6 shrink-0 text-muted-foreground hover:text-destructive"
-          title="Cancel all"
+          :title="$t('common.action.cancel_all')"
           @click="upload.cancelAll()"
         >
           <X class="size-3.5" />
@@ -86,10 +86,10 @@ const etaText = computed(() => {
         <AlertTriangle v-else class="size-4 text-destructive shrink-0" />
         <div class="flex-1 min-w-0 text-sm font-medium">
           <template v-if="latestBatchAllSuccess">
-            {{ result.total }} file(s) uploaded
+            {{ $t('upload.toast.done', { count: result.total }, result.total) }}
           </template>
           <template v-else>
-            {{ result.success }} uploaded, {{ result.failed }} failed
+            {{ $t('upload.toast.partial', { success: result.success, failed: result.failed }) }}
           </template>
         </div>
       </div>
@@ -100,13 +100,13 @@ const etaText = computed(() => {
           v-if="latestBatchAllSuccess && upload.oldErrorCount > 0"
           class="text-sm text-muted-foreground"
         >
-          {{ upload.oldErrorCount }} earlier upload(s) still failed
+          {{ $t('upload.toast.earlier_failed', { count: upload.oldErrorCount }, upload.oldErrorCount) }}
         </div>
         <button
           class="text-sm text-primary hover:underline cursor-pointer mt-0.5"
           @click="upload.openErrorDialog()"
         >
-          View details
+          {{ $t('upload.toast.view_details') }}
         </button>
       </div>
     </template>
@@ -115,12 +115,12 @@ const etaText = computed(() => {
     <div v-else-if="hasErrors" class="flex items-center gap-2.5">
       <AlertTriangle class="size-4 text-destructive shrink-0" />
       <div class="flex-1 min-w-0">
-        <div class="text-sm font-medium">{{ upload.errorTasks.length }} upload(s) failed</div>
+        <div class="text-sm font-medium">{{ $t('upload.toast.failed', { count: upload.errorTasks.length }, upload.errorTasks.length) }}</div>
         <button
           class="text-sm text-primary hover:underline cursor-pointer mt-0.5"
           @click="upload.openErrorDialog()"
         >
-          View details
+          {{ $t('upload.toast.view_details') }}
         </button>
       </div>
     </div>
@@ -128,7 +128,7 @@ const etaText = computed(() => {
     <!-- Empty state -->
     <div v-else class="flex items-center gap-2.5">
       <Upload class="size-4 text-muted-foreground shrink-0" />
-      <div class="text-sm text-muted-foreground">No active uploads</div>
+      <div class="text-sm text-muted-foreground">{{ $t('upload.toast.none') }}</div>
     </div>
   </div>
 </template>

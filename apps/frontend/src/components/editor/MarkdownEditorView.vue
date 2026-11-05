@@ -16,7 +16,9 @@ import { ArrowLeft, Save, Loader2, ClipboardCopy, Download } from '@lucide/vue'
 import EditorStatusBar from './EditorStatusBar.vue'
 import MarkdownContent from '@/components/preview/MarkdownContent.vue'
 import { toast } from 'vue-sonner'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const navigation = useNavigationStore()
 const ui = useUiStore()
 const prefs = usePreferencesStore()
@@ -58,9 +60,9 @@ async function copyAll() {
   const text = editor ? editor.getValue() : rawContent.value
   try {
     await navigator.clipboard.writeText(text)
-    toast.success('Copied to clipboard')
+    toast.success(t('toast.copied_clipboard'))
   } catch {
-    toast.error('Failed to copy')
+    toast.error(t('toast.copy_clipboard_failed'))
   }
 }
 
@@ -143,7 +145,7 @@ onBeforeUnmount(() => {
     <div class="flex items-center h-10 px-3 border-b gap-2 shrink-0">
       <Button variant="ghost" size="sm" @click="navigation.backToList()">
         <ArrowLeft class="size-4" />
-        Back
+        {{ $t('common.action.back') }}
       </Button>
 
       <span class="text-sm font-mono truncate flex-1 text-muted-foreground">
@@ -158,30 +160,30 @@ onBeforeUnmount(() => {
             size="sm"
             @click="showPreview = false"
           >
-            Code
+            {{ $t('editor.mode.code') }}
           </Button>
           <Button
             :variant="showPreview ? 'default' : 'ghost'"
             size="sm"
             @click="showPreview = true"
           >
-            Preview
+            {{ $t('editor.mode.preview') }}
           </Button>
         </div>
       </template>
       <template v-else-if="!ui.readonly && !isFilenameBlocked(fileName)">
         <Button variant="ghost" size="sm" @click="navigation.openEditor()">
-          Edit
+          {{ $t('common.action.edit') }}
         </Button>
       </template>
 
       <Button variant="ghost" size="sm" @click="copyAll">
         <ClipboardCopy class="size-4" />
-        Copy All
+        {{ $t('common.action.copy_all') }}
       </Button>
       <Button variant="ghost" size="sm" as="a" :href="buildDownloadUrl(filePath)" target="_blank">
         <Download class="size-4" />
-        Download
+        {{ $t('common.action.download') }}
       </Button>
       <Button
         v-if="canEdit"
@@ -191,7 +193,7 @@ onBeforeUnmount(() => {
       >
         <Loader2 v-if="saving" class="size-4 animate-spin" />
         <Save v-else class="size-4" />
-        Save
+        {{ $t('common.action.save') }}
       </Button>
     </div>
 

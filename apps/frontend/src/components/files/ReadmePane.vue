@@ -152,7 +152,7 @@ onBeforeUnmount(() => {
         target="_blank"
       >
         <Download class="size-4" />
-        Download
+        {{ $t('common.action.download') }}
       </Button>
 
       <Button
@@ -161,13 +161,13 @@ onBeforeUnmount(() => {
         @click="navigation.openFile(path)"
       >
         <ExternalLink class="size-4" />
-        Open
+        {{ $t('common.action.open') }}
       </Button>
 
       <Button
         variant="ghost"
         size="icon-sm"
-        :aria-label="effectivelyCollapsed ? 'Expand README' : 'Collapse README'"
+        :aria-label="effectivelyCollapsed ? $t('common.a11y.expand_readme') : $t('common.a11y.collapse_readme')"
         @click="toggleCollapse"
       >
         <ChevronsUp v-if="effectivelyCollapsed" class="size-4" />

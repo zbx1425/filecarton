@@ -42,7 +42,7 @@ const ui = useUiStore()
       v-if="ui.isMedium"
       variant="ghost"
       size="icon-sm"
-      aria-label="Toggle archive tree"
+      :aria-label="$t('archive.a11y.toggle_tree')"
       @click="emit('toggleTree')"
     >
       <PanelLeft class="size-4" />
@@ -93,7 +93,7 @@ const ui = useUiStore()
       <template v-if="viewMode === 'list'">
         <SearchBox
           :model-value="searchQuery"
-          placeholder="Search in archive..."
+          :placeholder="$t('archive.search.placeholder')"
           input-class="w-64 max-w-full h-7"
           :input-attrs="{ 'data-archive-search': '' }"
           @update:model-value="emit('update:searchQuery', $event)"
@@ -101,10 +101,10 @@ const ui = useUiStore()
           <template #panel>
             <div class="flex justify-end gap-1">
               <Button :variant="!searchRecursive ? 'default' : 'ghost'" size="sm" @click="emit('update:searchRecursive', false)">
-                Here
+                {{ $t('files.search.scope_here') }}
               </Button>
               <Button :variant="searchRecursive ? 'default' : 'ghost'" size="sm" @click="emit('update:searchRecursive', true)">
-                & Subfolders
+                {{ $t('files.search.scope_subfolders') }}
               </Button>
             </div>
           </template>

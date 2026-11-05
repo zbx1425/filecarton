@@ -85,13 +85,13 @@ function handleClick() {
         <ContextMenuItem @select="handleClick">
           <FolderOpen v-if="node.isDir" class="size-4" />
           <Eye v-else class="size-4" />
-          Open
+          {{ $t('common.action.open') }}
         </ContextMenuItem>
         <template v-if="!node.isDir && randomAccess">
           <ContextMenuSeparator />
           <ContextMenuItem @select="emit('downloadNode', node)">
             <Download class="size-4" />
-            Download
+            {{ $t('common.action.download') }}
           </ContextMenuItem>
         </template>
       </ContextMenuContent>

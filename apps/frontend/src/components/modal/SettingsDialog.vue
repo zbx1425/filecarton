@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import {
   Dialog,
   DialogContent,
@@ -22,10 +22,18 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from '@/components/ui/number-field'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useUiStore } from '@/stores/ui'
 import { usePreferencesStore } from '@/stores/preferences'
-import { COLOR_FAMILY_LIST, COLOR_SCALES } from '@/utils/themeColors'
-import { Sun, Moon, Monitor, Settings, Palette, List, Code, Info, Check } from '@lucide/vue'
+import { LOCALES, resolveLocale } from '@/i18n'
+import { COLOR_FAMILY_LIST } from '@/utils/themeColors'
+import { Sun, Moon, Monitor, Settings, Palette, List, Code, Info, Check, Languages } from '@lucide/vue'
 import Badge from '@/components/ui/badge/Badge.vue'
 
 const appVersion = __APP_VERSION__
@@ -35,12 +43,21 @@ const prefs = usePreferencesStore()
 type Section = 'general' | 'theme' | 'filelist' | 'editor'
 const activeSection = ref<Section>('general')
 
-const navItems: { id: Section; label: string; icon: typeof Settings }[] = [
-  { id: 'general', label: 'General', icon: Settings },
-  { id: 'theme', label: 'Theme', icon: Palette },
-  { id: 'filelist', label: 'File List', icon: List },
-  { id: 'editor', label: 'Editor', icon: Code },
+const navItems: { id: Section; labelKey: string; icon: typeof Settings }[] = [
+  { id: 'general', labelKey: 'settings.nav.general', icon: Settings },
+  { id: 'theme', labelKey: 'settings.nav.theme', icon: Palette },
+  { id: 'filelist', labelKey: 'settings.nav.file_list', icon: List },
+  { id: 'editor', labelKey: 'settings.nav.editor', icon: Code },
 ]
+
+const localeOptions = computed(() =>
+  [...LOCALES].sort((a, b) => a.name.localeCompare(b.name)),
+)
+
+const resolvedLocaleName = computed(() => {
+  const code = resolveLocale(prefs.locale)
+  return LOCALES.find(item => item.code === code)?.name ?? code
+})
 
 function setFontSize(val: number | undefined) {
   if (val != null) prefs.baseFontSize = val
@@ -69,7 +86,7 @@ function setEditorFontSize(val: number | undefined) {
             @click="activeSection = item.id"
           >
             <component :is="item.icon" class="size-3.5" />
-            {{ item.label }}
+            {{ $t(item.labelKey) }}
           </Button>
         </nav>
 
@@ -87,7 +104,7 @@ function setEditorFontSize(val: number | undefined) {
             @click="activeSection = item.id"
           >
             <component :is="item.icon" class="size-3.5" />
-            {{ item.label }}
+            {{ $t(item.labelKey) }}
           </Button>
         </nav>
 
@@ -103,15 +120,15 @@ function setEditorFontSize(val: number | undefined) {
                       class="cursor-pointer"
                       @click="activeSection = 'general'"
                     >
-                      Settings
+                      {{ $t('common.action.settings') }}
                     </BreadcrumbLink>
-                    <BreadcrumbPage v-else>Settings</BreadcrumbPage>
+                    <BreadcrumbPage v-else>{{ $t('common.action.settings') }}</BreadcrumbPage>
                   </BreadcrumbItem>
                   <template v-if="activeSection !== 'general'">
                     <BreadcrumbSeparator />
                     <BreadcrumbItem>
                       <BreadcrumbPage>
-                        {{ navItems.find(i => i.id === activeSection)?.label }}
+                        {{ $t(navItems.find(i => i.id === activeSection)?.labelKey ?? '') }}
                       </BreadcrumbPage>
                     </BreadcrumbItem>
                   </template>
@@ -123,22 +140,48 @@ function setEditorFontSize(val: number | undefined) {
           <!-- General -->
           <div v-if="activeSection === 'general'" class="space-y-6">
             <!-- About card -->
-            <div class="flex items-center gap-3 px-4 py-3 border rounded-md bg-muted/20">
-              <div class="flex-1">
-                <div class="font-semibold text-sm">
-                  FileCarton
-                  <span class="font-medium">by Zbx1425</span>
+            <a href="https://github.com/zbx1425/filecarton" target="_blank" class="block">
+              <div class="flex items-center gap-3 px-4 py-3 border rounded-md bg-muted/20
+                          cursor-pointer transition-all duration-200
+                          hover:shadow-md hover:-translate-y-0.5">
+                <div class="flex-1">
+                  <div class="font-semibold text-sm">
+                    FileCarton
+                    <span class="font-medium">by Zbx1425</span>
+                  </div>
+                  <div class="text-sm text-muted-foreground">
+                    {{ $t('app.tagline') }}
+                  </div>
                 </div>
-                <div class="text-sm text-muted-foreground">
-                  A modern, snappy, and easily embeddable web-based file manager.
-                </div>
+                <Badge variant="secondary">v{{ appVersion }}</Badge>
               </div>
-              <Badge variant="secondary">v{{ appVersion }}</Badge>
-            </div>
+            </a>
 
             <div class="grid grid-cols-1 sm:grid-cols-[8.75rem_1fr] items-start sm:items-center gap-x-4 gap-y-3 sm:gap-y-5">
+              <label for="fc-language" class="text-sm text-muted-foreground flex items-center gap-1.5">
+                <Languages class="size-3.5 shrink-0" />
+                Language
+              </label>
+              <Select v-model="prefs.locale">
+                <SelectTrigger id="fc-language" class="w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">
+                    {{ $t('language.auto') }}
+                  </SelectItem>
+                  <SelectItem
+                    v-for="item in localeOptions"
+                    :key="item.code"
+                    :value="item.code"
+                  >
+                    <span :lang="item.code">{{ item.name }}</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
               <!-- Base Font Size -->
-              <label class="text-sm text-muted-foreground">Font Size</label>
+              <label class="text-sm text-muted-foreground">{{ $t('settings.font_size') }}</label>
               <div class="flex items-center gap-2">
                 <NumberField
                   :model-value="prefs.baseFontSize"
@@ -154,7 +197,7 @@ function setEditorFontSize(val: number | undefined) {
                     <NumberFieldIncrement />
                   </NumberFieldContent>
                 </NumberField>
-                <span class="text-sm text-muted-foreground">px</span>
+                <span class="text-sm text-muted-foreground">{{ $t('settings.font_size_unit') }}</span>
               </div>
             </div>
           </div>
@@ -163,7 +206,7 @@ function setEditorFontSize(val: number | undefined) {
           <div v-if="activeSection === 'theme'" class="space-y-6">
             <div class="grid grid-cols-1 sm:grid-cols-[8.75rem_1fr] items-start gap-x-4 gap-y-4 sm:gap-y-5">
               <!-- Appearance Mode -->
-              <label class="text-sm text-muted-foreground sm:pt-1.5">Appearance</label>
+              <label class="text-sm text-muted-foreground sm:pt-1.5">{{ $t('settings.appearance.label') }}</label>
               <div class="flex gap-1">
                 <Button
                   size="sm"
@@ -172,7 +215,7 @@ function setEditorFontSize(val: number | undefined) {
                   @click="prefs.theme = 'system'"
                 >
                   <Monitor class="size-3.5" />
-                  System
+                  {{ $t('settings.appearance.system') }}
                 </Button>
                 <Button
                   size="sm"
@@ -181,7 +224,7 @@ function setEditorFontSize(val: number | undefined) {
                   @click="prefs.theme = 'light'"
                 >
                   <Sun class="size-3.5" />
-                  Light
+                  {{ $t('settings.appearance.light') }}
                 </Button>
                 <Button
                   size="sm"
@@ -190,25 +233,27 @@ function setEditorFontSize(val: number | undefined) {
                   @click="prefs.theme = 'dark'"
                 >
                   <Moon class="size-3.5" />
-                  Dark
+                  {{ $t('settings.appearance.dark') }}
                 </Button>
               </div>
 
               <!-- Primary Color -->
-              <label class="text-sm text-muted-foreground sm:pt-1">Primary Color</label>
+              <label class="text-sm text-muted-foreground sm:pt-1">{{ $t('settings.primary_color') }}</label>
               <div class="space-y-2.5">
                 <div class="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     :data-primary-swatch="prefs.backendDefaultPrimary ?? 'builtin'"
-                    title="Default"
+                    :title="$t('common.value.default')"
                     class="size-6 rounded-sm border flex items-center justify-center transition-transform hover:scale-110 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     @click="prefs.primaryColor = 'default'"
                   >
                     <Check v-if="prefs.primaryColor === 'default'" class="size-3.5 stroke-[2.5]" />
                   </button>
                   <span class="text-sm text-muted-foreground">
-                    Default{{ prefs.backendDefaultPrimary ? ` (${COLOR_SCALES[prefs.backendDefaultPrimary].label})` : '' }}
+                    {{ prefs.backendDefaultPrimary
+                      ? $t('settings.default_with_color', { color: $t('settings.color.' + prefs.backendDefaultPrimary) })
+                      : $t('common.value.default') }}
                   </span>
                 </div>
 
@@ -218,7 +263,7 @@ function setEditorFontSize(val: number | undefined) {
                     :key="entry.name"
                     type="button"
                     :data-primary-swatch="entry.name"
-                    :title="entry.label"
+                    :title="$t('settings.color.' + entry.name)"
                     class="size-6 rounded-sm flex items-center justify-center border border-black/10 dark:border-white/10 transition-transform hover:scale-110 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     @click="prefs.primaryColor = entry.name"
                   >
@@ -228,31 +273,31 @@ function setEditorFontSize(val: number | undefined) {
               </div>
 
               <!-- Toolbar Color & Tone -->
-              <label class="text-sm text-muted-foreground sm:pt-1">Toolbar</label>
+              <label class="text-sm text-muted-foreground sm:pt-1">{{ $t('settings.toolbar') }}</label>
               <div class="space-y-2.5">
                 <div class="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     :data-toolbar-swatch="prefs.backendDefaultToolbar ?? 'builtin'"
-                    title="Default"
+                    :title="$t('common.value.default')"
                     class="size-6 rounded-sm border flex items-center justify-center transition-transform hover:scale-110 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     @click="prefs.toolbarColor = 'default'"
                   >
                     <Check v-if="prefs.toolbarColor === 'default'" class="size-3.5 stroke-[2.5]" />
                   </button>
-                  <span class="text-sm text-muted-foreground">Default</span>
+                  <span class="text-sm text-muted-foreground">{{ $t('common.value.default') }}</span>
                 </div>
 
                 <div class="space-y-2">
                   <div class="space-y-1">
-                    <div class="text-sm text-muted-foreground">Subtle</div>
+                    <div class="text-sm text-muted-foreground">{{ $t('settings.tone.subtle') }}</div>
                     <div class="grid grid-cols-8 sm:grid-cols-11 gap-1.5">
                       <button
                         v-for="entry in COLOR_FAMILY_LIST"
                         :key="entry.name"
                         type="button"
                         :data-toolbar-swatch="entry.name"
-                        :title="entry.label"
+                        :title="$t('settings.color.' + entry.name)"
                         class="size-6 rounded-sm border flex items-center justify-center transition-transform hover:scale-110 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         @click="prefs.toolbarColor = entry.name"
                       >
@@ -262,14 +307,14 @@ function setEditorFontSize(val: number | undefined) {
                   </div>
 
                   <div class="space-y-1">
-                    <div class="text-sm text-muted-foreground">Solid</div>
+                    <div class="text-sm text-muted-foreground">{{ $t('settings.tone.solid') }}</div>
                     <div class="grid grid-cols-8 sm:grid-cols-11 gap-1.5">
                       <button
                         v-for="entry in COLOR_FAMILY_LIST"
                         :key="`${entry.name}-solid`"
                         type="button"
                         :data-toolbar-swatch="`${entry.name}-solid`"
-                        :title="`${entry.label} (Solid)`"
+                        :title="$t('settings.swatch_solid', { color: $t('settings.color.' + entry.name) })"
                         class="size-6 rounded-sm border flex items-center justify-center transition-transform hover:scale-110 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         @click="prefs.toolbarColor = `${entry.name}-solid`"
                       >
@@ -286,7 +331,7 @@ function setEditorFontSize(val: number | undefined) {
           <div v-if="activeSection === 'filelist'" class="space-y-6">
             <div class="grid grid-cols-1 sm:grid-cols-[8.75rem_1fr] items-start sm:items-center gap-x-4 gap-y-3 sm:gap-y-5">
               <!-- Display Density -->
-              <label class="text-sm text-muted-foreground">Density</label>
+              <label class="text-sm text-muted-foreground">{{ $t('settings.density.label') }}</label>
               <div class="flex gap-1">
                 <Button
                   size="sm"
@@ -294,7 +339,7 @@ function setEditorFontSize(val: number | undefined) {
                   class="flex-1 px-1 text-sm"
                   @click="prefs.displayDensity = 'compact'"
                 >
-                  Compact
+                  {{ $t('settings.density.compact') }}
                 </Button>
                 <Button
                   size="sm"
@@ -302,7 +347,7 @@ function setEditorFontSize(val: number | undefined) {
                   class="flex-1 px-1 text-sm"
                   @click="prefs.displayDensity = 'default'"
                 >
-                  Default
+                  {{ $t('common.value.default') }}
                 </Button>
                 <Button
                   size="sm"
@@ -310,12 +355,12 @@ function setEditorFontSize(val: number | undefined) {
                   class="flex-1 px-1 text-sm"
                   @click="prefs.displayDensity = 'comfortable'"
                 >
-                  Cozy
+                  {{ $t('settings.density.cozy') }}
                 </Button>
               </div>
 
               <!-- Show Hidden Files -->
-              <label class="text-sm text-muted-foreground">Hidden Files</label>
+              <label class="text-sm text-muted-foreground">{{ $t('settings.hidden_files') }}</label>
               <div class="space-y-1.5">
                 <div class="flex gap-1">
                   <Button
@@ -325,7 +370,7 @@ function setEditorFontSize(val: number | undefined) {
                     :disabled="prefs.dotFilesLocked"
                     @click="prefs.showDotFiles = false"
                   >
-                    Hidden
+                    {{ $t('settings.visibility.hidden') }}
                   </Button>
                   <Button
                     size="sm"
@@ -334,7 +379,7 @@ function setEditorFontSize(val: number | undefined) {
                     :disabled="prefs.dotFilesLocked"
                     @click="prefs.showDotFiles = true"
                   >
-                    Shown
+                    {{ $t('settings.visibility.shown') }}
                   </Button>
                   <div class="flex-1 px-1 text-sm"></div>
                 </div>
@@ -348,7 +393,7 @@ function setEditorFontSize(val: number | undefined) {
               </div>
 
               <!-- Unix Permissions -->
-              <label class="text-sm text-muted-foreground">Unix Permissions</label>
+              <label class="text-sm text-muted-foreground">{{ $t('settings.unix_permissions') }}</label>
               <div class="space-y-1.5">
                 <div class="flex gap-1">
                   <Button
@@ -358,7 +403,7 @@ function setEditorFontSize(val: number | undefined) {
                     :disabled="prefs.unixPermLocked"
                     @click="prefs.showUnixPerm = false"
                   >
-                    Hidden
+                    {{ $t('settings.visibility.hidden') }}
                   </Button>
                   <Button
                     size="sm"
@@ -367,7 +412,7 @@ function setEditorFontSize(val: number | undefined) {
                     :disabled="prefs.unixPermLocked"
                     @click="prefs.showUnixPerm = true"
                   >
-                    Shown
+                    {{ $t('settings.visibility.shown') }}
                   </Button>
                   <div class="flex-1 px-1 text-sm"></div>
                 </div>
@@ -386,7 +431,7 @@ function setEditorFontSize(val: number | undefined) {
           <div v-if="activeSection === 'editor'" class="space-y-6">
             <div class="grid grid-cols-1 sm:grid-cols-[8.75rem_1fr] items-start sm:items-center gap-x-4 gap-y-3 sm:gap-y-5">
               <!-- Editor Font Size -->
-              <label class="text-sm text-muted-foreground">Font Size</label>
+              <label class="text-sm text-muted-foreground">{{ $t('settings.font_size') }}</label>
               <div class="flex items-center gap-2">
                 <NumberField
                   :model-value="prefs.editorFontSize"
@@ -402,7 +447,7 @@ function setEditorFontSize(val: number | undefined) {
                     <NumberFieldIncrement />
                   </NumberFieldContent>
                 </NumberField>
-                <span class="text-sm text-muted-foreground">px</span>
+                <span class="text-sm text-muted-foreground">{{ $t('settings.font_size_unit') }}</span>
               </div>
             </div>
           </div>

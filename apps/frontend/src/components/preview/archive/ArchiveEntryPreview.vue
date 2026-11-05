@@ -44,7 +44,7 @@ const downloadUrl = computed(() => buildArchiveDownloadUrl(props.archivePath, pr
     <div class="flex items-center h-9 px-3 border-b gap-2 shrink-0 bg-muted/20">
       <Button variant="ghost" size="sm" class="h-7 text-sm" @click="emit('back')">
         <ArrowLeft class="size-3.5" />
-        Back
+        {{ $t('common.action.back') }}
       </Button>
 
       <span class="text-sm font-mono truncate flex-1 text-muted-foreground">
@@ -59,7 +59,7 @@ const downloadUrl = computed(() => buildArchiveDownloadUrl(props.archivePath, pr
         @click="emit('download', entry.path)"
       >
         <Download class="size-3.5" />
-        Download
+        {{ $t('common.action.download') }}
       </Button>
     </div>
 
@@ -70,7 +70,7 @@ const downloadUrl = computed(() => buildArchiveDownloadUrl(props.archivePath, pr
         :size="entry.size"
         :path="entry.path"
         :download-url="null"
-        hint="Single-file preview and direct download are disabled for TAR archives with many files. Please extract or download the full archive."
+        :hint="$t('archive.entry.restricted_tar')"
       />
       <FallbackPreview
         v-else-if="innerPreviewType === 'nested_archive'"
@@ -78,7 +78,7 @@ const downloadUrl = computed(() => buildArchiveDownloadUrl(props.archivePath, pr
         :size="entry.size"
         :path="entry.path"
         :download-url="downloadUrl"
-        hint="Nested archive preview is not supported. You can download this archive file directly."
+        :hint="$t('archive.entry.nested')"
       />
       <ImagePreview
         v-else-if="innerPreviewType === 'image'"

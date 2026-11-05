@@ -1,6 +1,7 @@
 import { ref, watch, onBeforeUnmount } from 'vue'
 import type * as Monaco from 'monaco-editor'
 import { toast } from 'vue-sonner'
+import { translate } from '@/i18n'
 import { apiGet, apiWrite, ApiError } from '@/api/client'
 import type { ReadResponse } from '@/api/types'
 import { useNavigationStore } from '@/stores/navigation'
@@ -58,7 +59,7 @@ export function useEditorSave() {
         }
       }
       updateFileEntry(savedPath, result)
-      toast.success('File saved')
+      toast.success(translate('toast.file_saved'))
     } catch (e: unknown) {
       if (e instanceof ApiError && e.authError) {
         /* handled by the global onUnauthorized handler */
@@ -75,7 +76,7 @@ export function useEditorSave() {
               }
             }
             updateFileEntry(savedPath, result)
-            toast.success('File saved (overwritten)')
+            toast.success(translate('toast.file_saved_overwritten'))
           } catch (e2: unknown) {
             if (e2 instanceof ApiError && e2.authError) {
               /* handled by the global onUnauthorized handler */
@@ -100,7 +101,7 @@ export function useEditorSave() {
       editor.setValue(data.content)
       currentMtime = data.mtime
       navigation.editDirty = false
-      toast.info('File reloaded')
+      toast.info(translate('toast.file_reloaded'))
     } catch (e: unknown) {
       if (e instanceof ApiError && e.authError) {
         /* handled by maybeUnauthorized */

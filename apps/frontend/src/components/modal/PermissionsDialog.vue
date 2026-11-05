@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import {
   Dialog,
@@ -43,14 +44,15 @@ const BIT_DEFS = [
 type BitKey = typeof BIT_DEFS[number]['key']
 
 const ROWS: Array<{
-  label: string
+  labelKey: string
   cols: [BitKey, BitKey, BitKey]
 }> = [
-  { label: 'Read', cols: ['ur', 'gr', 'or'] },
-  { label: 'Write', cols: ['uw', 'gw', 'ow'] },
-  { label: 'Exec', cols: ['ux', 'gx', 'ox'] },
+  { labelKey: 'permissions.bit.read', cols: ['ur', 'gr', 'or'] },
+  { labelKey: 'permissions.bit.write', cols: ['uw', 'gw', 'ow'] },
+  { labelKey: 'permissions.bit.execute', cols: ['ux', 'gx', 'ox'] },
 ]
 
+const { t } = useI18n()
 const ui = useUiStore()
 
 const state = computed(() => dialogState.permissions)
@@ -84,18 +86,18 @@ const hasDirectory = computed(() => items.value.some(i => i.isDir))
 
 const dialogTitle = computed(() => {
   if (items.value.length === 1) {
-    return `Permissions — ${items.value[0].name}`
+    return t('permissions.title_one', { name: items.value[0].name })
   }
-  return `Permissions — ${items.value.length} items`
+  return t('permissions.title_many', { count: items.value.length }, items.value.length)
 })
 
 const headerOwnerSub = computed(() => {
-  if (initialOwner.value === null) return '(Mixed)'
+  if (initialOwner.value === null) return t('permissions.mixed')
   return initialOwner.value || '—'
 })
 
 const headerGroupSub = computed(() => {
-  if (initialGroup.value === null) return '(Mixed)'
+  if (initialGroup.value === null) return t('permissions.mixed')
   return initialGroup.value || '—'
 })
 
@@ -277,10 +279,10 @@ async function applyPermissions(recursive: boolean) {
   if (recursive) {
     const dirCount = items.value.filter(i => i.isDir).length
     const msg = dirCount === 1 && items.value.length === 1
-      ? `Apply these permission changes recursively to "${items.value[0].name}" and all items inside it? This cannot be undone.`
-      : `Apply these permission changes recursively to the selected items and all contents inside ${dirCount} folder(s)? This cannot be undone.`
-    const confirmed = await confirm('Apply Recursively', msg, {
-      actionLabel: 'Apply Recursively',
+      ? t('permissions.confirm_recursive_one', { name: items.value[0].name })
+      : t('permissions.confirm_recursive_many', { count: dirCount }, dirCount)
+    const confirmed = await confirm(t('permissions.apply_recursive'), msg, {
+      actionLabel: t('permissions.apply_recursive'),
       danger: true,
     })
     if (!confirmed) return
@@ -308,7 +310,7 @@ async function applyPermissions(recursive: boolean) {
     payload.group = groupInput.value.trim()
   }
 
-  const toastId = toast.loading('Updating permissions...')
+  const toastId = toast.loading(t('toast.perm_updating'))
 
   try {
     const result = await apiPost<ChmodResponse>('chmod', payload)
@@ -317,19 +319,19 @@ async function applyPermissions(recursive: boolean) {
     if (result.failed.length > 0 && result.completed === 0) {
       toast.dismiss(toastId)
       await showOperationReport({
-        title: 'Permissions Update Failed',
-        description: 'None of the selected items could be updated.',
+        title: t('permissions.report.failed_title'),
+        description: t('permissions.report.failed'),
         items: result.failed.map(f => ({ name: f.name, reason: f.error })),
       })
     } else if (result.failed.length > 0) {
       toast.dismiss(toastId)
       await showOperationReport({
-        title: 'Partial Permissions Update',
-        description: `Updated ${result.completed} item(s), ${result.failed.length} failed.`,
+        title: t('permissions.report.partial_title'),
+        description: t('permissions.report.partial', { completed: result.completed, failed: result.failed.length }),
         items: result.failed.map(f => ({ name: f.name, reason: f.error })),
       })
     } else {
-      toast.success(`Updated permissions for ${result.completed} item(s)`, { id: toastId })
+      toast.success(t('toast.perm_updated', { count: result.completed }, result.completed), { id: toastId })
     }
 
     handleMutation(
@@ -350,7 +352,7 @@ async function applyPermissions(recursive: boolean) {
       <DialogHeader>
         <DialogTitle class="truncate pr-6">{{ dialogTitle }}</DialogTitle>
         <DialogDescription class="sr-only">
-          View and modify Unix file mode and ownership
+          {{ $t('permissions.description') }}
         </DialogDescription>
       </DialogHeader>
 
@@ -363,23 +365,23 @@ async function applyPermissions(recursive: boolean) {
               <div class="grid grid-cols-3 gap-x-2 gap-y-2.5 items-center">
                 <!-- Header row -->
                 <div class="min-w-0">
-                  <div class="text-sm font-medium text-foreground">Owner</div>
+                  <div class="text-sm font-medium text-foreground">{{ $t('common.field.owner') }}</div>
                   <div class="text-sm text-muted-foreground truncate" :title="headerOwnerSub">
                     {{ headerOwnerSub }}
                   </div>
                 </div>
                 <div class="min-w-0">
-                  <div class="text-sm font-medium text-foreground">Group</div>
+                  <div class="text-sm font-medium text-foreground">{{ $t('common.field.group') }}</div>
                   <div class="text-sm text-muted-foreground truncate" :title="headerGroupSub">
                     {{ headerGroupSub }}
                   </div>
                 </div>
                 <div class="min-w-0 self-start">
-                  <div class="text-sm font-medium text-foreground">Others</div>
+                  <div class="text-sm font-medium text-foreground">{{ $t('permissions.other') }}</div>
                 </div>
 
                 <!-- 3 Permission rows -->
-                <template v-for="row in ROWS" :key="row.label">
+                <template v-for="row in ROWS" :key="row.labelKey">
                   <label
                     v-for="colKey in row.cols"
                     :key="colKey"
@@ -389,7 +391,7 @@ async function applyPermissions(recursive: boolean) {
                       :model-value="currentBits[colKey]"
                       @update:model-value="toggleBit(colKey)"
                     />
-                    <span>{{ row.label }}</span>
+                    <span>{{ $t(row.labelKey) }}</span>
                   </label>
                 </template>
               </div>
@@ -398,10 +400,10 @@ async function applyPermissions(recursive: boolean) {
             <!-- Right: Octal Quick Input -->
             <div class="sm:w-32 shrink-0 rounded-md border bg-muted/15 p-3 flex flex-col justify-between gap-2">
               <div class="space-y-1.5">
-                <label class="text-sm font-medium text-foreground block">Octal</label>
+                <label class="text-sm font-medium text-foreground block">{{ $t('permissions.octal') }}</label>
                 <Input
                   :model-value="octalInput"
-                  placeholder="Mixed"
+                  :placeholder="$t('permissions.mixed')"
                   maxlength="4"
                   class="font-mono text-center h-8 text-sm tracking-widest px-2"
                   @input="handleOctalInput"
@@ -410,7 +412,7 @@ async function applyPermissions(recursive: boolean) {
                 />
               </div>
               <div>
-                <div class="text-sm text-muted-foreground mb-0.5">Preview</div>
+                <div class="text-sm text-muted-foreground mb-0.5">{{ $t('permissions.preview') }}</div>
                 <div class="font-mono text-center text-sm text-foreground tracking-wider bg-background/80 border rounded px-1.5 py-0.5">
                   {{ symbolicPreview }}
                 </div>
@@ -425,33 +427,35 @@ async function applyPermissions(recursive: boolean) {
         <div class="space-y-3">
           <div class="grid grid-cols-2 gap-3">
             <div class="space-y-1.5">
-              <label class="text-sm font-medium text-foreground block">Owner</label>
+              <label class="text-sm font-medium text-foreground block">{{ $t('common.field.owner') }}</label>
               <Input
                 v-model="ownerInput"
                 :disabled="!isRoot"
-                :placeholder="initialOwner === null ? '(Mixed)' : 'Owner'"
+                :placeholder="initialOwner === null ? $t('permissions.mixed') : $t('common.field.owner')"
                 class="h-8 text-sm"
               />
             </div>
             <div class="space-y-1.5">
-              <label class="text-sm font-medium text-foreground block">Group</label>
+              <label class="text-sm font-medium text-foreground block">{{ $t('common.field.group') }}</label>
               <Input
                 v-model="groupInput"
                 :disabled="!isRoot"
-                :placeholder="initialGroup === null ? '(Mixed)' : 'Group'"
+                :placeholder="initialGroup === null ? $t('permissions.mixed') : $t('common.field.group')"
                 class="h-8 text-sm"
               />
             </div>
           </div>
-          <div class="text-sm text-muted-foreground">
-            FileCarton is running as <strong class="text-foreground font-medium">{{ processUser }}</strong>.
-          </div>
+          <i18n-t keypath="permissions.running_as" tag="div" class="text-sm text-muted-foreground">
+            <template #user>
+              <strong class="text-foreground font-medium">{{ processUser }}</strong>
+            </template>
+          </i18n-t>
         </div>
       </div>
 
       <DialogFooter class="mt-2 flex-row justify-end gap-2">
         <Button variant="outline" type="button" @click="closeDialog">
-            Cancel
+            {{ $t('common.action.cancel') }}
         </Button>
         <Button
           v-if="hasDirectory"
@@ -460,14 +464,14 @@ async function applyPermissions(recursive: boolean) {
           :disabled="!isAnyDirty || submitting"
           @click="applyPermissions(true)"
         >
-          Apply Recursively
+          {{ $t('permissions.apply_recursive') }}
         </Button>
         <Button
           type="button"
           :disabled="!isAnyDirty || submitting"
           @click="applyPermissions(false)"
         >
-          Apply
+          {{ $t('common.action.apply') }}
         </Button>
       </DialogFooter>
     </DialogContent>

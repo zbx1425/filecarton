@@ -51,10 +51,10 @@ function handleAreaContext(e: MouseEvent) {
       <ScrollArea class="h-full" @contextmenu="handleAreaContext">
         <div class="py-1">
           <div v-if="treePanel.rootError" class="flex flex-col items-center gap-2 py-6 px-3 text-sm text-muted-foreground">
-            <span>Failed to load</span>
+            <span>{{ $t('common.state.loading_failed') }}</span>
             <Button variant="ghost" size="sm" class="gap-1.5" @click="treePanel.retryRoot()">
               <RefreshCw class="size-3.5" />
-              Retry
+              {{ $t('common.action.retry') }}
             </Button>
           </div>
           <template v-else v-for="child in cache.getTreeChildren('')" :key="child.name">
