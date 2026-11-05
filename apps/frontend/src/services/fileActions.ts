@@ -332,10 +332,6 @@ export async function pasteItems(targetPath: string) {
   }
 }
 
-/**
- * Copy or cut selected items to the clipboard.
- * Shared implementation eliminates copy/cut code duplication.
- */
 function clipboardAction(mode: 'copy' | 'cut') {
   const ui = useUiStore()
   if (ui.readonly) return

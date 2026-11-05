@@ -1,13 +1,6 @@
 import { ref, computed } from 'vue'
 
-/**
- * Reusable browsing-state logic
- *
- * Manages: selection (multi-select with Set), focus index, search query,
- * and a reset function for navigation transitions.
- */
 export function useBrowserState() {
-  // ── Selection (absolute paths) ──
   const selected = ref(new Set<string>())
   const focusIndex = ref(-1)
   const lastClickedPath = ref<string | null>(null)

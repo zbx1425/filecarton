@@ -9,10 +9,18 @@ function api_auth_login($pathSec = null, $fileOps = null) {
     $password = is_array($body) && isset($body['password']) ? $body['password'] : '';
     $extra = [];
     if (is_array($body) && isset($body['extra']) && is_array($body['extra'])) {
+        $allowedNames = [];
+        foreach (Auth::sanitizeLoginFields(
+            defined('FILECARTON_LOGIN_UI_EXTRA_FIELDS') ? FILECARTON_LOGIN_UI_EXTRA_FIELDS : []
+        ) as $field) {
+            $allowedNames[$field['name']] = true;
+        }
         foreach ($body['extra'] as $k => $v) {
-            if (is_string($k) && (is_string($v) || is_numeric($v))) {
-                $extra[$k] = (string)$v;
-            }
+            if (!is_string($k) || !isset($allowedNames[$k])) continue;
+            if (!is_string($v) && !is_numeric($v)) continue;
+            $v = (string)$v;
+            if (strlen($v) > 1024) continue;
+            $extra[$k] = $v;
         }
     }
     try {

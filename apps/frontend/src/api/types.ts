@@ -172,6 +172,7 @@ export interface LoginFieldDef {
   type: 'text' | 'password' | 'select'
   label?: PluginLabel
   placeholder?: PluginLabel
+  autocomplete?: string
   options?: Array<{ value: string; label: PluginLabel }>
 }
 

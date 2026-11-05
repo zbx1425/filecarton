@@ -174,12 +174,13 @@ class RepoSetting {
         if ($this->featureCopyLink === false || $this->featureCopyLink === null) {
             return '';
         }
+        if ($this->rootPath === null || $this->rootPath === '') {
+            return '';
+        }
         if (is_string($this->featureCopyLink)) {
             return $this->featureCopyLink;
         }
         // Auto-detect: featureCopyLink === true
-        if ($this->rootPath === null || $this->rootPath === '') return '';
-
         $docRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
         if ($docRoot === '') return '';
         $docRoot = @realpath($docRoot);
@@ -188,10 +189,10 @@ class RepoSetting {
 
         $rootNorm = rtrim(str_replace('\\', '/', $this->rootPath), '/');
 
-        // Case-insensitive prefix check (safe on Windows / macOS)
-        if ($docRoot !== '' && stripos($rootNorm, $docRoot . '/') === 0) {
+        // Case-sensitive prefix check — both sides are realpath'd (canonical case)
+        if ($docRoot !== '' && strpos($rootNorm, $docRoot . '/') === 0) {
             $webPath = substr($rootNorm, strlen($docRoot));
-        } elseif (strcasecmp($rootNorm, $docRoot) === 0) {
+        } elseif (strcmp($rootNorm, $docRoot) === 0) {
             $webPath = '/';
         } else {
             return '';
@@ -207,11 +208,9 @@ class RepoSetting {
             && FILECARTON_PUBLIC_ORIGIN !== '') {
             return rtrim(FILECARTON_PUBLIC_ORIGIN, '/');
         }
-        $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-            || (isset($_SERVER['HTTP_X_FORWARDED_PROTO'])
-                && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
+        require_once FILECARTON_SCRIPT_DIR . '/lib/Csrf.php';
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        return ($isHttps ? 'https://' : 'http://') . $host;
+        return (Csrf::isHttps() ? 'https://' : 'http://') . $host;
     }
 
     /**

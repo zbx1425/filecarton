@@ -167,6 +167,8 @@ function handleRedirect(pluginId: string) {
             <Input
               v-if="field.type === 'text' || field.type === 'password'"
               :id="'fc-extra-' + field.name"
+              :name="field.name"
+              :autocomplete="field.autocomplete ?? 'off'"
               v-model="extraFields[field.name]"
               :type="field.type"
               :placeholder="field.placeholder ? resolvePluginLabel(field.placeholder) : undefined"
@@ -175,6 +177,7 @@ function handleRedirect(pluginId: string) {
             <Select
               v-else-if="field.type === 'select'"
               v-model="extraFields[field.name]"
+              :name="field.name"
               :disabled="submitting"
             >
               <SelectTrigger :id="'fc-extra-' + field.name">

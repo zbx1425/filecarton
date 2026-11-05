@@ -723,6 +723,12 @@ class Auth {
             $placeholder = self::sanitizeLabel($field['placeholder'] ?? '');
             if ($placeholder !== '' && $placeholder !== []) $entry['placeholder'] = $placeholder;
 
+            if (isset($field['autocomplete']) && is_string($field['autocomplete'])
+                && $field['autocomplete'] !== ''
+                && strpbrk($field['autocomplete'], "\r\n\0") === false) {
+                $entry['autocomplete'] = $field['autocomplete'];
+            }
+
             if ($type === 'select') {
                 if (!isset($field['options']) || !is_array($field['options'])) continue;
                 $opts = [];
@@ -780,6 +786,18 @@ class Auth {
             if ($type === 'select') {
                 if (!isset($field['options']) || !is_array($field['options']) || $field['options'] === []) {
                     $p[] = "$prefix (type=select) must have a non-empty 'options' array.";
+                } else {
+                    $validCount = 0;
+                    foreach ($field['options'] as $j => $opt) {
+                        if (!is_array($opt) || !isset($opt['value']) || !is_string($opt['value']) || $opt['value'] === '') {
+                            $p[] = "$prefix options[$j] must have a non-empty string 'value'.";
+                        } else {
+                            $validCount++;
+                        }
+                    }
+                    if ($validCount === 0 && empty($p)) {
+                        $p[] = "$prefix (type=select) has no valid options.";
+                    }
                 }
             }
         }

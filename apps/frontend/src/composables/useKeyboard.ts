@@ -65,6 +65,7 @@ export function useKeyboard() {
       || ui.settingsOpen
       || upload.uploadDialogOpen
       || upload.errorDialogOpen
+      || document.querySelector('[role="menu"]') !== null
     )
   }
 
