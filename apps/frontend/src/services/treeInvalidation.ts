@@ -41,13 +41,13 @@ export function handleMutation(opts: MutationRefreshOptions): void {
       treePanel.collapseSubtree(path)
       // Reload the subtree root if expanded
       if (path === '' || treePanel.isExpanded(path)) {
-        cache.fetchTreeChildren(path, { force: true })
+        cache.fetchTreeChildren(path, { force: true }).catch(() => {})
       }
       // Reload all expanded descendants within this subtree
       const prefix = path ? path + '/' : ''
       for (const expandedPath of treePanel.expanded) {
         if (expandedPath.startsWith(prefix) && expandedPath !== path) {
-          cache.fetchTreeChildren(expandedPath, { force: true })
+          cache.fetchTreeChildren(expandedPath, { force: true }).catch(() => {})
         }
       }
       // prefix-match: current view is inside this subtree
@@ -67,7 +67,7 @@ export function handleMutation(opts: MutationRefreshOptions): void {
       cache.invalidateDirectory(path)
       // If this is not the current path but is expanded, refresh tree via tree_node
       if (path !== currentPath && (path === '' || treePanel.isExpanded(path))) {
-        cache.fetchTreeChildren(path)
+        cache.fetchTreeChildren(path).catch(() => {})
       }
       // exact-match: file list only stale when viewing this exact directory
       if (currentPath === path) {

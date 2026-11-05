@@ -158,7 +158,7 @@ onBeforeUnmount(() => {
       <Button
         variant="outline"
         size="sm"
-        @click="navigation.openFile(name)"
+        @click="navigation.openFile(path)"
       >
         <ExternalLink class="size-4" />
         Open

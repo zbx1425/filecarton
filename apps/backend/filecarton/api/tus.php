@@ -93,6 +93,10 @@ function tus_create(PathSecurity $pathSec): void {
         ]);
     }
 
+    if ($pathSec->isFilenameBlocked($fileName)) {
+        Response::error('filename_blocked', 403);
+    }
+
     $targetAbs = $pathSec->resolveOrCreate($targetPath);
     $finalPath = $targetAbs . '/' . $fileName;
     $pathSec->assertCanCreateAt($finalPath, false);
@@ -250,12 +254,6 @@ function tus_patch(PathSecurity $pathSec, string $uploadId): void {
 
         // Check if upload is complete
         if ($newOffset === $meta['uploadLength']) {
-            if (connection_aborted()) {
-                // Client cancelled the upload
-                $meta['offset'] = $newOffset;
-                @file_put_contents($tusDir . '/meta.json', json_encode($meta));
-                exit;
-            }
             $finalPath = $meta['finalPath'];
             if (is_dir($finalPath)) {
                 Response::error('upload.target_is_directory', 409);

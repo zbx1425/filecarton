@@ -85,7 +85,10 @@ class FileOps {
         }
     }
 
-    public function copyItem(string $src, string $dst): void {
+    /**
+     * @param callable|null $fileFilter  fn(string $basename): bool — return false to skip a file
+     */
+    public function copyItem(string $src, string $dst, ?callable $fileFilter = null): void {
         if (is_file($src)) {
             $dstDir = dirname($dst);
             if (!is_dir($dstDir)) {
@@ -95,7 +98,7 @@ class FileOps {
                 throw new \RuntimeException('Failed to copy file: ' . basename($src));
             }
         } elseif (is_dir($src)) {
-            if (!Platform::copyRecursive($src, $dst)) {
+            if (!Platform::copyRecursive($src, $dst, $fileFilter)) {
                 throw new \RuntimeException('Failed to copy directory: ' . basename($src));
             }
         } else {
@@ -118,7 +121,10 @@ class FileOps {
      * Moves files one by one (overwriting existing), creates subdirs as needed,
      * then removes the now-empty source directory tree.
      */
-    public function mergeMove(string $src, string $dst): void {
+    /**
+     * @param callable|null $fileFilter  fn(string $basename): bool — return false to skip a file
+     */
+    public function mergeMove(string $src, string $dst, ?callable $fileFilter = null): void {
         $src = rtrim(str_replace('\\', '/', $src), '/');
         $dst = rtrim(str_replace('\\', '/', $dst), '/');
 
@@ -141,6 +147,9 @@ class FileOps {
                     }
                 }
             } else {
+                if ($fileFilter !== null && !$fileFilter(basename($itemPath))) {
+                    continue;
+                }
                 $targetDir = dirname($targetPath);
                 if (!is_dir($targetDir)) {
                     mkdir($targetDir, 0755, true);

@@ -22,7 +22,10 @@ function should_skip_archive_entry(string $fullPath, PathSecurity $pathSec): boo
 function enumerate_archive_entries(string $baseDir, array $items, PathSecurity $pathSec, array &$skipped): \Generator {
     foreach ($items as $name) {
         if (!is_string($name) || $name === '') continue;
-        if (is_link($baseDir . '/' . $name)) continue;
+        if (is_link($baseDir . '/' . $name)) {
+            $skipped[] = $name;
+            continue;
+        }
         try {
             $itemPath = $pathSec->resolveItemIn($baseDir, $name);
         } catch (\Throwable $e) {
@@ -55,7 +58,10 @@ function enumerate_dir_entries(string $dirPath, string $prefix, PathSecurity $pa
     foreach ($entries as $entry) {
         if ($entry === '.' || $entry === '..') continue;
         $full = $dirPath . '/' . $entry;
-        if (is_link($full)) continue;
+        if (is_link($full)) {
+            $skipped[] = $prefix . '/' . $entry;
+            continue;
+        }
         if (should_skip_archive_entry($full, $pathSec)) {
             $skipped[] = $prefix . '/' . $entry;
             continue;

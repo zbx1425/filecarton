@@ -393,7 +393,7 @@ class PathSecurity {
         if ($real === false) {
             throw new \RuntimeException('Root path does not exist: ' . $rootPath);
         }
-        $this->rootPath = rtrim(str_replace('\\', '/', $real), '/');
+        $this->rootPath = rtrim(str_replace('\\', '/', $real), '/') ?: '/';
         $this->caseInsensitive = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
 
         $this->blocklist = new FilenameBlocklist(is_array(FILECARTON_FILENAME_BLOCKLIST) ? FILECARTON_FILENAME_BLOCKLIST : []);
@@ -616,6 +616,9 @@ class PathSecurity {
             throw new ApiException('invalid_input', 400, ['field' => 'name']);
         }
         if (str_contains($itemName, "\0") || str_contains($itemName, '/') || str_contains($itemName, '\\')) {
+            throw new ApiException('invalid_input', 400, ['field' => 'name']);
+        }
+        if (!$this->isValidFileName($itemName)) {
             throw new ApiException('invalid_input', 400, ['field' => 'name']);
         }
 

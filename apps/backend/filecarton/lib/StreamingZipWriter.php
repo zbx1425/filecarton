@@ -51,7 +51,9 @@ class StreamingZipWriter {
      */
     public function addFileFromPath(string $entryName, string $filePath): void {
         $fp = @fopen($filePath, 'rb');
-        if ($fp === false) return;
+        if ($fp === false) {
+            throw new \RuntimeException('Cannot open file for archiving: ' . basename($filePath));
+        }
 
         $mtime = (int)@filemtime($filePath);
         $dosTime = self::unixToDosTime($mtime);

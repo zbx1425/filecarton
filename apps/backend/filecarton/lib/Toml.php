@@ -41,11 +41,13 @@ class Toml {
      */
     public static function parseFile(string $filename): array {
         if (!is_file($filename) || !is_readable($filename)) {
-            throw new \RuntimeException("Configuration file cannot be read: {$filename}");
+            error_log("FileCarton: Configuration file cannot be read: {$filename}");
+            throw new \RuntimeException("Configuration file cannot be read. Check server error log for details.");
         }
         $content = @file_get_contents($filename);
         if (!is_string($content)) {
-            throw new \RuntimeException("Failed to read configuration file: {$filename}");
+            error_log("FileCarton: Failed to read configuration file: {$filename}");
+            throw new \RuntimeException("Failed to read configuration file. Check server error log for details.");
         }
         return self::parse($content);
     }

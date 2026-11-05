@@ -26,23 +26,34 @@ const view = reactive(useFileListView())
 const ui = useUiStore()
 const downloading = ref(false)
 
+/** Strip directory prefix from absolute-path selection set to get bare filenames */
+function selectedNames(): string[] {
+  const prefix = view.currentPathStr ? view.currentPathStr + '/' : ''
+  const names: string[] = []
+  for (const p of view.selected) {
+    const name = prefix && p.startsWith(prefix) ? p.slice(prefix.length) : p
+    if (!name.includes('/')) names.push(name)
+  }
+  return names
+}
+
 const isSingleFile = computed(() => {
-  if (view.selectedCount !== 1) return false
-  const name = Array.from(view.selected)[0]
-  return !!view.getFileByName(name)
+  const names = selectedNames()
+  if (names.length !== 1) return false
+  return !!view.getFileByName(names[0])
 })
 
 async function downloadSelected() {
-  const items = Array.from(view.selected)
-  if (items.length === 0) return
+  const names = selectedNames()
+  if (names.length === 0) return
   if (isSingleFile.value) {
-    const filePath = joinPath(view.currentPathStr, items[0])
+    const filePath = joinPath(view.currentPathStr, names[0])
     window.open(buildDownloadUrl(filePath), '_blank')
     return
   }
   downloading.value = true
   try {
-    await fetchBatchDownload(view.currentPathStr, items)
+    await fetchBatchDownload(view.currentPathStr, names)
   } catch (e) {
     toast.error(errorMessage(e))
   } finally {

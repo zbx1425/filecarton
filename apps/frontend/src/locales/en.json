@@ -51,6 +51,7 @@
 
   "err.paste.into_self": "Cannot place a directory inside itself",
   "err.paste.target_protected": "Target directory contains protected items",
+  "err.paste.type_mismatch": "Cannot overwrite a file with a directory or vice versa",
 
   "err.perm.disabled": "Unix permissions modification is disabled",
   "err.perm.invalid_owner": "User not found on system",

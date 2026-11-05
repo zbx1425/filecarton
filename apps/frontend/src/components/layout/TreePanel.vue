@@ -15,7 +15,9 @@ const cache = useFileTreeCacheStore()
 const treePanel = useTreeUiStore()
 const navigation = useNavigationStore()
 
-cache.fetchTreeChildren('')
+cache.fetchTreeChildren('').catch(() => {
+  treePanel.rootError = true
+})
 
 watch(
   () => navigation.currentPath,

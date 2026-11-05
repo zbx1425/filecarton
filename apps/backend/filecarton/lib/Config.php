@@ -41,7 +41,12 @@ class Config {
             'search_default_limit'          => 200,
             'search_max_limit'              => 1000,
             'search_max_scan'               => 100000,
-            'filename_blocklist'            => ['*.php', '.htaccess', '.user.ini', 'web.config'],
+            'filename_blocklist'            => [
+                '*.php', '*.phtml', '*.phar', '*.pht', 
+                '*.php3', '*.php4', '*.php5', '*.php7', '*.php8',
+                '*.shtml',
+                '.htaccess', '.user.ini', 'web.config'
+            ],
             'ignore_pattern'                => [],
             'ignore_realpath'               => [
                 $configDir . '/filecarton.php',

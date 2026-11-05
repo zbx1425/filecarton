@@ -5,6 +5,8 @@
  * Merges all backend PHP files (except filecarton.config.toml.php) into a single
  * distributable PHP file with embedded frontend assets.
  *
+ * Minimum PHP version: 8.2 (this script only; the compiled output supports PHP 7.2+)
+ *
  * Usage: php scripts/compile_single_file.php
  */
 

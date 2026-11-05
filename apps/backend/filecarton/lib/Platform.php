@@ -39,16 +39,19 @@ class Platform {
      * Creates the destination directory if it doesn't exist.
      * Returns true on success.
      */
-    public static function copyRecursive(string $source, string $dest): bool {
+    /**
+     * @param callable|null $fileFilter  fn(string $basename): bool — return false to skip a file
+     */
+    public static function copyRecursive(string $source, string $dest, ?callable $fileFilter = null): bool {
         if (!is_dir($source)) {
             return false;
         }
 
-        if (self::useNativeCommands()) {
+        if (self::useNativeCommands() && $fileFilter === null) {
             return self::nativeCopy($source, $dest);
         }
 
-        return self::phpCopy($source, $dest);
+        return self::phpCopy($source, $dest, $fileFilter);
     }
 
     // ------------------------------------------------------------------
@@ -118,7 +121,7 @@ class Platform {
         return @rmdir($path);
     }
 
-    private static function phpCopy(string $source, string $dest): bool {
+    private static function phpCopy(string $source, string $dest, ?callable $fileFilter = null): bool {
         if (!is_dir($dest)) {
             if (!@mkdir($dest, 0755, true) && !is_dir($dest)) {
                 return false;
@@ -141,6 +144,10 @@ class Platform {
 
             $relativePath = substr(str_replace('\\', '/', $itemPath), $sourceLen);
             $targetPath = $dest . '/' . $relativePath;
+
+            if (!$item->isDir() && $fileFilter !== null && !$fileFilter(basename($itemPath))) {
+                continue;
+            }
 
             if ($item->isDir()) {
                 if (!is_dir($targetPath)) {
@@ -320,12 +327,21 @@ class Platform {
      * @return bool True on success
      */
     public static function safePublish(string $src, string $dst): bool {
-        if (is_link($dst)) {
-            @unlink($dst);
-        }
+        // On POSIX, rename() overwrites the destination (including symlinks)
+        // atomically; try it first without unlinking.
         if (@rename($src, $dst)) {
             return true;
         }
+
+        // rename() failed — on Windows a symlink at $dst may block rename;
+        // remove it and retry before falling back to cross-filesystem copy.
+        if (is_link($dst)) {
+            @unlink($dst);
+            if (@rename($src, $dst)) {
+                return true;
+            }
+        }
+
         // Cross-filesystem: copy to a temp file in the destination directory
         // (same filesystem), then rename to the final path (atomic).
         $tmpDst = $dst . '.fc_' . bin2hex(random_bytes(4)) . '.tmp';

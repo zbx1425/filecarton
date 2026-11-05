@@ -169,6 +169,11 @@ onBeforeUnmount(() => {
           </Button>
         </div>
       </template>
+      <template v-else-if="!ui.readonly && !isFilenameBlocked(fileName)">
+        <Button variant="ghost" size="sm" @click="navigation.openEditor()">
+          Edit
+        </Button>
+      </template>
 
       <Button variant="ghost" size="sm" @click="copyAll">
         <ClipboardCopy class="size-4" />

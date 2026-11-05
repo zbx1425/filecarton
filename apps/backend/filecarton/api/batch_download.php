@@ -40,7 +40,10 @@ function api_batch_download(PathSecurity $pathSec, FileOps $fileOps): void {
 
     $dirAbs = $pathSec->resolveExistingDir($path);
 
-    // Pre-scan: count files and total size to enforce limits
+    // Pre-scan: count files and total size to enforce limits.
+    // Clamp to ZIP32 limits: 65535 entries, ~4 GiB total.
+    $maxFiles = min(FILECARTON_ARCHIVE_MAX_FILES, 65535);
+    $maxSize  = min(FILECARTON_ARCHIVE_MAX_SIZE, 0xFFFFFFFF);
     $fileCount = 0;
     $totalSize = 0;
     $hasEntries = false;
@@ -51,11 +54,11 @@ function api_batch_download(PathSecurity $pathSec, FileOps $fileOps): void {
             $fileCount++;
             $totalSize += (int)@filesize($entry['fullPath']);
         }
-        if ($fileCount > FILECARTON_ARCHIVE_MAX_FILES) {
-            Response::error('archive.too_many_to_create', 400, ['limit' => FILECARTON_ARCHIVE_MAX_FILES]);
+        if ($fileCount > $maxFiles) {
+            Response::error('archive.too_many_to_create', 400, ['limit' => $maxFiles]);
         }
-        if ($totalSize > FILECARTON_ARCHIVE_MAX_SIZE) {
-            Response::error('archive.too_large_to_create', 400, ['limitMB' => round(FILECARTON_ARCHIVE_MAX_SIZE / 1024 / 1024, 1)]);
+        if ($totalSize > $maxSize) {
+            Response::error('archive.too_large_to_create', 400, ['limitMB' => round($maxSize / 1024 / 1024, 1)]);
         }
     }
 
@@ -147,13 +150,15 @@ function batch_download_stream(PathSecurity $pathSec, string $token): void {
     $skipped = [];
     $fileCount = 0;
     $totalSize = 0;
+    $maxFiles = min(FILECARTON_ARCHIVE_MAX_FILES, 65535);
+    $maxSize  = min(FILECARTON_ARCHIVE_MAX_SIZE, 0xFFFFFFFF);
     foreach (enumerate_archive_entries($dirAbs, $items, $pathSec, $skipped) as $entry) {
         if (connection_aborted()) break;
         if ($entry['isDir']) {
             $zip->addDirectory($entry['entryName']);
         } else {
             $size = (int)@filesize($entry['fullPath']);
-            if ($fileCount >= FILECARTON_ARCHIVE_MAX_FILES || $totalSize + $size > FILECARTON_ARCHIVE_MAX_SIZE) {
+            if ($fileCount >= $maxFiles || $totalSize + $size > $maxSize) {
                 break;
             }
             $fileCount++;

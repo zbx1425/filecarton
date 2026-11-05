@@ -89,6 +89,23 @@ function loadPreferences(): StoredPreferences {
       if (merged.toolbarColor !== 'default' && !isValidToolbarColor(merged.toolbarColor)) {
         merged.toolbarColor = 'default'
       }
+      // Validate enums
+      if (!['system', 'light', 'dark'].includes(merged.theme)) merged.theme = DEFAULTS.theme
+      if (!['compact', 'default', 'comfortable'].includes(merged.displayDensity)) merged.displayDensity = DEFAULTS.displayDensity
+      if (!['name', 'size', 'mtime'].includes(merged.sortBy)) merged.sortBy = DEFAULTS.sortBy
+      // Clamp numeric ranges
+      if (typeof merged.baseFontSize !== 'number' || merged.baseFontSize < 10 || merged.baseFontSize > 32) merged.baseFontSize = DEFAULTS.baseFontSize
+      if (typeof merged.editorFontSize !== 'number' || merged.editorFontSize < 8 || merged.editorFontSize > 40) merged.editorFontSize = DEFAULTS.editorFontSize
+      if (merged.editorTabSize !== 2 && merged.editorTabSize !== 4) merged.editorTabSize = DEFAULTS.editorTabSize
+      if (typeof merged.readmePaneHeight !== 'number' || merged.readmePaneHeight < 100 || merged.readmePaneHeight > 800) merged.readmePaneHeight = DEFAULTS.readmePaneHeight
+      // Validate booleans
+      if (typeof merged.editorWordWrap !== 'boolean') merged.editorWordWrap = DEFAULTS.editorWordWrap
+      if (typeof merged.editorLineNumbers !== 'boolean') merged.editorLineNumbers = DEFAULTS.editorLineNumbers
+      if (typeof merged.editorAutoDetect !== 'boolean') merged.editorAutoDetect = DEFAULTS.editorAutoDetect
+      if (typeof merged.showDotFiles !== 'boolean') merged.showDotFiles = DEFAULTS.showDotFiles
+      if (typeof merged.showUnixPerm !== 'boolean') merged.showUnixPerm = DEFAULTS.showUnixPerm
+      if (typeof merged.readmePaneCollapsed !== 'boolean') merged.readmePaneCollapsed = DEFAULTS.readmePaneCollapsed
+      if (typeof merged.sortAsc !== 'boolean') merged.sortAsc = DEFAULTS.sortAsc
       return merged
     }
   } catch { /* ignore */ }

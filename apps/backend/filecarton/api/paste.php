@@ -204,9 +204,18 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
                 continue;
             }
 
+            if (file_exists($dstAbs) && $overwrite && is_dir($dstAbs) !== is_dir($srcAbs)) {
+                $failed[] = ['name' => $name, 'error' => 'paste.type_mismatch'];
+                continue;
+            }
+
+            $fileFilter = function (string $basename) use ($pathSec) {
+                return !$pathSec->isFilenameBlocked($basename);
+            };
+
             if ($mode === 'copy') {
                 if (is_dir($srcAbs) && is_dir($dstAbs)) {
-                    $fileOps->copyItem($srcAbs, $dstAbs);
+                    $fileOps->copyItem($srcAbs, $dstAbs, $fileFilter);
                 } elseif (is_file($srcAbs) && file_exists($dstAbs) && $overwrite) {
                     $tmpDst = $dstAbs . '.fc_' . bin2hex(random_bytes(4)) . '.tmp';
                     if (!@copy($srcAbs, $tmpDst)) {
@@ -218,18 +227,12 @@ function api_paste(PathSecurity $pathSec, FileOps $fileOps): void {
                         throw new \RuntimeException('rename failed');
                     }
                 } else {
-                    if (file_exists($dstAbs) && $overwrite) {
-                        $fileOps->deleteItem($dstAbs);
-                    }
-                    $fileOps->copyItem($srcAbs, $dstAbs);
+                    $fileOps->copyItem($srcAbs, $dstAbs, $fileFilter);
                 }
             } else {
                 if (is_dir($srcAbs) && is_dir($dstAbs)) {
-                    $fileOps->mergeMove($srcAbs, $dstAbs);
+                    $fileOps->mergeMove($srcAbs, $dstAbs, $fileFilter);
                 } else {
-                    if (file_exists($dstAbs) && $overwrite && is_dir($dstAbs) !== is_dir($srcAbs)) {
-                        $fileOps->deleteItem($dstAbs);
-                    }
                     $fileOps->moveItem($srcAbs, $dstAbs);
                 }
             }
