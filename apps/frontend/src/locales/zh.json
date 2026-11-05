@@ -74,6 +74,7 @@
   "err.auth.config": "伺服器身份驗證設定異常",
   "err.auth.unknown": "身份驗證過程中發生未知錯誤",
   "err.auth.invalid_credentials": "使用者名稱或密碼無效",
+  "err.auth.extra_required": "請填寫所有必填欄位",
   "err.auth.not_set_up": "此使用者未設定登入資訊",
   "err.auth.disabled": "內建身份驗證已停用",
   "err.auth.csrf": "工作階段已過期或 CSRF 權杖無效，請重新整理頁面",

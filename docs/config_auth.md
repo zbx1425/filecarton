@@ -257,13 +257,14 @@ The `login_ui_extra_fields` setting under `[auth]` adds custom input fields to t
 ```toml
 [auth]
 login_ui_extra_fields = [
-  { name = "otp", type = "password",
+  { name = "otp", type = "password", required = true,
     label = { langs = { en = "OTP Code", zh = "验证码" } },
     placeholder = "123456"
   },
   { name = "tenant", type = "select",
     label = "Tenant",
     placeholder = "Select your tenant",
+    default = "us",
     options = [
       { value = "us", label = "US Region" },
       { value = "eu", label = { langs = { en = "Europe", zh = "欧洲" } } }
@@ -281,6 +282,8 @@ Each field definition supports:
 | `label` | no | Visible label above the field. Supports [label formats](#label-formats). |
 | `placeholder` | no | Placeholder text. Supports [label formats](#label-formats). |
 | `options` | yes (select) | Array of `{ value = "...", label = "..." }` for select dropdowns. Each `label` supports [label formats](#label-formats). |
+| `default` | no | Select only. An option `value` that is selected when the login form opens. Must match one of the options. |
+| `required` | no | Boolean. When `true`, login is rejected until the field is non-empty. Defaults to false. |
 
 The extra field values are sent alongside `username` and `password` in the login request and passed to `PasswordAuth::verify()` as the `$extra` parameter. See [auth_provider.md](auth_provider.md) for how to use them in a custom auth provider.
 

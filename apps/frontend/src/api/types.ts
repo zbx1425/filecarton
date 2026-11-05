@@ -171,6 +171,9 @@ export interface LoginFieldDef {
   label?: PluginLabel
   placeholder?: PluginLabel
   autocomplete?: string
+  required?: boolean
+  /** Select only. An option value that starts selected. */
+  default?: string
   options?: Array<{ value: string; label: PluginLabel }>
 }
 

@@ -8,19 +8,34 @@ function api_auth_login($pathSec = null, $fileOps = null) {
     $username = is_array($body) && isset($body['username']) ? $body['username'] : '';
     $password = is_array($body) && isset($body['password']) ? $body['password'] : '';
     $extra = [];
+    $fields = Auth::sanitizeLoginFields(
+        defined('FILECARTON_LOGIN_UI_EXTRA_FIELDS') ? FILECARTON_LOGIN_UI_EXTRA_FIELDS : []
+    );
+    $allowedNames = [];
+    foreach ($fields as $field) {
+        $allowedNames[$field['name']] = true;
+    }
     if (is_array($body) && isset($body['extra']) && is_array($body['extra'])) {
-        $allowedNames = [];
-        foreach (Auth::sanitizeLoginFields(
-            defined('FILECARTON_LOGIN_UI_EXTRA_FIELDS') ? FILECARTON_LOGIN_UI_EXTRA_FIELDS : []
-        ) as $field) {
-            $allowedNames[$field['name']] = true;
-        }
         foreach ($body['extra'] as $k => $v) {
             if (!is_string($k) || !isset($allowedNames[$k])) continue;
             if (!is_string($v) && !is_numeric($v)) continue;
             $v = (string)$v;
             if (strlen($v) > 1024) continue;
             $extra[$k] = $v;
+        }
+    }
+    foreach ($fields as $field) {
+        if (($field['type'] ?? '') !== 'select' || !isset($field['default'])) continue;
+        $current = isset($extra[$field['name']]) ? $extra[$field['name']] : '';
+        if (trim($current) === '') {
+            $extra[$field['name']] = $field['default'];
+        }
+    }
+    foreach ($fields as $field) {
+        if (empty($field['required'])) continue;
+        $value = isset($extra[$field['name']]) ? $extra[$field['name']] : '';
+        if (trim($value) === '') {
+            Response::error('auth.extra_required', 400);
         }
     }
     try {

@@ -63,11 +63,25 @@ function iconMaskStyle(icon: FileCartonAuthPluginIcon) {
 const username = ref('')
 const password = ref('')
 const extraFields = reactive<Record<string, string>>({})
+for (const field of auth.loginFields) {
+  if (field.type === 'select' && field.default) {
+    extraFields[field.name] = field.default
+  }
+}
 const submitting = ref(false)
+
+function isExtraMissing(field: { required?: boolean; name: string }): boolean {
+  if (!field.required) return false
+  return (extraFields[field.name] ?? '').trim() === ''
+}
 
 async function handlePasswordLogin() {
   if (submitting.value) return
   auth.error = null
+  if (auth.loginFields.some(isExtraMissing)) {
+    auth.error = { code: 'auth.extra_required' }
+    return
+  }
   submitting.value = true
   try {
     const body: Record<string, unknown> = { username: username.value, password: password.value }
@@ -172,6 +186,7 @@ function handleRedirect(pluginId: string) {
               v-model="extraFields[field.name]"
               :type="field.type"
               :placeholder="field.placeholder ? resolvePluginLabel(field.placeholder) : undefined"
+              :required="field.required === true"
               :disabled="submitting"
             />
             <Select
@@ -180,7 +195,7 @@ function handleRedirect(pluginId: string) {
               :name="field.name"
               :disabled="submitting"
             >
-              <SelectTrigger :id="'fc-extra-' + field.name" class="w-full">
+              <SelectTrigger :id="'fc-extra-' + field.name" class="w-full" :aria-required="field.required === true">
                 <SelectValue :placeholder="field.placeholder ? resolvePluginLabel(field.placeholder) : undefined" />
               </SelectTrigger>
               <SelectContent>

@@ -74,6 +74,7 @@
   "err.auth.config": "服务器身份验证配置异常",
   "err.auth.unknown": "身份验证过程中发生未知错误",
   "err.auth.invalid_credentials": "用户名或密码无效",
+  "err.auth.extra_required": "请填写所有必填项",
   "err.auth.not_set_up": "此用户未配置登录信息",
   "err.auth.disabled": "内置身份验证已禁用",
   "err.auth.csrf": "会话已过期或 CSRF 令牌无效，请刷新页面",

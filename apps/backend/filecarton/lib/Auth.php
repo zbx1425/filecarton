@@ -729,6 +729,10 @@ class Auth {
                 $entry['autocomplete'] = $field['autocomplete'];
             }
 
+            if (isset($field['required']) && $field['required'] === true) {
+                $entry['required'] = true;
+            }
+
             if ($type === 'select') {
                 if (!isset($field['options']) || !is_array($field['options'])) continue;
                 $opts = [];
@@ -741,6 +745,13 @@ class Auth {
                 }
                 if ($opts === []) continue;
                 $entry['options'] = $opts;
+                $optionValues = [];
+                foreach ($opts as $opt) {
+                    $optionValues[$opt['value']] = true;
+                }
+                if (isset($field['default']) && is_string($field['default']) && isset($optionValues[$field['default']])) {
+                    $entry['default'] = $field['default'];
+                }
             }
 
             $out[] = $entry;
@@ -783,7 +794,11 @@ class Auth {
             if ($type !== 'text' && $type !== 'password' && $type !== 'select') {
                 $p[] = "$prefix type must be 'text', 'password', or 'select'.";
             }
+            if (array_key_exists('required', $field) && !is_bool($field['required'])) {
+                $p[] = "$prefix 'required' must be a boolean.";
+            }
             if ($type === 'select') {
+                $optionValues = [];
                 if (!isset($field['options']) || !is_array($field['options']) || $field['options'] === []) {
                     $p[] = "$prefix (type=select) must have a non-empty 'options' array.";
                 } else {
@@ -793,12 +808,22 @@ class Auth {
                             $p[] = "$prefix options[$j] must have a non-empty string 'value'.";
                         } else {
                             $validCount++;
+                            $optionValues[$opt['value']] = true;
                         }
                     }
                     if ($validCount === 0 && empty($p)) {
                         $p[] = "$prefix (type=select) has no valid options.";
                     }
                 }
+                if (array_key_exists('default', $field)) {
+                    if (!is_string($field['default']) || $field['default'] === '') {
+                        $p[] = "$prefix 'default' must be a non-empty string.";
+                    } elseif (!isset($optionValues[$field['default']])) {
+                        $p[] = "$prefix 'default' must match an option value.";
+                    }
+                }
+            } elseif (array_key_exists('default', $field)) {
+                $p[] = "$prefix 'default' is only valid for type=select.";
             }
         }
         return $p;
