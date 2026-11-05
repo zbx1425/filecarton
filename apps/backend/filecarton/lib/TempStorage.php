@@ -40,9 +40,13 @@ class TempStorage {
 
     /**
      * Remove the base temp directory if it is empty.
+     * Leave it in place when the parent directory is not writable, so a later
+     * request can still use it without having to create it again.
      */
     private function removeIfEmpty(): void {
         if (!is_dir($this->baseDir)) return;
+        $parent = dirname($this->baseDir);
+        if ($parent === '' || !is_writable($parent)) return;
         $entries = @scandir($this->baseDir);
         if ($entries === false) return;
         $hasChildren = false;
