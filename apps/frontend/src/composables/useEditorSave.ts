@@ -5,7 +5,7 @@ import { apiGet, apiWrite, ApiError } from '@/api/client'
 import type { ReadResponse } from '@/api/types'
 import { useNavigationStore } from '@/stores/navigation'
 import { useFileTreeCacheStore } from '@/stores/fileTreeCache'
-import { showEditorConflict } from '@/composables/useDialogs'
+import { showEditorConflict } from '@/services/dialogs'
 import { errorMessage } from '@/utils/errorMessage'
 import { parentPath, pathName } from '@/utils/path'
 

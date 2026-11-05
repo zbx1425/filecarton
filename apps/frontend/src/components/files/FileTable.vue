@@ -1,27 +1,44 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
-import { ArrowUp, ArrowDown, CornerLeftUp, Loader2, ClipboardPaste, File, Folder, CloudDownload, CheckSquare, Square, RefreshCw } from '@lucide/vue'
+import { computed, provide, reactive, ref } from 'vue'
+import { ArrowUp, ArrowDown, CornerLeftUp, Loader2 } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuShortcut,
-  ContextMenuTrigger,
-} from '@/components/ui/context-menu'
+import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { useUiStore } from '@/stores/ui'
 import { useFileListView } from '@/composables/useFileListView'
 import { formatSize } from '@/utils/format'
-import { createItem, pasteItems } from '@/composables/useFileActions'
-import { showRemoteDownloadDialog } from '@/composables/useDialogs'
+import { joinPath } from '@/utils/path'
 import FileRow from './FileRow.vue'
+import FileListContextMenu from './FileListContextMenu.vue'
 import BatchActionBar from './BatchActionBar.vue'
 import ReadmePane from './ReadmePane.vue'
-import { joinPath } from '@/utils/path'
+import { FILE_LIST_KEY, type FileListContext, type ContextTargetItem } from './fileListContext'
 
 const view = reactive(useFileListView())
 const ui = useUiStore()
+
+// ── Provide context to child components ──
+
+const fileListContext: FileListContext = {
+  toggleSelect: (name: string) => view.toggleSelect(name),
+  rangeSelect: (name: string) => view.rangeSelect(name),
+  clearSelection: () => view.clearSelection(),
+  setFocusByName: (name: string) => view.setFocusByName(name),
+  navigateTo: (path: string[]) => view.navigateTo(path),
+  openFile: (fileName: string) => view.openFile(fileName),
+  isSelected: (name: string) => view.isSelected(name),
+  isCutItem: (name: string) => view.isCutItem(name),
+  get currentPath() { return view.currentPath },
+  get currentPathStr() { return view.currentPathStr },
+  get selectedCount() { return view.selectedCount },
+  get canPaste() { return view.canPaste },
+  get showUnixPerm() { return view.showUnixPerm },
+  get isAllSelected() { return view.isAllSelected },
+  toggleSelectAll: () => view.toggleSelectAll(),
+}
+
+provide(FILE_LIST_KEY, fileListContext)
+
+// ── Computed state ──
 
 const isRoot = computed(() => view.currentPath.length === 0)
 
@@ -56,6 +73,26 @@ const readmePath = computed(() => {
   return joinPath(view.currentPathStr, readmeFile.value)
 })
 
+// ── Context menu target ──
+
+const contextTarget = ref<ContextTargetItem | null>(null)
+
+function handleRowContext(_e: MouseEvent, item: ContextTargetItem) {
+  if (!view.isSelected(item.name)) {
+    view.clearSelection()
+    view.toggleSelect(item.name)
+  }
+  contextTarget.value = item
+}
+
+function handleAreaContext(e: MouseEvent) {
+  if (!(e.target as HTMLElement).closest('[data-file-row]')) {
+    contextTarget.value = null
+  }
+}
+
+// ── Click handlers ──
+
 function handleEmptyClick(e: MouseEvent) {
   if (e.target === e.currentTarget) {
     view.clearSelection()
@@ -67,6 +104,8 @@ function handleListClick(e: MouseEvent) {
   if (target.closest('[data-file-row]')) return
   view.clearSelection()
 }
+
+// ── Table width resize ──
 
 const resizing = ref(false)
 
@@ -125,12 +164,8 @@ function startResize(e: MouseEvent) {
           <component :is="sortIcon('mtime')" v-if="sortIcon('mtime')" class="size-3" />
         </div>
         <template v-if="view.showUnixPerm">
-          <div class="w-28 shrink-0">
-            Permissions
-          </div>
-          <div class="w-36 shrink-0">
-            Owner
-          </div>
+          <div class="w-28 shrink-0">Permissions</div>
+          <div class="w-36 shrink-0">Owner</div>
         </template>
       </div>
       <!-- Resize handle on header -->
@@ -159,16 +194,17 @@ function startResize(e: MouseEvent) {
         </Button>
       </div>
 
-      <!-- File list with context menu on empty area -->
-      <ContextMenu v-else>
+      <!-- File list with unified context menu -->
+      <ContextMenu v-else @update:open="(open: boolean) => { if (!open) contextTarget = null }">
         <ContextMenuTrigger as-child>
-          <div class="flex-1 min-h-48 overflow-auto relative" @click="handleListClick">
+          <div class="flex-1 min-h-48 overflow-auto relative" @click="handleListClick" @contextmenu="handleAreaContext">
             <!-- Go up row -->
             <div
               v-if="!isRoot"
               class="flex items-center px-3 text-sm text-muted-foreground cursor-pointer hover:bg-muted/50 h-(--fc-row-height) max-w-(--fc-table-max-w)"
               data-file-row
               @click="view.goUp"
+              @contextmenu="contextTarget = null"
             >
               <div class="w-6 shrink-0" />
               <div class="flex items-center gap-2 flex-1">
@@ -192,6 +228,7 @@ function startResize(e: MouseEvent) {
               :mode="d.mode"
               :owner="d.owner"
               :group="d.group"
+              @contextmenu="handleRowContext($event, { name: d.name, isDir: true, mode: d.mode, owner: d.owner, group: d.group })"
             />
             <FileRow
               v-for="f in view.filteredFiles"
@@ -203,6 +240,7 @@ function startResize(e: MouseEvent) {
               :mode="f.mode"
               :owner="f.owner"
               :group="f.group"
+              @contextmenu="handleRowContext($event, { name: f.name, isDir: false, size: f.size, mode: f.mode, owner: f.owner, group: f.group })"
             />
 
             <!-- Empty state -->
@@ -218,40 +256,7 @@ function startResize(e: MouseEvent) {
           </div>
         </ContextMenuTrigger>
 
-        <ContextMenuContent class="w-52">
-          <ContextMenuItem @select="view.refreshCurrent">
-            <RefreshCw class="size-4" />
-            Refresh
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <template v-if="!ui.readonly">
-            <ContextMenuItem v-if="view.canPaste" @select="pasteItems(view.currentPathStr)">
-              <ClipboardPaste class="size-4" />
-              Paste
-              <ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
-            </ContextMenuItem>
-            <ContextMenuSeparator v-if="view.canPaste" />
-            <ContextMenuItem @select="createItem('file')">
-              <File class="size-4" />
-              New File
-            </ContextMenuItem>
-            <ContextMenuItem @select="createItem('dir')">
-              <Folder class="size-4" />
-              New Folder
-            </ContextMenuItem>
-            <ContextMenuItem v-if="ui.features.remoteDownload" @select="showRemoteDownloadDialog()">
-              <CloudDownload class="size-4" />
-              Remote Download
-            </ContextMenuItem>
-            <ContextMenuSeparator />
-          </template>
-          <ContextMenuItem @select="view.toggleSelectAll()">
-            <CheckSquare v-if="!view.isAllSelected" class="size-4" />
-            <Square v-else class="size-4" />
-            {{ view.isAllSelected ? 'Deselect All' : 'Select All' }}
-            <ContextMenuShortcut>Ctrl+A</ContextMenuShortcut>
-          </ContextMenuItem>
-        </ContextMenuContent>
+        <FileListContextMenu :context-target="contextTarget" />
       </ContextMenu>
 
       <!-- README preview pane -->

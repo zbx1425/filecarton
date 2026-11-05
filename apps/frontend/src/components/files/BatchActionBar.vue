@@ -13,7 +13,7 @@ import { useFileListView } from '@/composables/useFileListView'
 import {
   copySelected, cutSelected, deleteSelected,
   openPermissionsSelected, canModifySelectedPermissions,
-} from '@/composables/useFileActions'
+} from '@/services/fileActions'
 import { createArchive } from '@/composables/useArchive'
 import { fetchBatchDownload, buildDownloadUrl } from '@/api/client'
 import { joinPath } from '@/utils/path'

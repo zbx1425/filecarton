@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { useClipboardStore } from '@/stores/clipboard'
 import { useNavigationStore } from '@/stores/navigation'
-import { pasteItems } from '@/composables/useFileActions'
+import { pasteItems } from '@/services/fileActions'
 import { Copy, Scissors, ClipboardPaste } from '@lucide/vue'
 
 const clipboard = useClipboardStore()

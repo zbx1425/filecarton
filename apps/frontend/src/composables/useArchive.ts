@@ -3,7 +3,7 @@ import { apiPost } from '@/api/client'
 import type { ArchiveCreateResponse, ArchiveExtractResponse, ArchiveExtractDryRunResponse } from '@/api/types'
 import { useNavigationStore } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
-import { confirm, showPasteConflict, showOperationReport } from '@/composables/useDialogs'
+import { confirm, showPasteConflict, showOperationReport } from '@/services/dialogs'
 import { handleMutation } from '@/services/treeInvalidation'
 import { errorMessage } from '@/utils/errorMessage'
 

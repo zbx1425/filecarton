@@ -3,24 +3,31 @@ import { ref, computed, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { EDITABLE_EXTENSIONS } from '@/utils/constants'
 import { pathExtension, pathName } from '@/utils/path'
-import { confirm } from '@/composables/useDialogs'
+import { confirm } from '@/services/dialogs'
 import { useUiStore } from '@/stores/ui'
 import { isFilenameBlocked } from '@/utils/pathValidation'
+import { useBrowserState } from '@/composables/useBrowserState'
+
+/**
+ * Check whether the editor has unsaved changes and prompt the user.
+ * Extracted from the store so that store actions don't directly trigger UI dialogs.
+ */
+export async function checkDirty(isDirty: boolean): Promise<boolean> {
+  if (!isDirty) return true
+  return confirm('Unsaved Changes', 'You have unsaved changes. Leave without saving?', {
+    actionLabel: 'Leave',
+    danger: true,
+  })
+}
 
 export const useNavigationStore = defineStore('navigation', () => {
   const currentPath = ref<string[]>([])
   const viewMode = ref<'list' | 'preview' | 'editor'>('list')
-  const activeFile = ref<string | null>(null) // absolute path: "docs/readme.md"
+  const activeFile = ref<string | null>(null)
   const editDirty = ref(false)
 
-  // ── Selection (absolute paths) ──
-  const selected = ref(new Set<string>())
-  const focusIndex = ref(-1)
-  const lastClickedPath = ref<string | null>(null)
-
-  // ── Search (migrated from ui store) ──
-  const searchQuery = ref('')
-  const searchRecursive = ref(false)
+  // Delegate selection + search to shared composable
+  const browsing = useBrowserState()
 
   // ── Computed ──
   const currentPathStr = computed(() => currentPath.value.join('/'))
@@ -32,45 +39,27 @@ export const useNavigationStore = defineStore('navigation', () => {
 
   const activeFilePath = computed(() => activeFile.value)
 
-  const selectedCount = computed(() => selected.value.size)
-  const hasSelection = computed(() => selected.value.size > 0)
-
-  // ── Dirty check ──
+  // ── Hash sync ──
 
   let suppressHashSync = false
-
-  async function checkDirty(): Promise<boolean> {
-    if (!editDirty.value) return true
-    const leave = await confirm('Unsaved Changes', 'You have unsaved changes. Leave without saving?', {
-      actionLabel: 'Leave',
-      danger: true,
-    })
-    return leave
-  }
 
   // ── Navigation ──
 
   async function navigateTo(path: string[]): Promise<boolean> {
     if (viewMode.value === 'editor' && editDirty.value) {
-      const canLeave = await checkDirty()
-      if (!canLeave) return false
+      if (!await checkDirty(editDirty.value)) return false
     }
     viewMode.value = 'list'
     activeFile.value = null
     editDirty.value = false
     currentPath.value = path
-    selected.value = new Set()
-    focusIndex.value = -1
-    lastClickedPath.value = null
-    searchQuery.value = ''
-    searchRecursive.value = false
+    browsing.resetBrowsingState()
     return true
   }
 
   async function openFile(filePath: string): Promise<boolean> {
     if (viewMode.value === 'editor' && editDirty.value) {
-      const canLeave = await checkDirty()
-      if (!canLeave) return false
+      if (!await checkDirty(editDirty.value)) return false
     }
     activeFile.value = filePath
     const fileName = pathName(filePath)
@@ -90,59 +79,12 @@ export const useNavigationStore = defineStore('navigation', () => {
 
   async function backToList(): Promise<boolean> {
     if (viewMode.value === 'editor' && editDirty.value) {
-      const canLeave = await checkDirty()
-      if (!canLeave) return false
+      if (!await checkDirty(editDirty.value)) return false
     }
     viewMode.value = 'list'
     activeFile.value = null
     editDirty.value = false
     return true
-  }
-
-  // ── Selection (absolute paths) ──
-
-  function toggleSelect(absPath: string) {
-    const s = new Set(selected.value)
-    if (s.has(absPath)) {
-      s.delete(absPath)
-    } else {
-      s.add(absPath)
-    }
-    selected.value = s
-    lastClickedPath.value = absPath
-  }
-
-  function clearSelection() {
-    selected.value = new Set()
-    lastClickedPath.value = null
-  }
-
-  function setSelected(paths: Set<string>) {
-    selected.value = paths
-  }
-
-  /** Prune selection to only contain paths still visible in a given entry list */
-  function pruneSelection(validPaths: Set<string>) {
-    if (selected.value.size === 0) return
-    const trimmed = new Set<string>()
-    for (const p of selected.value) {
-      if (validPaths.has(p)) trimmed.add(p)
-    }
-    if (trimmed.size !== selected.value.size) {
-      selected.value = trimmed
-    }
-  }
-
-  function moveFocus(delta: number, entryCount: number) {
-    if (entryCount === 0) return
-    let next = focusIndex.value + delta
-    if (next < 0) next = 0
-    if (next >= entryCount) next = entryCount - 1
-    focusIndex.value = next
-  }
-
-  function setFocusIndex(index: number) {
-    focusIndex.value = index
   }
 
   // ── Hash sync ──
@@ -191,8 +133,7 @@ export const useNavigationStore = defineStore('navigation', () => {
       const fileName = segments.pop()
 
       if (viewMode.value === 'editor' && editDirty.value) {
-        const canLeave = await checkDirty()
-        if (!canLeave) {
+        if (!await checkDirty(editDirty.value)) {
           syncToHash()
           return
         }
@@ -217,11 +158,7 @@ export const useNavigationStore = defineStore('navigation', () => {
       }
       if (pathChanged) {
         editDirty.value = false
-        selected.value = new Set()
-        focusIndex.value = -1
-        lastClickedPath.value = null
-        searchQuery.value = ''
-        searchRecursive.value = false
+        browsing.resetBrowsingState()
       }
       suppressHashSync = false
     } else {
@@ -257,29 +194,28 @@ export const useNavigationStore = defineStore('navigation', () => {
     activeFileName,
     activeFilePath,
 
-    // Selection
-    selected,
-    focusIndex,
-    lastClickedPath,
-    selectedCount,
-    hasSelection,
-    toggleSelect,
-    clearSelection,
-    setSelected,
-    pruneSelection,
-    moveFocus,
-    setFocusIndex,
+    // Selection (from useBrowserState)
+    selected: browsing.selected,
+    focusIndex: browsing.focusIndex,
+    lastClickedPath: browsing.lastClickedPath,
+    selectedCount: browsing.selectedCount,
+    hasSelection: browsing.hasSelection,
+    toggleSelect: browsing.toggleSelect,
+    clearSelection: browsing.clearSelection,
+    setSelected: browsing.setSelected,
+    pruneSelection: browsing.pruneSelection,
+    moveFocus: browsing.moveFocus,
+    setFocusIndex: browsing.setFocusIndex,
 
-    // Search
-    searchQuery,
-    searchRecursive,
+    // Search (from useBrowserState)
+    searchQuery: browsing.searchQuery,
+    searchRecursive: browsing.searchRecursive,
 
     // Navigation
     navigateTo,
     openFile,
     openEditor,
     backToList,
-    checkDirty,
     init,
   }
 })

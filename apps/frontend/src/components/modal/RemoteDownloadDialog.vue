@@ -12,9 +12,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Link, Info } from '@lucide/vue'
-import { dialogState } from '@/composables/useDialogs'
+import { dialogState } from '@/services/dialogs'
 import { validateFileName, isDotFileBlocked, isFilenameBlocked } from '@/utils/pathValidation'
-import { remoteDownload } from '@/composables/useFileActions'
+import { remoteDownload } from '@/services/fileActions'
 
 const state = computed(() => dialogState.remoteDownload)
 const urlInput = ref('')

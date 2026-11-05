@@ -6,7 +6,7 @@ import { useFileTreeCacheStore } from '@/stores/fileTreeCache'
 import { useNavigationStore } from '@/stores/navigation'
 import { useClipboardStore } from '@/stores/clipboard'
 import { useUiStore } from '@/stores/ui'
-import { confirm, prompt, showPasteConflict, showOperationReport, showPermissionsDialog, showChecksumDialog } from '@/composables/useDialogs'
+import { confirm, prompt, showPasteConflict, showOperationReport, showPermissionsDialog, showChecksumDialog } from '@/services/dialogs'
 import { handleMutation } from '@/services/treeInvalidation'
 import { joinPath, pathName, parentPath } from '@/utils/path'
 import { validateFileName, isDotFileBlocked, isFilenameBlocked } from '@/utils/pathValidation'
@@ -15,6 +15,81 @@ import { withAsyncTaskNotification } from '@/utils/withAsyncTaskNotification'
 
 const t = (key: string, params?: Record<string, unknown>): string =>
   (i18n.global as any).t(key, params ?? {})
+
+// ── Shared helpers ──
+
+/** Extract bare item names from absolute-path selection set for the given directory */
+function selectedNamesInDir(dirPath: string, selectedPaths: Set<string>): string[] {
+  const prefix = dirPath ? dirPath + '/' : ''
+  const names: string[] = []
+  for (const p of selectedPaths) {
+    if (prefix ? p.startsWith(prefix) && !p.slice(prefix.length).includes('/') : !p.includes('/')) {
+      names.push(prefix ? p.slice(prefix.length) : p)
+    }
+  }
+  return names
+}
+
+/** Build clipboard-compatible item list from selected names in a directory */
+function getSelectedItemsFromDir(curPath: string): Array<{ name: string; isDir: boolean }> {
+  const cache = useFileTreeCacheStore()
+  const navigation = useNavigationStore()
+
+  const names = selectedNamesInDir(curPath, navigation.selected)
+  if (names.length === 0) return []
+
+  const dirData = cache.getDirectory(curPath)
+  const allEntries: Array<{ name: string; isDir: boolean }> = []
+  if (dirData) {
+    for (const d of dirData.dirs) allEntries.push({ name: d.name, isDir: true })
+    for (const f of dirData.files) allEntries.push({ name: f.name, isDir: false })
+  }
+  const nameSet = new Set(names)
+  return allEntries.filter(e => nameSet.has(e.name))
+}
+
+function isAffectingActiveFile(dirPath: string, itemNames: string[]): boolean {
+  const navigation = useNavigationStore()
+  if (!navigation.activeFile) return false
+  for (const name of itemNames) {
+    const fullPath = joinPath(dirPath, name)
+    if (navigation.activeFile === fullPath) return true
+  }
+  return false
+}
+
+function isAffectingCurrentPath(dirPath: string, itemNames: string[]): boolean {
+  const navigation = useNavigationStore()
+  const currentStr = navigation.currentPathStr
+  for (const name of itemNames) {
+    const fullPath = joinPath(dirPath, name)
+    if (currentStr === fullPath || currentStr.startsWith(fullPath + '/')) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * After a mutation (delete/rename), navigate away if the affected paths
+ * include the currently viewed file or directory.
+ */
+async function handleNavigationAfterMutation(dirPath: string, succeededNames: string[]) {
+  const navigation = useNavigationStore()
+
+  if (isAffectingActiveFile(dirPath, succeededNames)) {
+    navigation.editDirty = false
+    navigation.backToList()
+  }
+
+  if (isAffectingCurrentPath(dirPath, succeededNames)) {
+    navigation.editDirty = false
+    const parentSegments = dirPath ? dirPath.split('/') : []
+    await navigation.navigateTo(parentSegments)
+  }
+}
+
+// ── Public actions ──
 
 export function refreshCurrent() {
   const path = useNavigationStore().currentPathStr
@@ -102,28 +177,6 @@ export async function remoteDownload(
   }
 }
 
-function isAffectingActiveFile(dirPath: string, itemNames: string[]): boolean {
-  const navigation = useNavigationStore()
-  if (!navigation.activeFile) return false
-  for (const name of itemNames) {
-    const fullPath = joinPath(dirPath, name)
-    if (navigation.activeFile === fullPath) return true
-  }
-  return false
-}
-
-function isAffectingCurrentPath(dirPath: string, itemNames: string[]): boolean {
-  const navigation = useNavigationStore()
-  const currentStr = navigation.currentPathStr
-  for (const name of itemNames) {
-    const fullPath = joinPath(dirPath, name)
-    if (currentStr === fullPath || currentStr.startsWith(fullPath + '/')) {
-      return true
-    }
-  }
-  return false
-}
-
 export async function deleteItems(dirPath: string, itemNames: string[]) {
   const ui = useUiStore()
   if (ui.readonly) return
@@ -176,17 +229,7 @@ export async function deleteItems(dirPath: string, itemNames: string[]) {
     const failedNames = new Set(result.failed.map(f => f.name))
     const succeededNames = itemNames.filter(n => !failedNames.has(n))
 
-    if (isAffectingActiveFile(dirPath, succeededNames)) {
-      navigation.editDirty = false
-      navigation.backToList()
-    }
-
-    const navigatedAway = isAffectingCurrentPath(dirPath, succeededNames)
-    if (navigatedAway) {
-      navigation.editDirty = false
-      const parentSegments = dirPath ? dirPath.split('/') : []
-      await navigation.navigateTo(parentSegments)
-    }
+    await handleNavigationAfterMutation(dirPath, succeededNames)
 
     handleMutation({
       dirs: [dirPath],
@@ -246,6 +289,7 @@ export async function renameItem(dirPath: string, oldName: string, isDir?: boole
     { loading: t('toast.renaming', { name: newName }), success: t('toast.renamed', { name: newName }) },
   )
   if (result) {
+    // Special case for rename: navigate to the renamed path if currently inside it
     if (isAffectingActiveFile(dirPath, [oldName])) {
       navigation.editDirty = false
       navigation.backToList()
@@ -288,68 +332,36 @@ export async function pasteItems(targetPath: string) {
   }
 }
 
-/** Extract bare item names from absolute-path selection set for the given directory */
-function selectedNamesInDir(dirPath: string, selectedPaths: Set<string>): string[] {
-  const prefix = dirPath ? dirPath + '/' : ''
-  const names: string[] = []
-  for (const p of selectedPaths) {
-    if (prefix ? p.startsWith(prefix) && !p.slice(prefix.length).includes('/') : !p.includes('/')) {
-      names.push(prefix ? p.slice(prefix.length) : p)
-    }
+/**
+ * Copy or cut selected items to the clipboard.
+ * Shared implementation eliminates copy/cut code duplication.
+ */
+function clipboardAction(mode: 'copy' | 'cut') {
+  const ui = useUiStore()
+  if (ui.readonly) return
+
+  const navigation = useNavigationStore()
+  const clipboard = useClipboardStore()
+  const curPath = navigation.currentPathStr
+
+  const items = getSelectedItemsFromDir(curPath)
+  if (items.length === 0) return
+
+  if (mode === 'copy') {
+    clipboard.copy(items, curPath)
+    toast.info(t('toast.copied_items', { count: items.length }))
+  } else {
+    clipboard.cut(items, curPath)
+    toast.info(t('toast.cut_items', { count: items.length }))
   }
-  return names
 }
 
 export function copySelected() {
-  const ui = useUiStore()
-  if (ui.readonly) return
-
-  const cache = useFileTreeCacheStore()
-  const navigation = useNavigationStore()
-  const clipboard = useClipboardStore()
-  const curPath = navigation.currentPathStr
-
-  const names = selectedNamesInDir(curPath, navigation.selected)
-  if (names.length === 0) return
-
-  const dirData = cache.getDirectory(curPath)
-  const allEntries: Array<{ name: string; isDir: boolean }> = []
-  if (dirData) {
-    for (const d of dirData.dirs) allEntries.push({ name: d.name, isDir: true })
-    for (const f of dirData.files) allEntries.push({ name: f.name, isDir: false })
-  }
-  const nameSet = new Set(names)
-  const items = allEntries.filter(e => nameSet.has(e.name))
-
-  if (items.length === 0) return
-  clipboard.copy(items, curPath)
-  toast.info(t('toast.copied_items', { count: items.length }))
+  clipboardAction('copy')
 }
 
 export function cutSelected() {
-  const ui = useUiStore()
-  if (ui.readonly) return
-
-  const cache = useFileTreeCacheStore()
-  const navigation = useNavigationStore()
-  const clipboard = useClipboardStore()
-  const curPath = navigation.currentPathStr
-
-  const names = selectedNamesInDir(curPath, navigation.selected)
-  if (names.length === 0) return
-
-  const dirData = cache.getDirectory(curPath)
-  const allEntries: Array<{ name: string; isDir: boolean }> = []
-  if (dirData) {
-    for (const d of dirData.dirs) allEntries.push({ name: d.name, isDir: true })
-    for (const f of dirData.files) allEntries.push({ name: f.name, isDir: false })
-  }
-  const nameSet = new Set(names)
-  const items = allEntries.filter(e => nameSet.has(e.name))
-
-  if (items.length === 0) return
-  clipboard.cut(items, curPath)
-  toast.info(t('toast.cut_items', { count: items.length }))
+  clipboardAction('cut')
 }
 
 export async function deleteSelected() {

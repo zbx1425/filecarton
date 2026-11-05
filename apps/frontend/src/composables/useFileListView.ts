@@ -1,13 +1,12 @@
 import { computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useFileTreeCacheStore } from '@/stores/fileTreeCache'
-import { useNavigationStore } from '@/stores/navigation'
+import { useNavigationStore, checkDirty } from '@/stores/navigation'
 import { useClipboardStore } from '@/stores/clipboard'
 import { usePreferencesStore } from '@/stores/preferences'
 import { useUiStore } from '@/stores/ui'
 import { joinPath } from '@/utils/path'
-
-const naturalCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
+import { sortItems, filterItems } from '@/utils/sorting'
 
 export function useFileListView() {
   const cache = useFileTreeCacheStore()
@@ -37,57 +36,23 @@ export function useFileListView() {
     searchQuery, searchRecursive,
   } = storeToRefs(navigation)
 
-  const sortedDirs = computed(() => {
-    const arr = [...dirs.value]
-    const dir = sortAsc.value ? 1 : -1
-    if (sortBy.value === 'name') {
-      arr.sort((a, b) => dir * naturalCollator.compare(a.name, b.name))
-    } else if (sortBy.value === 'mtime') {
-      arr.sort((a, b) => dir * (a.mtime - b.mtime))
-    } else {
-      arr.sort((a, b) => dir * naturalCollator.compare(a.name, b.name))
-    }
-    return arr
-  })
+  const sortedDirs = computed(() =>
+    sortItems(dirs.value, sortBy.value, sortAsc.value, (d, col) => col === 'mtime' ? d.mtime : 0),
+  )
 
-  const sortedFiles = computed(() => {
-    const arr = [...files.value]
-    const dir = sortAsc.value ? 1 : -1
-    if (sortBy.value === 'name') {
-      arr.sort((a, b) => dir * naturalCollator.compare(a.name, b.name))
-    } else if (sortBy.value === 'size') {
-      arr.sort((a, b) => dir * (a.size - b.size))
-    } else if (sortBy.value === 'mtime') {
-      arr.sort((a, b) => dir * (a.mtime - b.mtime))
-    }
-    return arr
-  })
+  const sortedFiles = computed(() =>
+    sortItems(files.value, sortBy.value, sortAsc.value, (f, col) => col === 'size' ? f.size : f.mtime),
+  )
 
   // ── Filtered ──
 
-  const filteredDirs = computed(() => {
-    let result = sortedDirs.value
-    if (!showDotFiles.value) {
-      result = result.filter(d => !d.name.startsWith('.'))
-    }
-    const q = searchQuery.value.trim().toLowerCase()
-    if (q && !searchRecursive.value) {
-      result = result.filter(d => d.name.toLowerCase().includes(q))
-    }
-    return result
-  })
+  const filteredDirs = computed(() =>
+    filterItems(sortedDirs.value, showDotFiles.value, searchQuery.value, searchRecursive.value),
+  )
 
-  const filteredFiles = computed(() => {
-    let result = sortedFiles.value
-    if (!showDotFiles.value) {
-      result = result.filter(f => !f.name.startsWith('.'))
-    }
-    const q = searchQuery.value.trim().toLowerCase()
-    if (q && !searchRecursive.value) {
-      result = result.filter(f => f.name.toLowerCase().includes(q))
-    }
-    return result
-  })
+  const filteredFiles = computed(() =>
+    filterItems(sortedFiles.value, showDotFiles.value, searchQuery.value, searchRecursive.value),
+  )
 
   // ── Entries (combined dirs + files) ──
 
@@ -223,8 +188,8 @@ export function useFileListView() {
     return navigation.backToList()
   }
 
-  function checkDirty() {
-    return navigation.checkDirty()
+  function checkDirtyState() {
+    return checkDirty(navigation.editDirty)
   }
 
   function copyEntries(entries: Array<{ name: string; isDir: boolean }>, fromPath: string) {
@@ -256,7 +221,7 @@ export function useFileListView() {
     effectiveTableMaxWidth,
 
     // Navigation actions
-    navigateTo, openFile, goUp, backToList, checkDirty,
+    navigateTo, openFile, goUp, backToList, checkDirty: checkDirtyState,
 
     // Sort actions
     toggleSort: preferences.toggleSort,

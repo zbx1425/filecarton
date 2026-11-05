@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Copy, Check } from '@lucide/vue'
-import { dialogState } from '@/composables/useDialogs'
+import { dialogState } from '@/services/dialogs'
 import { formatSizeExact } from '@/utils/format'
 
 const state = computed(() => dialogState.checksum)

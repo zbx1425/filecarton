@@ -9,7 +9,7 @@ import { usePreferencesStore } from './stores/preferences'
 import { useAuthStore } from './stores/auth'
 import { initTheme } from './utils/themeApplication'
 import { onUnauthorized } from './api/client'
-import { confirm } from './composables/useDialogs'
+import { confirm } from './services/dialogs'
 
 // Consume fc_return_hash / fc_auth_error before SPA routing kicks in
 const startUrl = new URL(window.location.href)

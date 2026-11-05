@@ -2,7 +2,7 @@ import { toast } from 'vue-sonner'
 import { apiPost } from '@/api/client'
 import type { PasteResponse } from '@/api/types'
 import { useNavigationStore } from '@/stores/navigation'
-import { showPasteConflict, showOperationReport } from '@/composables/useDialogs'
+import { showPasteConflict, showOperationReport } from '@/services/dialogs'
 import { handleMutation, type MutationRefreshOptions } from '@/services/treeInvalidation'
 import { errorMessage } from '@/utils/errorMessage'
 

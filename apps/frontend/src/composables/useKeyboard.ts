@@ -3,7 +3,7 @@ import { useNavigationStore } from '@/stores/navigation'
 import { useFileTreeCacheStore } from '@/stores/fileTreeCache'
 import { useUiStore } from '@/stores/ui'
 import { usePreferencesStore } from '@/stores/preferences'
-import { dialogState } from '@/composables/useDialogs'
+import { isAnyDialogOpen } from '@/services/dialogs'
 import { lightboxState, closeLightbox } from '@/composables/useLightbox'
 import { handleArchiveBackKey } from '@/composables/useArchiveExplorer'
 import {
@@ -14,12 +14,13 @@ import {
   pasteItems,
   downloadSelected,
   refreshCurrent,
-} from '@/composables/useFileActions'
+} from '@/services/fileActions'
 import { useUploadStore } from '@/stores/upload'
 import { errorMessage } from '@/utils/errorMessage'
 import { toast } from 'vue-sonner'
 import { useClipboardStore } from '@/stores/clipboard'
 import { joinPath } from '@/utils/path'
+import { sortItems, filterItems } from '@/utils/sorting'
 
 function scrollFocusedRowIntoView(name: string) {
   nextTick(() => {
@@ -28,7 +29,7 @@ function scrollFocusedRowIntoView(name: string) {
   })
 }
 
-/** Get the filtered entries for the current directory (same logic as useFileListView) */
+/** Get the filtered+sorted entries for the current directory, using shared utils */
 function getFilteredEntries(): Array<{ name: string; isDir: boolean }> {
   const cache = useFileTreeCacheStore()
   const navigation = useNavigationStore()
@@ -37,20 +38,18 @@ function getFilteredEntries(): Array<{ name: string; isDir: boolean }> {
   const dirData = cache.getDirectory(navigation.currentPathStr)
   if (!dirData) return []
 
-  const q = navigation.searchQuery.trim().toLowerCase()
-  const showDot = preferences.showDotFiles
-  const result: Array<{ name: string; isDir: boolean }> = []
+  const { sortBy, sortAsc, showDotFiles } = preferences
+  const { searchQuery, searchRecursive } = navigation
 
-  for (const d of dirData.dirs) {
-    if (!showDot && d.name.startsWith('.')) continue
-    if (q && !navigation.searchRecursive && !d.name.toLowerCase().includes(q)) continue
-    result.push({ name: d.name, isDir: true })
-  }
-  for (const f of dirData.files) {
-    if (!showDot && f.name.startsWith('.')) continue
-    if (q && !navigation.searchRecursive && !f.name.toLowerCase().includes(q)) continue
-    result.push({ name: f.name, isDir: false })
-  }
+  const sortedDirs = sortItems(dirData.dirs, sortBy, sortAsc, (d, col) => col === 'mtime' ? d.mtime : 0)
+  const sortedFiles = sortItems(dirData.files, sortBy, sortAsc, (f, col) => col === 'size' ? f.size : f.mtime)
+
+  const filteredDirs = filterItems(sortedDirs, showDotFiles, searchQuery, searchRecursive)
+  const filteredFiles = filterItems(sortedFiles, showDotFiles, searchQuery, searchRecursive)
+
+  const result: Array<{ name: string; isDir: boolean }> = []
+  for (const d of filteredDirs) result.push({ name: d.name, isDir: true })
+  for (const f of filteredFiles) result.push({ name: f.name, isDir: false })
   return result
 }
 
@@ -60,15 +59,9 @@ export function useKeyboard() {
   const clipboard = useClipboardStore()
   const upload = useUploadStore()
 
-  function isAnyDialogOpen(): boolean {
+  function isAnyOverlayOpen(): boolean {
     return (
-      dialogState.confirm.open
-      || dialogState.prompt.open
-      || dialogState.operationReport.open
-      || dialogState.editorConflict.open
-      || dialogState.permissions.open
-      || dialogState.remoteDownload.open
-      || dialogState.checksum.open
+      isAnyDialogOpen.value
       || ui.settingsOpen
       || upload.uploadDialogOpen
       || upload.errorDialogOpen
@@ -83,7 +76,7 @@ export function useKeyboard() {
   }
 
   function handleKeyDown(e: KeyboardEvent) {
-    if (isAnyDialogOpen()) return
+    if (isAnyOverlayOpen()) return
 
     if (lightboxState.open) {
       if (e.key === 'Escape') {

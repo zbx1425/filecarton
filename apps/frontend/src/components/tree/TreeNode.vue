@@ -19,12 +19,12 @@ import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
 import { joinPath, archiveSubdirName } from '@/utils/path'
 import {
   createItem, deleteItems, renameItem, pasteItems, canModifyItemPermissions,
-} from '@/composables/useFileActions'
+} from '@/services/fileActions'
 import { isInternalDrag, handleDrop as dndHandleDrop } from '@/composables/useDragDrop'
 import { createArchive, extractArchive } from '@/composables/useArchive'
 import { isArchive } from '@/composables/useFileType'
 import { toast } from 'vue-sonner'
-import { showPermissionsDialog } from '@/composables/useDialogs'
+import { showPermissionsDialog } from '@/services/dialogs'
 
 const props = defineProps<{
   name: string

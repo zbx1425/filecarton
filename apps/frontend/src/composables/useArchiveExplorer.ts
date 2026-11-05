@@ -8,6 +8,8 @@ import type { ErrorInfo } from '@/api/client'
 import type { ArchiveListResponse, ArchiveEntry } from '@/api/types'
 import { usePreferencesStore } from '@/stores/preferences'
 import { splitPath, parentPath, pathName } from '@/utils/path'
+import { sortItems, filterItems, filterDotfiles, naturalCollator } from '@/utils/sorting'
+import { useBrowserState } from '@/composables/useBrowserState'
 
 let activeArchiveBackHandler: ((key: 'Escape' | 'Backspace') => boolean) | null = null
 
@@ -26,8 +28,6 @@ export interface ArchiveTreeItem {
 
 export type ArchiveSortColumn = 'name' | 'size' | 'mtime'
 
-const naturalCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
-
 export function useArchiveExplorer(
   archivePath: Ref<string>,
   archivePropName?: Ref<string | undefined>,
@@ -45,8 +45,8 @@ export function useArchiveExplorer(
   const expandedPaths = ref<Set<string>>(new Set())
   const treeVisible = ref(true)
 
-  const searchQuery = ref('')
-  const searchRecursive = ref(false)
+  const browsing = useBrowserState()
+  const { searchQuery, searchRecursive } = browsing
   const sortBy = ref<ArchiveSortColumn>('name')
   const sortAsc = ref(true)
 
@@ -159,8 +159,7 @@ export function useArchiveExplorer(
     activeEntry.value = null
     selectedName.value = null
     expandedPaths.value = new Set()
-    searchQuery.value = ''
-    searchRecursive.value = false
+    browsing.resetBrowsingState()
 
     try {
       const res = await apiGet<ArchiveListResponse>('archive_list', { path: archivePath.value })
@@ -200,15 +199,9 @@ export function useArchiveExplorer(
   })
   watch(archivePath, fetchArchiveList)
 
-  function isVisibleByDotfilePref(name: string): boolean {
-    if (preferences.showDotFiles) return true
-    return !name.startsWith('.')
-  }
-
   function getTreeChildren(parentPathStr: string): ArchiveTreeItem[] {
     const raw = childrenByParent.value.get(parentPathStr) ?? []
-    if (preferences.showDotFiles) return raw
-    return raw.filter(item => !item.name.startsWith('.'))
+    return filterDotfiles(raw, preferences.showDotFiles)
   }
 
   function toggleExpand(pathStr: string) {
@@ -237,8 +230,7 @@ export function useArchiveExplorer(
     activeEntry.value = null
     selectedName.value = null
     currentPath.value = segments
-    searchQuery.value = ''
-    searchRecursive.value = false
+    browsing.resetBrowsingState()
     expandToSegments(segments)
   }
 
@@ -288,47 +280,21 @@ export function useArchiveExplorer(
   const currentDirs = computed(() => currentChildren.value.filter(c => c.isDir))
   const currentFiles = computed(() => currentChildren.value.filter(c => !c.isDir))
 
-  const sortedDirs = computed(() => {
-    const arr = [...currentDirs.value]
-    const dir = sortAsc.value ? 1 : -1
-    if (sortBy.value === 'mtime') {
-      arr.sort((a, b) => dir * (a.mtime - b.mtime) || naturalCollator.compare(a.name, b.name))
-    } else {
-      arr.sort((a, b) => dir * naturalCollator.compare(a.name, b.name))
-    }
-    return arr
-  })
+  const sortedDirs = computed(() =>
+    sortItems(currentDirs.value, sortBy.value, sortAsc.value, (d, col) => col === 'mtime' ? d.mtime : 0),
+  )
 
-  const sortedFiles = computed(() => {
-    const arr = [...currentFiles.value]
-    const dir = sortAsc.value ? 1 : -1
-    if (sortBy.value === 'name') {
-      arr.sort((a, b) => dir * naturalCollator.compare(a.name, b.name))
-    } else if (sortBy.value === 'size') {
-      arr.sort((a, b) => dir * (a.size - b.size) || naturalCollator.compare(a.name, b.name))
-    } else if (sortBy.value === 'mtime') {
-      arr.sort((a, b) => dir * (a.mtime - b.mtime) || naturalCollator.compare(a.name, b.name))
-    }
-    return arr
-  })
+  const sortedFiles = computed(() =>
+    sortItems(currentFiles.value, sortBy.value, sortAsc.value, (f, col) => col === 'size' ? f.size : f.mtime),
+  )
 
-  const filteredDirs = computed(() => {
-    let result = sortedDirs.value.filter(d => isVisibleByDotfilePref(d.name))
-    const q = searchQuery.value.trim().toLowerCase()
-    if (q && !searchRecursive.value) {
-      result = result.filter(d => d.name.toLowerCase().includes(q))
-    }
-    return result
-  })
+  const filteredDirs = computed(() =>
+    filterItems(sortedDirs.value, preferences.showDotFiles, searchQuery.value, searchRecursive.value),
+  )
 
-  const filteredFiles = computed(() => {
-    let result = sortedFiles.value.filter(f => isVisibleByDotfilePref(f.name))
-    const q = searchQuery.value.trim().toLowerCase()
-    if (q && !searchRecursive.value) {
-      result = result.filter(f => f.name.toLowerCase().includes(q))
-    }
-    return result
-  })
+  const filteredFiles = computed(() =>
+    filterItems(sortedFiles.value, preferences.showDotFiles, searchQuery.value, searchRecursive.value),
+  )
 
   const filteredCurrentTotalSize = computed(() =>
     filteredFiles.value.reduce((sum, f) => sum + f.size, 0),

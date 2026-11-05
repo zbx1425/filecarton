@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
-import { dialogState } from '@/composables/useDialogs'
+import { dialogState } from '@/services/dialogs'
 import {
   AlertDialog,
   AlertDialogContent,

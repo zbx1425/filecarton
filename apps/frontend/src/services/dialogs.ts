@@ -1,4 +1,4 @@
-import { reactive } from 'vue'
+import { reactive, computed } from 'vue'
 import { useNavigationStore } from '@/stores/navigation'
 
 export interface ConfirmState {
@@ -95,6 +95,20 @@ export const dialogState = reactive({
     open: false, name: '', size: 0, sha256: '', sha1: '', md5: '',
   } as ChecksumDialogState,
 })
+
+/**
+ * Reactive computed that returns true when any service-managed dialog is open.
+ * Used by useKeyboard and others to suppress shortcuts while a dialog is visible.
+ */
+export const isAnyDialogOpen = computed(() =>
+  dialogState.confirm.open
+  || dialogState.prompt.open
+  || dialogState.operationReport.open
+  || dialogState.editorConflict.open
+  || dialogState.permissions.open
+  || dialogState.remoteDownload.open
+  || dialogState.checksum.open,
+)
 
 export function showPermissionsDialog(dirPath: string, items: PermissionItemInfo[]) {
   if (items.length === 0) return

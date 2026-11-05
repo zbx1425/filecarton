@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
-import { useNavigationStore } from '@/stores/navigation'
+import { useNavigationStore, checkDirty } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
 import { useUploadStore } from '@/stores/upload'
 import { useAuthStore } from '@/stores/auth'
@@ -36,8 +36,8 @@ import {
   LogOut,
 } from '@lucide/vue'
 import SearchBox from '@/components/SearchBox.vue'
-import { createItem } from '@/composables/useFileActions'
-import { showRemoteDownloadDialog } from '@/composables/useDialogs'
+import { createItem } from '@/services/fileActions'
+import { showRemoteDownloadDialog } from '@/services/dialogs'
 import { isInternalDrag, handleDrop } from '@/composables/useDragDrop'
 import ClipboardBadge from '@/components/ClipboardBadge.vue'
 
@@ -49,7 +49,7 @@ const prefs = usePreferencesStore()
 
 async function handleLogout() {
   if (navigation.editDirty) {
-    const leave = await navigation.checkDirty()
+    const leave = await checkDirty(navigation.editDirty)
     if (!leave) return
   }
   navigation.editDirty = false

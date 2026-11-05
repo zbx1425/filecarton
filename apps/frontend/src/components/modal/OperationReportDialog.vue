@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/accordion'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import { dialogState } from '@/composables/useDialogs'
+import { dialogState } from '@/services/dialogs'
 import { AlertTriangle } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
 
