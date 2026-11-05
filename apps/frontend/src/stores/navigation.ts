@@ -10,7 +10,6 @@ import { useBrowserState } from '@/composables/useBrowserState'
 
 /**
  * Check whether the editor has unsaved changes and prompt the user.
- * Extracted from the store so that store actions don't directly trigger UI dialogs.
  */
 export async function checkDirty(isDirty: boolean): Promise<boolean> {
   if (!isDirty) return true
