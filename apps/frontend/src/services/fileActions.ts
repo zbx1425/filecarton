@@ -12,6 +12,7 @@ import { joinPath, pathName, parentPath } from '@/utils/path'
 import { validateFileName, isDotFileBlocked, isFilenameBlocked } from '@/utils/pathValidation'
 import { errorMessage } from '@/utils/errorMessage'
 import { withAsyncTaskNotification } from '@/utils/withAsyncTaskNotification'
+import { runPaste } from '@/composables/usePaste'
 
 // ── Shared helpers ──
 
@@ -315,7 +316,6 @@ export async function pasteItems(targetPath: string) {
   const clipboard = useClipboardStore()
   if (!clipboard.hasContent || !clipboard.mode) return
 
-  const { runPaste } = await import('@/composables/usePaste')
   const items = clipboard.items.map(i => i.name)
   const totalCompleted = await runPaste({
     mode: clipboard.mode,

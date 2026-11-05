@@ -1,5 +1,7 @@
 import { translate } from '@/i18n'
 import { useNavigationStore } from '@/stores/navigation'
+import { useUiStore } from '@/stores/ui'
+import { runPaste } from './usePaste'
 
 const MIME_TYPE = 'application/filecarton'
 
@@ -39,10 +41,8 @@ export async function handleDrop(e: DragEvent, targetPath: string) {
   if (!payload) return
   if (payload.sourcePath === targetPath) return
 
-  const { useUiStore } = await import('@/stores/ui')
   if (useUiStore().readonly) return
 
-  const { runPaste } = await import('@/composables/usePaste')
   await runPaste({
     mode: 'cut',
     sourcePath: payload.sourcePath,
