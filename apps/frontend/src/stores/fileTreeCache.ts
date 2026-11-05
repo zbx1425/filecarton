@@ -131,9 +131,11 @@ export const useFileTreeCacheStore = defineStore('fileSystemCache', () => {
     return treeLoading.value.has(path)
   }
 
-  async function fetchTreeChildren(path: string): Promise<TreeChild[]> {
-    const cached = treeChildrenCache.value.get(path)
-    if (cached) return cached
+  async function fetchTreeChildren(path: string, opts?: { force?: boolean }): Promise<TreeChild[]> {
+    if (!opts?.force) {
+      const cached = treeChildrenCache.value.get(path)
+      if (cached) return cached
+    }
 
     const pending = pendingTreeRequests.get(path)
     if (pending) return pending
@@ -182,31 +184,41 @@ export const useFileTreeCacheStore = defineStore('fileSystemCache', () => {
     }
   }
 
-  function invalidateSubtree(path: string) {
+  function invalidateSubtree(path: string, opts?: { keepData?: boolean }) {
     bumpGeneration(path)
     const prefix = path ? path + '/' : ''
 
-    // Invalidate directory cache
-    const newDirCache = new Map<string, DirectoryData>()
-    for (const [key, value] of directoryCache.value) {
-      if (key !== path && !key.startsWith(prefix)) {
-        newDirCache.set(key, value)
+    if (opts?.keepData) {
+      // Bump generations for tree paths without deleting cached data.
+      // Old data remains visible while fresh requests are in flight.
+      for (const key of treeChildrenCache.value.keys()) {
+        if (key === path || key.startsWith(prefix)) {
+          bumpGeneration(key)
+        }
       }
-    }
-    directoryCache.value = newDirCache
-
-    // Invalidate tree cache
-    const newTreeCache = new Map<string, TreeChild[]>()
-    for (const [key, value] of treeChildrenCache.value) {
-      if (key !== path && !key.startsWith(prefix)) {
-        newTreeCache.set(key, value)
-      } else {
-        bumpGeneration(key)
+    } else {
+      // Invalidate directory cache
+      const newDirCache = new Map<string, DirectoryData>()
+      for (const [key, value] of directoryCache.value) {
+        if (key !== path && !key.startsWith(prefix)) {
+          newDirCache.set(key, value)
+        }
       }
-    }
-    treeChildrenCache.value = newTreeCache
+      directoryCache.value = newDirCache
 
-    // Cancel pending requests
+      // Invalidate tree cache
+      const newTreeCache = new Map<string, TreeChild[]>()
+      for (const [key, value] of treeChildrenCache.value) {
+        if (key !== path && !key.startsWith(prefix)) {
+          newTreeCache.set(key, value)
+        } else {
+          bumpGeneration(key)
+        }
+      }
+      treeChildrenCache.value = newTreeCache
+    }
+
+    // Cancel pending requests regardless
     for (const key of pendingTreeRequests.keys()) {
       if (key === path || key.startsWith(prefix)) {
         pendingTreeRequests.delete(key)

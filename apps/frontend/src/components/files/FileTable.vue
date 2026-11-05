@@ -195,7 +195,7 @@ function startResize(e: MouseEvent) {
       </div>
 
       <!-- File list with unified context menu -->
-      <ContextMenu v-else @update:open="(open: boolean) => { if (!open) contextTarget = null }">
+      <ContextMenu v-else>
         <ContextMenuTrigger as-child>
           <div class="flex-1 min-h-48 overflow-auto relative" @click="handleListClick" @contextmenu="handleAreaContext">
             <!-- Go up row -->

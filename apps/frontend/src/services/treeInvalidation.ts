@@ -36,13 +36,16 @@ export function handleMutation(opts: MutationRefreshOptions): void {
 
   // Phase 2: subtrees — invalidateSubtree + reload if visible
   if (opts.subtrees) {
+    const background = !!opts.fileListBackground
     for (const path of opts.subtrees) {
       if (processed.has(path)) continue
       processed.add(path)
-      cache.invalidateSubtree(path)
-      treePanel.collapseSubtree(path)
+      cache.invalidateSubtree(path, { keepData: background })
+      if (!background) {
+        treePanel.collapseSubtree(path)
+      }
       if (path === '' || treePanel.isExpanded(path)) {
-        cache.fetchTreeChildren(path)
+        cache.fetchTreeChildren(path, { force: background })
       }
       // prefix-match: current view is inside this subtree
       if (currentPath === path || currentPath.startsWith(path ? path + '/' : '')) {
