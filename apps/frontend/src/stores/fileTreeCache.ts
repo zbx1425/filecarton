@@ -57,6 +57,20 @@ export const useFileTreeCacheStore = defineStore('fileSystemCache', () => {
     }
   }
 
+  function deriveTreeChildren(data: ListResponse): TreeChild[] {
+    const dirs: TreeChild[] = data.dirs.map(d => ({
+      name: d.name,
+      type: 'dir' as const,
+      hasChildren: d.hasChildren,
+    }))
+    const files: TreeChild[] = data.files.map(f => ({
+      name: f.name,
+      type: 'file' as const,
+      hasChildren: false,
+    }))
+    return [...dirs, ...files]
+  }
+
   async function fetchDirectory(path: string, opts?: { background?: boolean }): Promise<void> {
     const background = opts?.background ?? false
 
@@ -71,7 +85,8 @@ export const useFileTreeCacheStore = defineStore('fileSystemCache', () => {
     const current = directoryCache.value.get(path)
 
     if (!background) {
-      const newCache = new Map(directoryCache.value)
+      // Single-slot: create a fresh Map containing only this path's entry
+      const newCache = new Map<string, DirectoryData>()
       newCache.set(path, {
         dirs: current?.dirs ?? [],
         files: current?.files ?? [],
@@ -86,7 +101,7 @@ export const useFileTreeCacheStore = defineStore('fileSystemCache', () => {
         const data = await apiGet<ListResponse>('list', { path }, signal)
         if (signal.aborted) return
 
-        const newCache = new Map(directoryCache.value)
+        const newCache = new Map<string, DirectoryData>()
         newCache.set(path, {
           dirs: data.dirs,
           files: data.files,
@@ -94,10 +109,23 @@ export const useFileTreeCacheStore = defineStore('fileSystemCache', () => {
           error: null,
         })
         directoryCache.value = newCache
+
+        // Derive tree children from list data and update tree cache
+        const newTreeCache = new Map(treeChildrenCache.value)
+        newTreeCache.set(path, deriveTreeChildren(data))
+        treeChildrenCache.value = newTreeCache
       } catch (e: unknown) {
         if (signal.aborted) return
-        if (!background) {
-          const newCache = new Map(directoryCache.value)
+        if (background) {
+          // Background failure: preserve old data but record the error
+          const oldData = directoryCache.value.get(path)
+          if (oldData) {
+            const newCache = new Map(directoryCache.value)
+            newCache.set(path, { ...oldData, loading: false, error: toErrorInfo(e) })
+            directoryCache.value = newCache
+          }
+        } else {
+          const newCache = new Map<string, DirectoryData>()
           newCache.set(path, {
             dirs: [],
             files: [],
@@ -162,6 +190,76 @@ export const useFileTreeCacheStore = defineStore('fileSystemCache', () => {
 
     pendingTreeRequests.set(path, promise)
     return promise
+  }
+
+  // ── Upload tree patching ──
+
+  function insertTreeChild(dirPath: string, child: TreeChild): boolean {
+    const cached = treeChildrenCache.value.get(dirPath)
+    if (!cached) return false
+    if (cached.some(c => c.name === child.name && c.type === child.type)) return false
+
+    const updated = [...cached, child]
+    updated.sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'dir' ? -1 : 1
+      return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+    })
+    const newCache = new Map(treeChildrenCache.value)
+    newCache.set(dirPath, updated)
+    treeChildrenCache.value = newCache
+    return true
+  }
+
+  /**
+   * After an upload completes, locally patch the tree cache along the path
+   * from targetDir down to the file's directory.
+   * Returns the set of directory paths whose list data may have changed.
+   */
+  function patchTreeForUpload(targetDir: string, relativePath: string, fileName: string): Set<string> {
+    const needsRelist = new Set<string>()
+
+    // Build the directory segments leading to the file
+    const dirSegments: string[] = []
+    if (relativePath) {
+      const parts = relativePath.split('/')
+      // All but the last segment are directory names
+      dirSegments.push(...parts.slice(0, -1))
+    }
+
+    // Walk each intermediate directory and insert missing nodes
+    let currentDir = targetDir
+    for (const segment of dirSegments) {
+      const inserted = insertTreeChild(currentDir, {
+        name: segment,
+        type: 'dir',
+        hasChildren: true,
+      })
+      if (inserted) {
+        needsRelist.add(currentDir)
+      }
+      currentDir = currentDir ? `${currentDir}/${segment}` : segment
+    }
+
+    // Insert the file itself into the leaf directory's tree cache
+    const safeName = fileName
+    insertTreeChild(currentDir, {
+      name: safeName,
+      type: 'file',
+      hasChildren: false,
+    })
+
+    // The file's directory always needs re-list (new file or overwrite)
+    const fileDir = currentDir
+    needsRelist.add(fileDir)
+
+    // Parent of file's directory needs re-list (mtime of fileDir changed)
+    if (fileDir.includes('/')) {
+      needsRelist.add(fileDir.slice(0, fileDir.lastIndexOf('/')))
+    } else if (fileDir !== '') {
+      needsRelist.add('')
+    }
+
+    return needsRelist
   }
 
   // ── Invalidation ──
@@ -248,6 +346,9 @@ export const useFileTreeCacheStore = defineStore('fileSystemCache', () => {
     getTreeChildren,
     isTreeLoading,
     fetchTreeChildren,
+
+    // Upload tree patching
+    patchTreeForUpload,
 
     // Invalidation
     invalidateDirectory,

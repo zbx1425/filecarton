@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { FolderPlus, FileArchive, PackageOpen, Shield, ClipboardPaste, Link } from '@lucide/vue'
+import { FolderPlus, FileArchive, PackageOpen, ClipboardPaste, Link } from '@lucide/vue'
 import {
   ContextMenuContent,
   ContextMenuItem,
@@ -16,14 +16,13 @@ import { useClipboardStore } from '@/stores/clipboard'
 import { useNavigationStore } from '@/stores/navigation'
 import { parentPath, archiveSubdirName } from '@/utils/path'
 import {
-  createItem, deleteItems, renameItem, pasteItems, canModifyItemPermissions,
+  createItem, deleteItems, renameItem, pasteItems,
 } from '@/services/fileActions'
 import { createArchive, extractArchive } from '@/composables/useArchive'
 import { isArchive } from '@/composables/useFileType'
 import { buildDirectLink } from '@/utils/directLink'
 import { toast } from 'vue-sonner'
 import { useI18n } from 'vue-i18n'
-import { showPermissionsDialog } from '@/services/dialogs'
 import type { TreeContextTarget } from './treeContext'
 
 const props = defineProps<{
@@ -47,15 +46,6 @@ const dirPath = computed(() => {
 const isRoot = computed(() => props.contextTarget?.path === '' && props.contextTarget?.name === '')
 const editDirty = computed(() => navigation.editDirty)
 const canPaste = computed(() => clipboard.hasContent && !!props.contextTarget?.isDir)
-
-const canModifyPermissions = computed(() => {
-  if (!props.contextTarget) return false
-  return canModifyItemPermissions({
-    name: props.contextTarget.name,
-    isDir: props.contextTarget.isDir,
-    owner: props.contextTarget.owner,
-  })
-})
 
 // ── Actions ──
 
@@ -109,17 +99,6 @@ async function handleCreateArchive(format: 'zip' | 'tar') {
 async function handleExtract(createSubdir = false) {
   if (!props.contextTarget) return
   await extractArchive(props.contextTarget.path, dirPath.value, createSubdir)
-}
-
-function handlePermissions() {
-  if (!props.contextTarget || !canModifyPermissions.value) return
-  showPermissionsDialog(dirPath.value, [{
-    name: props.contextTarget.name,
-    isDir: props.contextTarget.isDir,
-    mode: props.contextTarget.mode,
-    owner: props.contextTarget.owner,
-    group: props.contextTarget.group,
-  }])
 }
 
 function handleNewFolder() {
@@ -180,7 +159,7 @@ async function handleCopyDirectLink() {
             Copy Direct Link
           </ContextMenuItem>
         </template>
-        <template v-if="!ui.readonly && (ui.features.archive || contextTarget.isDir || ui.features.unixPermModify)">
+        <template v-if="!ui.readonly && (ui.features.archive || contextTarget.isDir)">
           <ContextMenuSeparator />
           <template v-if="ui.features.archive">
             <template v-if="!contextTarget.isDir && isArchive(contextTarget.name)">
@@ -215,10 +194,6 @@ async function handleCopyDirectLink() {
           <ContextMenuItem v-if="contextTarget.isDir" @select="handleNewFolder">
             <FolderPlus class="size-4" />
             New Folder
-          </ContextMenuItem>
-          <ContextMenuItem v-if="ui.features.unixPermModify" :disabled="!canModifyPermissions" @select="handlePermissions">
-            <Shield class="size-4" />
-            Permissions
           </ContextMenuItem>
         </template>
       </FileItemMenu>

@@ -15,11 +15,11 @@ $children = $fileOps->treeChildren($absPath);
 $children = $pathSec->filterEntries($children, $absPath);
 
 foreach ($children as &$child) {
-    if ($child['type'] === 'dir' && $child['hasChildren']) {
+    if ($child['type'] === 'dir') {
         $childAbs = $absPath . '/' . $child['name'];
         $sub = @scandir($childAbs);
+        $hasVisible = false;
         if ($sub !== false) {
-            $hasVisible = false;
             foreach ($sub as $s) {
                 if ($s === '.' || $s === '..') continue;
                 if (!$pathSec->isIgnored($childAbs . '/' . $s)) {
@@ -27,8 +27,8 @@ foreach ($children as &$child) {
                     break;
                 }
             }
-            $child['hasChildren'] = $hasVisible;
         }
+        $child['hasChildren'] = $hasVisible;
     }
 }
 unset($child);

@@ -9,8 +9,6 @@ export interface MutationRefreshOptions {
   subtrees?: string[]
   /** Paths that no longer exist (deleted or old name after rename). No fileList refresh */
   removed?: string[]
-  /** Use background mode for directory cache refresh (preserves current data). Used by upload */
-  fileListBackground?: boolean
 }
 
 export function handleMutation(opts: MutationRefreshOptions): void {
@@ -34,18 +32,23 @@ export function handleMutation(opts: MutationRefreshOptions): void {
     }
   }
 
-  // Phase 2: subtrees — invalidateSubtree + reload if visible
+  // Phase 2: subtrees — invalidateSubtree + reload all expanded descendants
   if (opts.subtrees) {
-    const background = !!opts.fileListBackground
     for (const path of opts.subtrees) {
       if (processed.has(path)) continue
       processed.add(path)
-      cache.invalidateSubtree(path, { keepData: background })
-      if (!background) {
-        treePanel.collapseSubtree(path)
-      }
+      cache.invalidateSubtree(path)
+      treePanel.collapseSubtree(path)
+      // Reload the subtree root if expanded
       if (path === '' || treePanel.isExpanded(path)) {
-        cache.fetchTreeChildren(path, { force: background })
+        cache.fetchTreeChildren(path, { force: true })
+      }
+      // Reload all expanded descendants within this subtree
+      const prefix = path ? path + '/' : ''
+      for (const expandedPath of treePanel.expanded) {
+        if (expandedPath.startsWith(prefix) && expandedPath !== path) {
+          cache.fetchTreeChildren(expandedPath, { force: true })
+        }
       }
       // prefix-match: current view is inside this subtree
       if (currentPath === path || currentPath.startsWith(path ? path + '/' : '')) {
@@ -55,12 +58,15 @@ export function handleMutation(opts: MutationRefreshOptions): void {
   }
 
   // Phase 3: dirs — invalidate single level + reload if visible
+  // fetchDirectory now also updates tree cache, so for the current path
+  // we only need the list fetch; for other expanded paths we use tree_node.
   if (opts.dirs) {
     for (const path of opts.dirs) {
       if (processed.has(path)) continue
       processed.add(path)
       cache.invalidateDirectory(path)
-      if (path === '' || treePanel.isExpanded(path)) {
+      // If this is not the current path but is expanded, refresh tree via tree_node
+      if (path !== currentPath && (path === '' || treePanel.isExpanded(path))) {
         cache.fetchTreeChildren(path)
       }
       // exact-match: file list only stale when viewing this exact directory
@@ -71,6 +77,6 @@ export function handleMutation(opts: MutationRefreshOptions): void {
   }
 
   if (shouldRefreshFileList) {
-    cache.fetchDirectory(currentPath, { background: opts.fileListBackground })
+    cache.fetchDirectory(currentPath)
   }
 }

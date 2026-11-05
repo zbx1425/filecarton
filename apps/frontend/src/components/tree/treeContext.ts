@@ -7,9 +7,6 @@ export interface TreeContextTarget {
   name: string
   path: string
   isDir: boolean
-  mode?: number
-  owner?: string
-  group?: string
 }
 
 /**

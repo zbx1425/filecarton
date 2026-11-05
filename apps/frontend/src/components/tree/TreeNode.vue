@@ -13,9 +13,6 @@ const props = defineProps<{
   type: 'dir' | 'file'
   hasChildren: boolean
   depth: number
-  mode?: number
-  owner?: string
-  group?: string
 }>()
 
 const panelCtx = inject(TREE_PANEL_KEY)!
@@ -87,9 +84,6 @@ function handleContextMenu() {
     name: props.name,
     path: props.path,
     isDir: tn.isDir,
-    mode: props.mode,
-    owner: props.owner,
-    group: props.group,
   })
 }
 </script>
@@ -140,9 +134,6 @@ function handleContextMenu() {
         :type="child.type"
         :has-children="child.hasChildren"
         :depth="depth + 1"
-        :mode="child.mode"
-        :owner="child.owner"
-        :group="child.group"
       />
     </template>
   </div>

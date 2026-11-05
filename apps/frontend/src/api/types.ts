@@ -1,6 +1,7 @@
 export interface DirEntry {
   name: string
   mtime: number
+  hasChildren: boolean
   mode?: number
   owner?: string
   group?: string
@@ -24,9 +25,6 @@ export interface TreeChild {
   name: string
   type: 'dir' | 'file'
   hasChildren: boolean
-  mode?: number
-  owner?: string
-  group?: string
 }
 
 export interface TreeNodeResponse {

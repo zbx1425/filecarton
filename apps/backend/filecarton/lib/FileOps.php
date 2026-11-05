@@ -51,8 +51,6 @@ class FileOps {
             throw new \RuntimeException('Cannot read directory', 500);
         }
 
-        $includeUnixPerm = RepoSetting::current()->unixPermEnabled();
-
         $dirItems = [];
         $fileItems = [];
 
@@ -60,22 +58,9 @@ class FileOps {
             if ($entry === '.' || $entry === '..') continue;
             $full = $absPath . '/' . $entry;
             if (is_dir($full)) {
-                $hasChildren = false;
-                $sub = @scandir($full);
-                if ($sub !== false) {
-                    $hasChildren = count(array_diff($sub, ['.', '..'])) > 0;
-                }
-                $item = ['name' => $entry, 'type' => 'dir', 'hasChildren' => $hasChildren];
-                if ($includeUnixPerm) {
-                    $this->attachUnixPerm($item, $full);
-                }
-                $dirItems[] = $item;
+                $dirItems[] = ['name' => $entry, 'type' => 'dir'];
             } elseif (is_file($full)) {
-                $item = ['name' => $entry, 'type' => 'file', 'hasChildren' => false];
-                if ($includeUnixPerm) {
-                    $this->attachUnixPerm($item, $full);
-                }
-                $fileItems[] = $item;
+                $fileItems[] = ['name' => $entry, 'type' => 'file'];
             }
         }
 

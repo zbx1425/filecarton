@@ -9,7 +9,8 @@ import type { ErrorInfo } from '@/api/client'
 import type { CheckUploadConflictsResponse } from '@/api/types'
 import { showPasteConflict, confirm } from '@/services/dialogs'
 import { errorMessage } from '@/utils/errorMessage'
-import { handleMutation } from '@/services/treeInvalidation'
+import { useFileTreeCacheStore } from '@/stores/fileTreeCache'
+import { useNavigationStore } from '@/stores/navigation'
 import { joinPath, isAppleJunkName, isAppleJunkPath } from '@/utils/path'
 import { sanitizeFileName, isDotFileBlocked, isFilenameBlocked } from '@/utils/pathValidation'
 import { uploadViaTus } from '@/services/tusUploader'
@@ -341,7 +342,9 @@ export const useUploadStore = defineStore('upload', () => {
       }
     }
     processQueue()
-    refreshAfterUpload(task.targetDir)
+    if (task.status === 'success') {
+      refreshAfterUpload(task)
+    }
 
     if (!hasActive.value) {
       doRefresh()
@@ -470,23 +473,31 @@ export const useUploadStore = defineStore('upload', () => {
 
   // ── Post-upload directory refresh ──
 
-  const pendingRefreshDirs = new Set<string>()
+  const pendingRelistDirs = new Set<string>()
 
   function doRefresh() {
-    const dirs = new Set(pendingRefreshDirs)
-    pendingRefreshDirs.clear()
+    const dirs = new Set(pendingRelistDirs)
+    pendingRelistDirs.clear()
     if (dirs.size === 0) return
 
-    handleMutation({
-      subtrees: [...dirs],
-      fileListBackground: true,
-    })
+    const cache = useFileTreeCacheStore()
+    const navigation = useNavigationStore()
+    const currentPath = navigation.currentPathStr
+
+    if (dirs.has(currentPath)) {
+      cache.fetchDirectory(currentPath, { background: true })
+    }
   }
 
   const throttledRefresh = useThrottleFn(doRefresh, 1000, true, true)
 
-  function refreshAfterUpload(targetDir: string) {
-    pendingRefreshDirs.add(targetDir)
+  function refreshAfterUpload(task: UploadTask) {
+    const cache = useFileTreeCacheStore()
+    const safeName = sanitizeFileName(task.file.name) || task.file.name
+    const needsRelist = cache.patchTreeForUpload(task.targetDir, task.relativePath, safeName)
+    for (const dir of needsRelist) {
+      pendingRelistDirs.add(dir)
+    }
     throttledRefresh()
   }
 
