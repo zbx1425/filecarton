@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/select'
 import { useUiStore } from '@/stores/ui'
 import { usePreferencesStore } from '@/stores/preferences'
-import { LOCALES, resolveLocale } from '@/i18n'
+import { LOCALES } from '@/i18n'
 import { COLOR_FAMILY_LIST } from '@/utils/themeColors'
 import { Sun, Moon, Monitor, Settings, Palette, List, Code, Info, Check, Languages } from '@lucide/vue'
 import Badge from '@/components/ui/badge/Badge.vue'
@@ -53,11 +53,6 @@ const navItems: { id: Section; labelKey: string; icon: typeof Settings }[] = [
 const localeOptions = computed(() =>
   [...LOCALES].sort((a, b) => a.name.localeCompare(b.name)),
 )
-
-const resolvedLocaleName = computed(() => {
-  const code = resolveLocale(prefs.locale)
-  return LOCALES.find(item => item.code === code)?.name ?? code
-})
 
 function setFontSize(val: number | undefined) {
   if (val != null) prefs.baseFontSize = val
