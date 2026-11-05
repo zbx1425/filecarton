@@ -7,8 +7,16 @@ function api_auth_login($pathSec = null, $fileOps = null) {
     $body = json_decode($raw, true);
     $username = is_array($body) && isset($body['username']) ? $body['username'] : '';
     $password = is_array($body) && isset($body['password']) ? $body['password'] : '';
+    $extra = [];
+    if (is_array($body) && isset($body['extra']) && is_array($body['extra'])) {
+        foreach ($body['extra'] as $k => $v) {
+            if (is_string($k) && (is_string($v) || is_numeric($v))) {
+                $extra[$k] = (string)$v;
+            }
+        }
+    }
     try {
-        $user = Auth::loginPassword($username, $password);
+        $user = Auth::loginPassword($username, $password, $extra);
     } catch (AuthException $e) {
         if ($e->token === 'allowlist') {
             Response::error('auth.allowlist', 403, ['id' => $e->identityId ?? ''], 'allowlist');

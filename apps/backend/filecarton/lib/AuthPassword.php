@@ -15,9 +15,10 @@ abstract class PasswordAuth implements AuthProvider {
      * Return an identity on success, null on failure.
      * Must not throw on bad credentials.
      *
+     * @param array<string,string> $extra  Extra login fields from login_ui_extra_fields config
      * @return AuthIdentity|null
      */
-    abstract public function verify(string $username, string $password);
+    abstract public function verify(string $username, string $password, array $extra = []);
 }
 
 class StaticPasswordAuth extends PasswordAuth {
@@ -58,7 +59,7 @@ class StaticPasswordAuth extends PasswordAuth {
         return $p;
     }
 
-    public function verify(string $username, string $password) {
+    public function verify(string $username, string $password, array $extra = []) {
         if (!isset($this->users[$username]) || !is_string($this->users[$username])) {
             // Prevent timing-based attack
             password_verify($password, self::DUMMY);

@@ -58,6 +58,19 @@ feature_remote_download = false
 # Enable computing file checksums (SHA-256, SHA-1, MD5).
 feature_checksum = true
 
+# Copy Direct Link: adds a "Copy Direct Link" option to the file context menu.
+# This does NOT provide a download endpoint; it only lets users copy a URL when
+# the deployer has separately made the files web-accessible (e.g. via a static
+# file server, CDN, or a custom download script).
+#   false                       — disabled (default)
+#   true                        — auto-detect: assumes root_path is under DOCUMENT_ROOT
+#   "<url prefix>"              — e.g. "https://cdn.example.com/files/"
+#   "<url prefix with query>"   — e.g. "https://example.com/dl.php?path="
+#                                 (relative path will be URL-encoded when prefix contains '?')
+# NOTE: The prefix is concatenated directly with the file's relative path.
+#       Make sure it ends with '/' or '=' as needed.
+feature_copy_link = false
+
 # Temporary file directory for chunked uploads, archive extraction, etc.
 # Leave empty for auto ({root_path}/__fc_tmp/).
 # Supports ${ROOT_PATH} substitution for the resolved root_path.

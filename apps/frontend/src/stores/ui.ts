@@ -15,6 +15,7 @@ export const useUiStore = defineStore('ui', () => {
     unixPermModify: config.features?.unixPermModify ?? false,
     remoteDownload: config.features?.remoteDownload ?? false,
     checksum: config.features?.checksum ?? true,
+    copyLink: config.features?.copyLink ?? '',
   })
   const unixPermInfo = ref(config.unixPerm ?? { user: 'unknown', isRoot: false })
 

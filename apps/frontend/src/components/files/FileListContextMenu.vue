@@ -3,7 +3,7 @@ import { computed, inject } from 'vue'
 import {
   FolderOpen, Eye, Copy, Scissors, ClipboardPaste, Pencil, Trash2, Download,
   PackageOpen, FileArchive, Shield, Hash, RefreshCw, File, Folder,
-  CloudDownload, CheckSquare, Square,
+  CloudDownload, CheckSquare, Square, Link,
 } from '@lucide/vue'
 import {
   ContextMenuContent,
@@ -24,12 +24,16 @@ import { showRemoteDownloadDialog } from '@/services/dialogs'
 import { joinPath, archiveSubdirName } from '@/utils/path'
 import { isArchive } from '@/composables/useFileType'
 import { extractArchive, createArchive } from '@/composables/useArchive'
+import { buildDirectLink } from '@/utils/directLink'
+import { toast } from 'vue-sonner'
+import { useI18n } from 'vue-i18n'
 import { FILE_LIST_KEY, type FileListContext, type ContextTargetItem } from './fileListContext'
 
 const props = defineProps<{
   contextTarget: ContextTargetItem | null
 }>()
 
+const { t } = useI18n()
 const ctx = inject(FILE_LIST_KEY) as FileListContext
 const ui = useUiStore()
 
@@ -86,6 +90,17 @@ function handleExtract(toSubdir: boolean) {
   if (!props.contextTarget) return
   extractArchive(joinPath(ctx.currentPathStr, props.contextTarget.name), ctx.currentPathStr, toSubdir)
 }
+
+async function handleCopyDirectLink() {
+  if (!props.contextTarget || props.contextTarget.isDir) return
+  const url = buildDirectLink(ui.features.copyLink, joinPath(ctx.currentPathStr, props.contextTarget.name))
+  try {
+    await navigator.clipboard.writeText(url)
+    toast.success(t('toast.copied_clipboard'))
+  } catch {
+    toast.error(t('toast.copy_clipboard_failed'))
+  }
+}
 </script>
 
 <template>
@@ -135,6 +150,14 @@ function handleExtract(toSubdir: boolean) {
         <ContextMenuItem @select="downloadSelected">
           <Download class="size-4" />
           {{ isBulkDownload ? 'Download All' : 'Download' }}
+        </ContextMenuItem>
+      </template>
+
+      <template v-if="ui.features.copyLink && !contextTarget.isDir && ctx.selectedCount <= 1">
+        <ContextMenuSeparator v-if="isBulkDownload && !ui.features.archive" />
+        <ContextMenuItem @select="handleCopyDirectLink">
+          <Link class="size-4" />
+          Copy Direct Link
         </ContextMenuItem>
       </template>
 

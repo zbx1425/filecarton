@@ -179,6 +179,8 @@ Each row in `static_user_list` (`FILECARTON_STATIC_USER_LIST`) is an inline tabl
 | `feature_unix_perm` | no | `true` enables displaying Unix file permissions and ownership for this user. |
 | `feature_unix_perm_modify` | no | `true` enables modifying Unix file permissions and ownership for this user. |
 | `feature_remote_download` | no | `true` enables downloading files directly from remote URLs for this user. |
+| `feature_checksum` | no | `true` enables computing file checksums for this user; `false` disables it. |
+| `feature_copy_link` | no | `true` for auto-detect, `false` to disable, or a URL prefix string. Overrides the default `feature_copy_link` in `[repo]`. See [Copy Direct Link](#copy-direct-link). |
 
 Example with per-user directories:
 
@@ -221,6 +223,66 @@ For production deployments you should **always use HTTPS.**
 
 - If TLS is terminated at a reverse proxy, configure the proxy to send `X-Forwarded-Proto: https` so that FileCarton generates correct OAuth callback URLs.
 - Or if that doesn't work, you can set `public_origin` under `[deployment]` to your public origin URL (with scheme, without path).
+
+## Feature Details
+
+### Copy Direct Link
+
+The `feature_copy_link` setting in `[repo]` adds a "Copy Direct Link" option to the right-click menu for files. This does **not** provide a file download endpoint itself. It only lets users quickly copy a URL when the deployer has separately made the managed files web-accessible (e.g. served from the same webroot, CDN, or a custom download script).
+
+```toml
+[repo]
+# Auto-detect: assumes root_path is served from the same webroot
+feature_copy_link = true
+
+# Or specify an explicit URL prefix
+feature_copy_link = "https://cdn.example.com/files/"
+
+# Query-style prefix: the file's relative path will be URL-encoded
+feature_copy_link = "https://example.com/dl.php?path="
+```
+
+| Value | Behavior |
+|---|---|
+| `false` (default) | Feature disabled. |
+| `true` | Auto-detect: checks if `root_path` is under `DOCUMENT_ROOT` and constructs a full URL using the detected or configured origin (`public_origin`). |
+| `"<prefix>"` | The file's relative path (from `root_path`, no leading `/`) is appended to this prefix. If the prefix contains `?`, the path is query-encoded. Make sure the prefix ends with `/` or `=` as appropriate. |
+
+This setting can also be overridden per user in `static_user_list`.
+
+### Custom login fields
+
+The `login_ui_extra_fields` setting under `[auth]` adds custom input fields to the login form, between the password field and the sign-in button. This is useful when a custom `PasswordAuth` plugin needs extra parameters.
+
+```toml
+[auth]
+login_ui_extra_fields = [
+  { name = "otp", type = "password",
+    label = { langs = { en = "OTP Code", zh = "验证码" } },
+    placeholder = "123456"
+  },
+  { name = "tenant", type = "select",
+    label = "Tenant",
+    placeholder = "Select your tenant",
+    options = [
+      { value = "us", label = "US Region" },
+      { value = "eu", label = { langs = { en = "Europe", zh = "欧洲" } } }
+    ]
+  }
+]
+```
+
+Each field definition supports:
+
+| Key | Required | Description |
+|---|---|---|
+| `name` | yes | Field identifier, passed as key in the `extra` parameter to `PasswordAuth::verify()`. Must match `[a-z][a-z0-9_]{0,31}` and cannot be `username` or `password`. |
+| `type` | yes | `"text"`, `"password"`, or `"select"`. |
+| `label` | no | Visible label above the field. Supports [label formats](#label-formats). |
+| `placeholder` | no | Placeholder text. Supports [label formats](#label-formats). |
+| `options` | yes (select) | Array of `{ value = "...", label = "..." }` for select dropdowns. Each `label` supports [label formats](#label-formats). |
+
+The extra field values are sent alongside `username` and `password` in the login request and passed to `PasswordAuth::verify()` as the `$extra` parameter. See [auth_provider.md](auth_provider.md) for how to use them in a custom auth provider.
 
 ## Session
 

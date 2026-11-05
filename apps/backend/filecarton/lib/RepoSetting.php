@@ -21,6 +21,8 @@ class RepoSetting {
     public $featureRemoteDownload;
     /** @var bool|null */
     public $featureChecksum;
+    /** @var bool|string|null */
+    public $featureCopyLink;
     /** @var string|null */
     public $tempDir;
     /** @var string|null */
@@ -28,43 +30,55 @@ class RepoSetting {
     /** @var string|null */
     public $themeToolbar;
 
-    public function __construct() {
-        $this->rootPath = null;
-        $this->readonly = null;
-        $this->branding = null;
-        $this->repoName = null;
-        $this->featureArchive = null;
-        $this->featureUnixPerm = null;
-        $this->featureUnixPermModify = null;
-        $this->featureRemoteDownload = null;
-        $this->featureChecksum = null;
-        $this->tempDir = null;
-        $this->themePrimary = null;
-        $this->themeToolbar = null;
-    }
-
-    private const BOOL_MAP = [
-        'readonly'                 => 'readonly',
-        'feature_archive'          => 'featureArchive',
-        'feature_unix_perm'        => 'featureUnixPerm',
-        'feature_unix_perm_modify' => 'featureUnixPermModify',
-        'feature_remote_download'  => 'featureRemoteDownload',
-        'feature_checksum'         => 'featureChecksum',
+    /**
+     * Unified property map: TOML key => [property name, accepted types].
+     * Types are pipe-separated: 'string', 'bool', or 'bool|string'.
+     * Used by fromStaticRow(), fromConfigArray(), and combine().
+     */
+    private const PROP_MAP = [
+        'root_path'                => ['rootPath',              'string'],
+        'readonly'                 => ['readonly',              'bool'],
+        'branding'                 => ['branding',              'string'],
+        'repo_name'                => ['repoName',              'string'],
+        'temp_dir'                 => ['tempDir',               'string'],
+        'theme_primary'            => ['themePrimary',          'string'],
+        'theme_toolbar'            => ['themeToolbar',          'string'],
+        'feature_archive'          => ['featureArchive',        'bool'],
+        'feature_unix_perm'        => ['featureUnixPerm',       'bool'],
+        'feature_unix_perm_modify' => ['featureUnixPermModify', 'bool'],
+        'feature_remote_download'  => ['featureRemoteDownload', 'bool'],
+        'feature_checksum'         => ['featureChecksum',       'bool'],
+        'feature_copy_link'        => ['featureCopyLink',       'bool|string'],
     ];
 
-    private const BOOL_DEFAULTS = [
+    /** Non-false defaults for feature_* keys in fromConfigArray(). */
+    private const FEATURE_DEFAULTS = [
         'feature_checksum' => true,
     ];
 
+    public function __construct() {
+        foreach (self::PROP_MAP as [$prop]) {
+            $this->$prop = null;
+        }
+    }
+
+    private static function matchesType($value, string $types): bool {
+        foreach (explode('|', $types) as $t) {
+            if ($t === 'string' && is_string($value)) return true;
+            if ($t === 'bool'   && is_bool($value))   return true;
+        }
+        return false;
+    }
+
     /**
      * Parse from the FILECARTON_REPO_SETTING config array.
-     * Missing or wrong-typed keys become null (except optional feature flags which default to false).
+     * Missing or wrong-typed keys become null (except feature_* flags which get defaults).
      */
     public static function fromConfigArray(array $arr): self {
         $s = self::fromStaticRow($arr, true);
-        foreach (self::BOOL_MAP as $k => $prop) {
-            if ($k !== 'readonly' && $s->$prop === null) {
-                $s->$prop = self::BOOL_DEFAULTS[$k] ?? false;
+        foreach (self::PROP_MAP as $k => [$prop]) {
+            if (str_starts_with($k, 'feature_') && $s->$prop === null) {
+                $s->$prop = self::FEATURE_DEFAULTS[$k] ?? false;
             }
         }
         return $s;
@@ -72,32 +86,18 @@ class RepoSetting {
 
     /**
      * Parse from a STATIC_USER_LIST row (per-user override).
-     * Only present values are set; null means inherit the default.
+     * Only present values with correct types are set; null means inherit the default.
      */
     public static function fromStaticRow(array $row, bool $allowEmptyRoot = false): self {
         $s = new self();
-        if (isset($row['root_path']) && is_string($row['root_path']) && ($allowEmptyRoot || $row['root_path'] !== '')) {
-            $s->rootPath = $row['root_path'];
-        }
-        if (isset($row['branding']) && is_string($row['branding'])) {
-            $s->branding = $row['branding'];
-        }
-        if (isset($row['repo_name']) && is_string($row['repo_name'])) {
-            $s->repoName = $row['repo_name'];
-        }
-        if (isset($row['theme_primary']) && is_string($row['theme_primary'])) {
-            $s->themePrimary = $row['theme_primary'];
-        }
-        if (isset($row['temp_dir']) && is_string($row['temp_dir'])) {
-            $s->tempDir = $row['temp_dir'];
-        }
-        if (isset($row['theme_toolbar']) && is_string($row['theme_toolbar'])) {
-            $s->themeToolbar = $row['theme_toolbar'];
-        }
-        foreach (self::BOOL_MAP as $k => $prop) {
-            if (isset($row[$k]) && is_bool($row[$k])) {
+        foreach (self::PROP_MAP as $k => [$prop, $types]) {
+            if (!isset($row[$k])) continue;
+            if (self::matchesType($row[$k], $types)) {
                 $s->$prop = $row[$k];
             }
+        }
+        if (!$allowEmptyRoot && $s->rootPath === '') {
+            $s->rootPath = null;
         }
         return $s;
     }
@@ -126,18 +126,9 @@ class RepoSetting {
      */
     public function combine(RepoSetting $override): self {
         $result = clone $this;
-        if ($override->rootPath !== null) $result->rootPath = $override->rootPath;
-        if ($override->readonly !== null) $result->readonly = $override->readonly;
-        if ($override->branding !== null) $result->branding = $override->branding;
-        if ($override->repoName !== null) $result->repoName = $override->repoName;
-        if ($override->tempDir !== null) $result->tempDir = $override->tempDir;
-        if ($override->themePrimary !== null) $result->themePrimary = $override->themePrimary;
-        if ($override->themeToolbar !== null) $result->themeToolbar = $override->themeToolbar;
-        if ($override->featureArchive !== null) $result->featureArchive = $override->featureArchive;
-        if ($override->featureUnixPerm !== null) $result->featureUnixPerm = $override->featureUnixPerm;
-        if ($override->featureUnixPermModify !== null) $result->featureUnixPermModify = $override->featureUnixPermModify;
-        if ($override->featureRemoteDownload !== null) $result->featureRemoteDownload = $override->featureRemoteDownload;
-        if ($override->featureChecksum !== null) $result->featureChecksum = $override->featureChecksum;
+        foreach (self::PROP_MAP as [$prop]) {
+            if ($override->$prop !== null) $result->$prop = $override->$prop;
+        }
         return $result;
     }
 
@@ -176,17 +167,70 @@ class RepoSetting {
     }
 
     /**
+     * Resolve the copy-link URL prefix for the frontend.
+     * Returns '' when the feature is disabled or auto-detection fails.
+     */
+    public function resolvedCopyLinkPrefix(): string {
+        if ($this->featureCopyLink === false || $this->featureCopyLink === null) {
+            return '';
+        }
+        if (is_string($this->featureCopyLink)) {
+            return $this->featureCopyLink;
+        }
+        // Auto-detect: featureCopyLink === true
+        if ($this->rootPath === null || $this->rootPath === '') return '';
+
+        $docRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
+        if ($docRoot === '') return '';
+        $docRoot = @realpath($docRoot);
+        if ($docRoot === false) return '';
+        $docRoot = rtrim(str_replace('\\', '/', $docRoot), '/');
+
+        $rootNorm = rtrim(str_replace('\\', '/', $this->rootPath), '/');
+
+        // Case-insensitive prefix check (safe on Windows / macOS)
+        if ($docRoot !== '' && stripos($rootNorm, $docRoot . '/') === 0) {
+            $webPath = substr($rootNorm, strlen($docRoot));
+        } elseif (strcasecmp($rootNorm, $docRoot) === 0) {
+            $webPath = '/';
+        } else {
+            return '';
+        }
+        if ($webPath === '' || $webPath[0] !== '/') $webPath = '/' . $webPath;
+        $webPath = rtrim($webPath, '/') . '/';
+
+        return self::detectOrigin() . $webPath;
+    }
+
+    private static function detectOrigin(): string {
+        if (defined('FILECARTON_PUBLIC_ORIGIN') && is_string(FILECARTON_PUBLIC_ORIGIN)
+            && FILECARTON_PUBLIC_ORIGIN !== '') {
+            return rtrim(FILECARTON_PUBLIC_ORIGIN, '/');
+        }
+        $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (isset($_SERVER['HTTP_X_FORWARDED_PROTO'])
+                && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        return ($isHttps ? 'https://' : 'http://') . $host;
+    }
+
+    /**
      * Build the features dictionary exposed to the frontend.
-     * @return array<string, bool>
+     * @return array<string, mixed>
      */
     public function featuresConfig(): array {
-        return [
+        $cfg = [
             'archive'        => (bool)$this->featureArchive,
             'unixPerm'       => $this->unixPermEnabled(),
             'unixPermModify' => $this->unixPermModifyEnabled(),
             'remoteDownload' => $this->remoteDownloadEnabled(),
             'checksum'       => (bool)$this->featureChecksum,
         ];
+        $copyLink = $this->resolvedCopyLinkPrefix();
+        if ($copyLink !== '') {
+            $cfg['copyLink'] = $copyLink;
+        }
+        return $cfg;
     }
 
     // ─── Global resolution ─────────────────────────────────────────────

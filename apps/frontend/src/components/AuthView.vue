@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
@@ -9,6 +9,8 @@ import { buildAuthStartUrl } from '@/api/client'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 import { LogIn } from '@lucide/vue'
 import type { FileCartonAuthPluginIcon, PluginLabel } from '@/api/types'
 
@@ -60,6 +62,7 @@ function iconMaskStyle(icon: FileCartonAuthPluginIcon) {
 
 const username = ref('')
 const password = ref('')
+const extraFields = reactive<Record<string, string>>({})
 const submitting = ref(false)
 
 async function handlePasswordLogin() {
@@ -67,7 +70,11 @@ async function handlePasswordLogin() {
   auth.error = null
   submitting.value = true
   try {
-    await apiPost('auth_login', { username: username.value, password: password.value })
+    const body: Record<string, unknown> = { username: username.value, password: password.value }
+    if (auth.loginFields.length > 0) {
+      body.extra = { ...extraFields }
+    }
+    await apiPost('auth_login', body)
     location.reload()
   } catch (e: any) {
     auth.error = toErrorInfo(e)
@@ -143,6 +150,48 @@ function handleRedirect(pluginId: string) {
               :disabled="submitting"
             />
           </div>
+
+          <!-- Extra login fields from login_ui_extra_fields config -->
+          <div
+            v-for="field in auth.loginFields"
+            :key="field.name"
+            class="space-y-1.5"
+          >
+            <Label
+              v-if="field.label"
+              :for="'fc-extra-' + field.name"
+              class="text-sm font-medium"
+            >
+              {{ resolvePluginLabel(field.label) }}
+            </Label>
+            <Input
+              v-if="field.type === 'text' || field.type === 'password'"
+              :id="'fc-extra-' + field.name"
+              v-model="extraFields[field.name]"
+              :type="field.type"
+              :placeholder="field.placeholder ? resolvePluginLabel(field.placeholder) : undefined"
+              :disabled="submitting"
+            />
+            <Select
+              v-else-if="field.type === 'select'"
+              v-model="extraFields[field.name]"
+              :disabled="submitting"
+            >
+              <SelectTrigger :id="'fc-extra-' + field.name">
+                <SelectValue :placeholder="field.placeholder ? resolvePluginLabel(field.placeholder) : undefined" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem
+                  v-for="opt in field.options"
+                  :key="opt.value"
+                  :value="opt.value"
+                >
+                  {{ resolvePluginLabel(opt.label) }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <Button type="submit" class="w-full" :disabled="submitting">
             <LogIn class="size-4" />
             {{ submitting ? 'Signing in...' : 'Sign in' }}

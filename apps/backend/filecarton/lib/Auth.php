@@ -567,6 +567,10 @@ class Auth {
             }
         }
 
+        foreach (self::validateLoginFields() as $msg) {
+            $p[] = $msg;
+        }
+
         return $p;
     }
 
@@ -690,10 +694,105 @@ class Auth {
     }
 
     /**
+     * Sanitize and validate login_ui_extra_fields definitions.
+     *
+     * @param mixed $raw
+     * @return array  Sanitized field definitions safe for the frontend
+     */
+    public static function sanitizeLoginFields($raw): array {
+        if (!is_array($raw)) return [];
+        $out = [];
+        $names = [];
+        foreach ($raw as $field) {
+            if (!is_array($field)) continue;
+            if (!isset($field['name']) || !is_string($field['name'])) continue;
+            $name = $field['name'];
+            if (!preg_match('/^[a-z][a-z0-9_]{0,31}$/', $name)) continue;
+            if ($name === 'username' || $name === 'password') continue;
+            if (isset($names[$name])) continue;
+            $names[$name] = true;
+
+            $type = $field['type'] ?? '';
+            if ($type !== 'text' && $type !== 'password' && $type !== 'select') continue;
+
+            $entry = ['name' => $name, 'type' => $type];
+
+            $label = self::sanitizeLabel($field['label'] ?? '');
+            if ($label !== '' && $label !== []) $entry['label'] = $label;
+
+            $placeholder = self::sanitizeLabel($field['placeholder'] ?? '');
+            if ($placeholder !== '' && $placeholder !== []) $entry['placeholder'] = $placeholder;
+
+            if ($type === 'select') {
+                if (!isset($field['options']) || !is_array($field['options'])) continue;
+                $opts = [];
+                foreach ($field['options'] as $opt) {
+                    if (!is_array($opt)) continue;
+                    if (!isset($opt['value']) || !is_string($opt['value'])) continue;
+                    $optLabel = self::sanitizeLabel($opt['label'] ?? $opt['value']);
+                    if ($optLabel === '' || $optLabel === []) $optLabel = $opt['value'];
+                    $opts[] = ['value' => $opt['value'], 'label' => $optLabel];
+                }
+                if ($opts === []) continue;
+                $entry['options'] = $opts;
+            }
+
+            $out[] = $entry;
+        }
+        return $out;
+    }
+
+    /**
+     * Validate login_ui_extra_fields configuration.
+     * @return string[]
+     */
+    public static function validateLoginFields(): array {
+        $p = [];
+        $raw = defined('FILECARTON_LOGIN_UI_EXTRA_FIELDS') ? FILECARTON_LOGIN_UI_EXTRA_FIELDS : [];
+        if (!is_array($raw)) {
+            $p[] = 'FILECARTON_LOGIN_UI_EXTRA_FIELDS must be an array.';
+            return $p;
+        }
+        $names = [];
+        foreach ($raw as $i => $field) {
+            $prefix = "login_ui_extra_fields[$i]";
+            if (!is_array($field)) {
+                $p[] = "$prefix must be a table.";
+                continue;
+            }
+            if (!isset($field['name']) || !is_string($field['name'])
+                || !preg_match('/^[a-z][a-z0-9_]{0,31}$/', $field['name'])) {
+                $p[] = "$prefix has an invalid or missing 'name'.";
+                continue;
+            }
+            $name = $field['name'];
+            if ($name === 'username' || $name === 'password') {
+                $p[] = "$prefix name cannot be 'username' or 'password'.";
+            }
+            if (isset($names[$name])) {
+                $p[] = "$prefix has a duplicate name '$name'.";
+            }
+            $names[$name] = true;
+            $type = $field['type'] ?? '';
+            if ($type !== 'text' && $type !== 'password' && $type !== 'select') {
+                $p[] = "$prefix type must be 'text', 'password', or 'select'.";
+            }
+            if ($type === 'select') {
+                if (!isset($field['options']) || !is_array($field['options']) || $field['options'] === []) {
+                    $p[] = "$prefix (type=select) must have a non-empty 'options' array.";
+                }
+            }
+        }
+        return $p;
+    }
+
+    /**
      * Try each PasswordAuth in boot order.
+     * @param array<string,string> $extra  Extra login fields
+     * @param array<string,string> $extra  Extra login fields
      * @return AuthIdentity|null
      */
-    public static function loginPassword($username, $password) {
+    public static function loginPassword($username, $password, array $extra = []) {
         self::ensureSession();
         $username = is_string($username) ? $username : '';
         $password = is_string($password) ? $password : '';
@@ -703,7 +802,7 @@ class Auth {
         foreach (self::$providers as $p) {
             if (!$p instanceof PasswordAuth) continue;
             try {
-                $identity = $p->verify($username, $password);
+                $identity = $p->verify($username, $password, $extra);
             } catch (AuthException $e) {
                 if ($e->token === 'not_set_up') {
                     throw $e;
@@ -794,6 +893,12 @@ class Auth {
             'user'          => $user ? $user->toPublicArray() : null,
             'plugins'       => self::catalog(),
         ];
+        $loginFields = self::sanitizeLoginFields(
+            defined('FILECARTON_LOGIN_UI_EXTRA_FIELDS') ? FILECARTON_LOGIN_UI_EXTRA_FIELDS : []
+        );
+        if ($loginFields !== []) {
+            $cfg['loginFields'] = $loginFields;
+        }
         if (self::$inlineError !== '') {
             $cfg['error'] = self::$inlineError;
             if (!empty(self::$inlineErrorParams)) {

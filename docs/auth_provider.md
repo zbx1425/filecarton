@@ -87,6 +87,7 @@ grant_resolvers = [
 | `featureUnixPermModify` | `true` enables modifying Unix permissions; `false` disables them. |
 | `featureRemoteDownload` | `true` enables remote URL downloads; `false` disables them. |
 | `featureChecksum` | `true` enables file checksum computation; `false` disables it. |
+| `featureCopyLink` | `true` for auto-detect, `false` to disable, or a URL prefix string. See [config_auth.md](config_auth.md#copy-direct-link). |
 | `themePrimary` | Tailwind CSS color family for the primary theme color. |
 | `themeToolbar` | Tailwind CSS color family for the toolbar background. |
 | `tempDir` | Absolute path to use as the temporary directory for this user. If not specified, FileCarton will try to create a `__fc_tmp` folder inside `rootPath` when needed. You might want to configure it if your `rootPath` is not writable by your web server. |
@@ -165,7 +166,7 @@ class LdapAuth extends PasswordAuth {
 
     public function label(): string { return 'Company account'; }
 
-    public function verify(string $username, string $password) {
+    public function verify(string $username, string $password, array $extra = []) {
         if ($username === '' || $password === '') return null;
 
         $conn = @ldap_connect($this->host);
@@ -185,6 +186,7 @@ class LdapAuth extends PasswordAuth {
 
 - Return `null` on bad credentials and do not throw.
 - Do not distinguish "unknown user" from "wrong password" in the return value.
+- The `$extra` parameter contains values from `login_ui_extra_fields` (see [config_auth.md](config_auth.md#custom-login-fields)). For example, if you configured an OTP field named `"otp"`, read it as `$extra['otp'] ?? ''`. You can safely ignore `$extra` if you don't use custom login fields.
 - The identity's `id` field will be then sent to grant resolvers for matching. It can be a good idea to prefix it with the provider id and a colon for distinction.
 
 If auth provider succeeds but no grant resolver returns a grant for the identity, the login will be rejected with "This account is not allowed to log in."

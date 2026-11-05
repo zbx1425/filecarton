@@ -54,6 +54,7 @@ class Config {
             'sendfile'                      => false,
             'asset_url'                     => '',
             'http_client_proxy'             => '',
+            'login_ui_extra_fields'         => [],
             'session_name'                  => 'FILECARTON',
             'dev_server'                    => false,
         ];
@@ -186,6 +187,7 @@ class Config {
             'feature_unix_perm_modify' => false,
             'feature_remote_download'  => false,
             'feature_checksum'         => true,
+            'feature_copy_link'        => false,
             'theme_primary'            => '',
             'theme_toolbar'            => '',
         ]);

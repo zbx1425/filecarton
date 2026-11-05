@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { FolderPlus, FileArchive, PackageOpen, Shield, ClipboardPaste } from '@lucide/vue'
+import { FolderPlus, FileArchive, PackageOpen, Shield, ClipboardPaste, Link } from '@lucide/vue'
 import {
   ContextMenuContent,
   ContextMenuItem,
@@ -20,7 +20,9 @@ import {
 } from '@/services/fileActions'
 import { createArchive, extractArchive } from '@/composables/useArchive'
 import { isArchive } from '@/composables/useFileType'
+import { buildDirectLink } from '@/utils/directLink'
 import { toast } from 'vue-sonner'
+import { useI18n } from 'vue-i18n'
 import { showPermissionsDialog } from '@/services/dialogs'
 import type { TreeContextTarget } from './treeContext'
 
@@ -28,6 +30,7 @@ const props = defineProps<{
   contextTarget: TreeContextTarget | null
 }>()
 
+const { t } = useI18n()
 const ui = useUiStore()
 const clipboard = useClipboardStore()
 const navigation = useNavigationStore()
@@ -123,6 +126,17 @@ function handleNewFolder() {
   if (!props.contextTarget?.isDir) return
   createItem('dir', props.contextTarget.path)
 }
+
+async function handleCopyDirectLink() {
+  if (!props.contextTarget || props.contextTarget.isDir) return
+  const url = buildDirectLink(ui.features.copyLink, props.contextTarget.path)
+  try {
+    await navigator.clipboard.writeText(url)
+    toast.success(t('toast.copied_clipboard'))
+  } catch {
+    toast.error(t('toast.copy_clipboard_failed'))
+  }
+}
 </script>
 
 <template>
@@ -160,6 +174,12 @@ function handleNewFolder() {
         @delete="handleDelete"
         @download="handleDownload"
       >
+        <template v-if="ui.features.copyLink && !contextTarget.isDir">
+          <ContextMenuItem @select="handleCopyDirectLink">
+            <Link class="size-4" />
+            Copy Direct Link
+          </ContextMenuItem>
+        </template>
         <template v-if="!ui.readonly && (ui.features.archive || contextTarget.isDir || ui.features.unixPermModify)">
           <ContextMenuSeparator />
           <template v-if="ui.features.archive">

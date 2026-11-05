@@ -167,6 +167,14 @@ export interface FileCartonAuthPlugin {
   icon?: string | FileCartonAuthPluginIcon
 }
 
+export interface LoginFieldDef {
+  name: string
+  type: 'text' | 'password' | 'select'
+  label?: PluginLabel
+  placeholder?: PluginLabel
+  options?: Array<{ value: string; label: PluginLabel }>
+}
+
 export interface FileCartonAuthUser {
   id: string
   displayName: string
@@ -179,6 +187,7 @@ export interface FileCartonAuthConfig {
   authenticated?: boolean
   user?: FileCartonAuthUser | null
   plugins?: FileCartonAuthPlugin[]
+  loginFields?: LoginFieldDef[]
   error?: string
   errorParams?: Record<string, string>
 }
@@ -189,6 +198,7 @@ export interface FileCartonFeatures {
   unixPermModify: boolean
   remoteDownload: boolean
   checksum: boolean
+  copyLink: string
 }
 
 export interface FileCartonConfig {
