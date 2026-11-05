@@ -180,7 +180,7 @@ function handleRedirect(pluginId: string) {
               :name="field.name"
               :disabled="submitting"
             >
-              <SelectTrigger :id="'fc-extra-' + field.name">
+              <SelectTrigger :id="'fc-extra-' + field.name" class="w-full">
                 <SelectValue :placeholder="field.placeholder ? resolvePluginLabel(field.placeholder) : undefined" />
               </SelectTrigger>
               <SelectContent>
