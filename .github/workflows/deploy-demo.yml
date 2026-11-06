@@ -1,0 +1,289 @@
+name: Deploy demo
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check dispatch configuration
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          GCP_DEPLOYER_SA: ${{ vars.GCP_DEPLOYER_SA }}
+          OAUTH_GITHUB_CLIENT_ID: ${{ secrets.OAUTH_GITHUB_CLIENT_ID }}
+          OAUTH_GITHUB_CLIENT_SECRET: ${{ secrets.OAUTH_GITHUB_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in GCP_PROJECT_ID GCP_REGION GCP_WORKLOAD_IDENTITY_PROVIDER GCP_DEPLOYER_SA OAUTH_GITHUB_CLIENT_ID OAUTH_GITHUB_CLIENT_SECRET; do
+            if [ -z "${!name}" ]; then
+              echo "Missing ${name}. See deploy/demo/docs/gcp.md." >&2
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+          if ! [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "github.sha is not a full 40-character commit hash." >&2
+            exit 1
+          fi
+
+      - name: Image name
+        id: image
+        run: |
+          set -euo pipefail
+          repo="$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          echo "name=ghcr.io/${repo}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}
+          IMAGE_SOURCE: https://github.com/${{ github.repository }}
+        run: |
+          set -euo pipefail
+          docker build \
+            -f deploy/demo/Dockerfile \
+            --build-arg "IMAGE_SOURCE=${IMAGE_SOURCE}" \
+            -t "$IMAGE" \
+            .
+          docker push "$IMAGE"
+
+      - name: Require a public image
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess, sys, time, urllib.parse
+
+          owner = os.environ["GITHUB_REPOSITORY_OWNER"]
+          package = os.environ["GITHUB_REPOSITORY"].split("/", 1)[1].lower()
+          encoded = urllib.parse.quote(package, safe="")
+          org = subprocess.run(["gh", "api", f"orgs/{owner}"], capture_output=True, text=True)
+          if org.returncode == 0:
+              path = f"/orgs/{owner}/packages/container/{encoded}"
+          else:
+              path = f"/user/packages/container/{encoded}"
+          print(f"Package API: {path}", flush=True)
+
+          last = ""
+          for attempt in range(1, 7):
+              proc = subprocess.run(
+                  ["gh", "api", "--method", "PATCH",
+                   "-H", "Accept: application/vnd.github+json",
+                   "--input", "-", path],
+                  input=json.dumps({"visibility": "public"}),
+                  text=True, capture_output=True)
+              if proc.returncode == 0:
+                  print("Package visibility is public.")
+                  sys.exit(0)
+              last = (proc.stderr or proc.stdout).strip()
+              print(f"Visibility attempt {attempt} failed.", flush=True)
+              time.sleep(5)
+          print("Could not change package visibility with GITHUB_TOKEN.")
+          print(last)
+          print("If the package is still private, open its Danger Zone and set visibility to Public once.")
+          print("That change is permanent. Later versions of the same package stay public.")
+          print("See deploy/demo/docs/gcp.md. Anonymous pull is the gate.")
+          PY
+          docker logout ghcr.io
+          docker rmi "$IMAGE"
+          if ! docker pull "$IMAGE"; then
+            echo "Anonymous pull of ${IMAGE} failed. Cloud Run cannot fetch a private GHCR image." >&2
+            exit 1
+          fi
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy Cloud Run service
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          PUBLIC_ORIGIN: ${{ vars.PUBLIC_ORIGIN }}
+          OAUTH_GITHUB_CLIENT_ID: ${{ secrets.OAUTH_GITHUB_CLIENT_ID }}
+          OAUTH_GITHUB_CLIENT_SECRET: ${{ secrets.OAUTH_GITHUB_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, pathlib, re, sys
+          text = pathlib.Path("deploy/demo/service.yaml.template").read_text(encoding="utf-8")
+          values = {
+              "__GCP_PROJECT_ID__": os.environ["GCP_PROJECT_ID"],
+              "__GCP_REGION__": os.environ["GCP_REGION"],
+              "__IMAGE__": os.environ["IMAGE"],
+              "__GITHUB_CLIENT_ID__": os.environ["OAUTH_GITHUB_CLIENT_ID"],
+              "__GITHUB_CLIENT_SECRET__": os.environ["OAUTH_GITHUB_CLIENT_SECRET"],
+              "__PUBLIC_ORIGIN__": os.environ.get("PUBLIC_ORIGIN", ""),
+          }
+
+          def reject(name, value, allow_empty=False):
+              if value == "" and allow_empty:
+                  return
+              if value == "" or re.search(r'["\\\s]', value) or "__" in value:
+                  sys.exit(f"{name} is empty or contains quotes, backslashes, whitespace, or __")
+
+          reject("GCP_PROJECT_ID", values["__GCP_PROJECT_ID__"])
+          reject("GCP_REGION", values["__GCP_REGION__"])
+          reject("IMAGE", values["__IMAGE__"])
+          reject("OAUTH_GITHUB_CLIENT_ID", values["__GITHUB_CLIENT_ID__"])
+          reject("OAUTH_GITHUB_CLIENT_SECRET", values["__GITHUB_CLIENT_SECRET__"])
+          origin = values["__PUBLIC_ORIGIN__"]
+          reject("PUBLIC_ORIGIN", origin, allow_empty=True)
+          if origin and re.fullmatch(r"https://[A-Za-z0-9.-]+(?::[0-9]{1,5})?", origin) is None:
+              sys.exit("PUBLIC_ORIGIN must be https://host with an optional port")
+          if origin.count(":") == 2:
+              port = int(origin.rsplit(":", 1)[1])
+              if not 1 <= port <= 65535:
+                  sys.exit("PUBLIC_ORIGIN port is out of range")
+          if not re.fullmatch(r"[a-z][a-z0-9-]{4,28}[a-z0-9]", values["__GCP_PROJECT_ID__"]):
+              sys.exit("GCP_PROJECT_ID is not a project id")
+          if not re.fullmatch(r"[a-z][a-z0-9-]+", values["__GCP_REGION__"]):
+              sys.exit("GCP_REGION is not a region name")
+          for key in values:
+              if text.count(key) < 1:
+                  sys.exit(f"template is missing {key}")
+          rendered = text
+          for key, value in values.items():
+              rendered = rendered.replace(key, value)
+          for key in values:
+              if key in rendered:
+                  sys.exit("a template placeholder survived rendering")
+          out = pathlib.Path(os.environ["RUNNER_TEMP"]) / "filecarton-demo-service.yaml"
+          out.write_text(rendered, encoding="utf-8")
+          print(out)
+          PY
+          gcloud run services replace "$RUNNER_TEMP/filecarton-demo-service.yaml" \
+            --project "$GCP_PROJECT_ID" \
+            --region "$GCP_REGION" \
+            --quiet
+
+      - name: Allow public invoke
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+        run: |
+          set -euo pipefail
+          if ! gcloud run services add-iam-policy-binding filecarton-demo \
+            --project "$GCP_PROJECT_ID" \
+            --region "$GCP_REGION" \
+            --member=allUsers \
+            --role=roles/run.invoker \
+            --quiet; then
+            echo "allUsers invoker binding failed. The revision is deployed, but visitors cannot open it." >&2
+            echo "Organization policy iam.allowedPolicyMemberDomains often blocks allUsers." >&2
+            exit 1
+          fi
+
+      - name: Delete older GHCR versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess, sys, time, urllib.parse
+          from datetime import datetime, timedelta, timezone
+
+          owner = os.environ["GITHUB_REPOSITORY_OWNER"]
+          package = os.environ["GITHUB_REPOSITORY"].split("/", 1)[1].lower()
+          encoded = urllib.parse.quote(package, safe="")
+          sha = os.environ["GITHUB_SHA"]
+          org = subprocess.run(["gh", "api", f"orgs/{owner}"], capture_output=True, text=True)
+          root = f"/orgs/{owner}/packages/container/{encoded}" if org.returncode == 0 else f"/user/packages/container/{encoded}"
+
+          def gh(method, path):
+              proc = subprocess.run(
+                  ["gh", "api", "--method", method, "-H", "Accept: application/vnd.github+json", path],
+                  text=True, capture_output=True)
+              if proc.returncode != 0:
+                  sys.stderr.write(proc.stderr)
+                  raise SystemExit(proc.returncode)
+              return proc.stdout
+
+          def tags_of(version):
+              container = (version.get("metadata") or {}).get("container") or {}
+              tags = container.get("tags") or []
+              return [str(tag) for tag in tags]
+
+          def list_versions():
+              found = []
+              page = 1
+              while True:
+                  batch = json.loads(gh("GET", f"{root}/versions?per_page=100&page={page}"))
+                  if not batch:
+                      break
+                  found.extend(batch)
+                  if len(batch) < 100:
+                      break
+                  page += 1
+              return found
+
+          versions = []
+          for attempt in range(1, 7):
+              versions = list_versions()
+              if any(sha in tags_of(version) for version in versions):
+                  break
+              print(f"Live tag {sha} is not listed yet (attempt {attempt}).", flush=True)
+              time.sleep(5)
+          if not any(sha in tags_of(version) for version in versions):
+              sys.exit(f"Refusing to delete versions: {sha} is not listed on the package yet.")
+
+          cutoff = datetime.now(timezone.utc) - timedelta(hours=2)
+          for version in versions:
+              tags = tags_of(version)
+              if sha in tags:
+                  print(f"keep {version['id']} tags={tags}")
+                  continue
+              if not tags:
+                  created = datetime.fromisoformat(version["created_at"].replace("Z", "+00:00"))
+                  if created >= cutoff:
+                      print(f"keep recent untagged {version['id']}")
+                      continue
+              print(f"delete {version['id']} tags={tags}")
+              gh("DELETE", f"{root}/versions/{version['id']}")
+              time.sleep(0.2)
+          PY
+
+      - name: Print URL and OAuth callback
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          PUBLIC_ORIGIN: ${{ vars.PUBLIC_ORIGIN }}
+        run: |
+          set -euo pipefail
+          url="$(gcloud run services describe filecarton-demo \
+            --project "$GCP_PROJECT_ID" \
+            --region "$GCP_REGION" \
+            --format='value(status.url)')"
+          echo "Cloud Run URL: ${url}"
+          if [ -n "${PUBLIC_ORIGIN}" ]; then
+            echo "OAuth callback: ${PUBLIC_ORIGIN}/index.php?fcauth=callback"
+          else
+            echo "OAuth callback: ${url}/index.php?fcauth=callback"
+          fi
+          echo "Register that callback on the GitHub OAuth App. Login is demo / demo, or any GitHub account."

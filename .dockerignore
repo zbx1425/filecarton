@@ -1,0 +1,19 @@
+# Build context is the repository root.
+# The seed stage copies /README.md into the image. Do not ignore it.
+.git
+**/.git
+node_modules
+**/node_modules
+.pnpm-store
+apps/frontend/dist
+apps/filecarton-rs
+/dist
+/tests
+/run
+/docs
+/images
+/.github
+*.log
+.DS_Store
+.env
+.env.*

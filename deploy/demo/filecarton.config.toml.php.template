@@ -1,0 +1,39 @@
+#<?php exit;?>
+# Rendered at container start by /opt/filecarton/bootstrap.php.
+# Placeholders are substituted once. Do not edit the running copy.
+
+[auth]
+auth_providers = [
+  { class = "FileCarton\\StaticPasswordAuth" },
+  { class = "FileCarton\\GitHubOAuth", client_id = "__GITHUB_CLIENT_ID__", client_secret = "__GITHUB_CLIENT_SECRET__" }
+]
+grant_resolvers = [
+  { file = "/opt/filecarton/demo_grant.php", class = "FileCartonDemo\\SharedFolderGrant" }
+]
+static_user_list = [
+  { id = "demo", display_name = "Demo", password_hash = "__PASSWORD_HASH__" }
+]
+
+[repo]
+# verifyAllSet() requires these four. A partial [repo] table replaces the
+# built-in default instead of merging with it, so feature flags are explicit.
+root_path = "/data/demo"
+readonly = false
+branding = "FileCarton"
+repo_name = "Demo"
+temp_dir = "/data/tmp"
+feature_archive = true
+feature_unix_perm = false
+feature_unix_perm_modify = false
+feature_remote_download = false
+feature_checksum = true
+feature_copy_link = false
+theme_primary = ""
+theme_toolbar = "sky-solid"
+
+[limits]
+upload_chunk_size = "16M"
+upload_max_file_size = "256M"
+
+[deployment]
+public_origin = "__PUBLIC_ORIGIN__"
