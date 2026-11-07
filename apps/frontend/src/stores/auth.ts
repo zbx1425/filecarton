@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { FileCartonAuthPlugin, FileCartonAuthUser, LoginFieldDef } from '@/api/types'
+import type { FileCartonAuthPlugin, FileCartonAuthUser, LoginFieldDef, PluginLabel } from '@/api/types'
 import type { ErrorInfo } from '@/api/client'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -12,6 +12,7 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<FileCartonAuthUser | null>(config?.user ?? null)
   const plugins = ref<FileCartonAuthPlugin[]>(config?.plugins ?? [])
   const loginFields = ref<LoginFieldDef[]>(config?.loginFields ?? [])
+  const motd = ref<PluginLabel | null>(config?.motd ?? null)
   const error = ref<ErrorInfo | null>(null)
 
   const showLogin = computed(() => enabled.value && !authenticated.value)
@@ -48,6 +49,7 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     plugins,
     loginFields,
+    motd,
     error,
     showLogin,
     showLogout,

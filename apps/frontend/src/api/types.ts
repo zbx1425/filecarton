@@ -190,6 +190,7 @@ export interface FileCartonAuthConfig {
   user?: FileCartonAuthUser | null
   plugins?: FileCartonAuthPlugin[]
   loginFields?: LoginFieldDef[]
+  motd?: PluginLabel
   error?: string
   errorParams?: Record<string, string>
 }

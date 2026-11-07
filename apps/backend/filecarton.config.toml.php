@@ -20,6 +20,14 @@ static_user_list = [
   { id = "admin", password_hash = "" }
 ]
 
+# Message of the Day displayed on the login page, rendered as Markdown.
+# Supports structured text (see docs/config_auth.md for full format):
+#   motd = "# Welcome\nWelcome to **FileCarton**."
+#   motd = { file = "${CONFIG_DIR}/motd.md" }
+#   motd = { langs = { en = "Hello", zh = "您好" } }
+#   motd = { langs = { en = { file = "${CONFIG_DIR}/motd_en.md" }, zh = { file = "${CONFIG_DIR}/motd_zh.md" } } }
+# motd = ""
+
 
 
 # ─── Default Repository Setting ──────────────────────────────────────────────

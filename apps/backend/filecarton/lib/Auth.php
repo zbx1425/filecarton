@@ -571,6 +571,20 @@ class Auth {
             $p[] = $msg;
         }
 
+        $motd = defined('FILECARTON_MOTD') ? FILECARTON_MOTD : '';
+        if (is_array($motd)) {
+            if (isset($motd['file']) && is_string($motd['file']) && !is_file($motd['file'])) {
+                $p[] = 'motd file not found: ' . basename($motd['file']);
+            }
+            if (isset($motd['langs']) && is_array($motd['langs'])) {
+                foreach ($motd['langs'] as $loc => $v) {
+                    if (is_array($v) && isset($v['file']) && is_string($v['file']) && !is_file($v['file'])) {
+                        $p[] = "motd langs[$loc] file not found: " . basename($v['file']);
+                    }
+                }
+            }
+        }
+
         return $p;
     }
 
@@ -639,19 +653,29 @@ class Auth {
     }
 
     /**
-     * Sanitize a structured label from a provider.
+     * Sanitize a structured label (or rich text) value.
      *
      * Accepts:
-     *   string               — literal text, returned as-is
-     *   ['key' => '...']     — i18n key, optionally with 'params'
-     *   ['langs' => [...]]   — per-locale messages, optionally with 'params'
+     *   string                  — literal text, returned as-is
+     *   ['key' => '...']        — i18n key, optionally with 'params'
+     *   ['langs' => [...]]      — per-locale messages, optionally with 'params'
+     *   ['file' => '...']       — file contents (only when $allowFile is true)
+     *
+     * When $allowFile is true, per-locale values inside 'langs' may also be
+     * ['file' => '...'] tables that are resolved to their file contents.
      *
      * Returns the sanitized value (string or array), or '' on invalid input.
      *
      * @param mixed $label
+     * @param bool  $allowFile  Whether to resolve { file = "..." } references
      * @return string|array
      */
-    public static function sanitizeLabel($label) {
+    public static function sanitizeLabel($label, bool $allowFile = false) {
+        if ($allowFile && is_array($label) && isset($label['file']) && is_string($label['file'])) {
+            $content = @file_get_contents($label['file']);
+            return ($content !== false) ? $content : '';
+        }
+
         if (is_string($label)) return $label;
         if (!is_array($label)) return '';
 
@@ -672,7 +696,11 @@ class Auth {
         if (isset($label['langs']) && is_array($label['langs'])) {
             $langs = [];
             foreach ($label['langs'] as $locale => $msg) {
-                if (is_string($locale) && is_string($msg) && $locale !== '') {
+                if (!is_string($locale) || $locale === '') continue;
+                if ($allowFile && is_array($msg) && isset($msg['file']) && is_string($msg['file'])) {
+                    $content = @file_get_contents($msg['file']);
+                    if ($content !== false) $langs[$locale] = $content;
+                } elseif (is_string($msg)) {
                     $langs[$locale] = $msg;
                 }
             }
@@ -694,26 +722,50 @@ class Auth {
     }
 
     /**
-     * Sanitize and validate login_ui_extra_fields definitions.
+     * Sanitize and optionally validate login_ui_extra_fields definitions.
      *
-     * @param mixed $raw
+     * When $problems is provided, validation messages are appended to it
+     * instead of silently skipping invalid entries.
+     *
+     * @param mixed       $raw
+     * @param array|null  &$problems  If non-null, collects validation messages
      * @return array  Sanitized field definitions safe for the frontend
      */
-    public static function sanitizeLoginFields($raw): array {
-        if (!is_array($raw)) return [];
+    public static function sanitizeLoginFields($raw, ?array &$problems = null): array {
+        if (!is_array($raw)) {
+            if ($problems !== null) $problems[] = 'login_ui_extra_fields must be an array.';
+            return [];
+        }
         $out = [];
         $names = [];
-        foreach ($raw as $field) {
-            if (!is_array($field)) continue;
-            if (!isset($field['name']) || !is_string($field['name'])) continue;
+        foreach ($raw as $i => $field) {
+            $pfx = ($problems !== null) ? "login_ui_extra_fields[$i]" : '';
+
+            if (!is_array($field)) {
+                if ($problems !== null) $problems[] = "$pfx must be a table.";
+                continue;
+            }
+            if (!isset($field['name']) || !is_string($field['name'])
+                || !preg_match('/^[a-z][a-z0-9_]{0,31}$/', $field['name'])) {
+                if ($problems !== null) $problems[] = "$pfx has an invalid or missing 'name'.";
+                continue;
+            }
             $name = $field['name'];
-            if (!preg_match('/^[a-z][a-z0-9_]{0,31}$/', $name)) continue;
-            if ($name === 'username' || $name === 'password') continue;
-            if (isset($names[$name])) continue;
+            if ($name === 'username' || $name === 'password') {
+                if ($problems !== null) $problems[] = "$pfx name cannot be 'username' or 'password'.";
+                continue;
+            }
+            if (isset($names[$name])) {
+                if ($problems !== null) $problems[] = "$pfx has a duplicate name '$name'.";
+                continue;
+            }
             $names[$name] = true;
 
             $type = $field['type'] ?? '';
-            if ($type !== 'text' && $type !== 'password' && $type !== 'select') continue;
+            if ($type !== 'text' && $type !== 'password' && $type !== 'select') {
+                if ($problems !== null) $problems[] = "$pfx type must be 'text', 'password', or 'select'.";
+                continue;
+            }
 
             $entry = ['name' => $name, 'type' => $type];
 
@@ -731,27 +783,43 @@ class Auth {
 
             if (isset($field['required']) && $field['required'] === true) {
                 $entry['required'] = true;
+            } elseif ($problems !== null && array_key_exists('required', $field) && !is_bool($field['required'])) {
+                $problems[] = "$pfx 'required' must be a boolean.";
             }
 
             if ($type === 'select') {
-                if (!isset($field['options']) || !is_array($field['options'])) continue;
+                if (!isset($field['options']) || !is_array($field['options']) || $field['options'] === []) {
+                    if ($problems !== null) $problems[] = "$pfx (type=select) must have a non-empty 'options' array.";
+                    continue;
+                }
                 $opts = [];
-                foreach ($field['options'] as $opt) {
-                    if (!is_array($opt)) continue;
-                    if (!isset($opt['value']) || !is_string($opt['value'])) continue;
+                $optionValues = [];
+                foreach ($field['options'] as $j => $opt) {
+                    if (!is_array($opt) || !isset($opt['value']) || !is_string($opt['value']) || $opt['value'] === '') {
+                        if ($problems !== null) $problems[] = "$pfx options[$j] must have a non-empty string 'value'.";
+                        continue;
+                    }
                     $optLabel = self::sanitizeLabel($opt['label'] ?? $opt['value']);
                     if ($optLabel === '' || $optLabel === []) $optLabel = $opt['value'];
                     $opts[] = ['value' => $opt['value'], 'label' => $optLabel];
-                }
-                if ($opts === []) continue;
-                $entry['options'] = $opts;
-                $optionValues = [];
-                foreach ($opts as $opt) {
                     $optionValues[$opt['value']] = true;
                 }
+                if ($opts === []) {
+                    if ($problems !== null) $problems[] = "$pfx (type=select) has no valid options.";
+                    continue;
+                }
+                $entry['options'] = $opts;
                 if (isset($field['default']) && is_string($field['default']) && isset($optionValues[$field['default']])) {
                     $entry['default'] = $field['default'];
+                } elseif ($problems !== null && array_key_exists('default', $field)) {
+                    if (!is_string($field['default']) || $field['default'] === '') {
+                        $problems[] = "$pfx 'default' must be a non-empty string.";
+                    } elseif (!isset($optionValues[$field['default']])) {
+                        $problems[] = "$pfx 'default' must match an option value.";
+                    }
                 }
+            } elseif ($problems !== null && array_key_exists('default', $field)) {
+                $problems[] = "$pfx 'default' is only valid for type=select.";
             }
 
             $out[] = $entry;
@@ -764,69 +832,12 @@ class Auth {
      * @return string[]
      */
     public static function validateLoginFields(): array {
-        $p = [];
-        $raw = defined('FILECARTON_LOGIN_UI_EXTRA_FIELDS') ? FILECARTON_LOGIN_UI_EXTRA_FIELDS : [];
-        if (!is_array($raw)) {
-            $p[] = 'FILECARTON_LOGIN_UI_EXTRA_FIELDS must be an array.';
-            return $p;
-        }
-        $names = [];
-        foreach ($raw as $i => $field) {
-            $prefix = "login_ui_extra_fields[$i]";
-            if (!is_array($field)) {
-                $p[] = "$prefix must be a table.";
-                continue;
-            }
-            if (!isset($field['name']) || !is_string($field['name'])
-                || !preg_match('/^[a-z][a-z0-9_]{0,31}$/', $field['name'])) {
-                $p[] = "$prefix has an invalid or missing 'name'.";
-                continue;
-            }
-            $name = $field['name'];
-            if ($name === 'username' || $name === 'password') {
-                $p[] = "$prefix name cannot be 'username' or 'password'.";
-            }
-            if (isset($names[$name])) {
-                $p[] = "$prefix has a duplicate name '$name'.";
-            }
-            $names[$name] = true;
-            $type = $field['type'] ?? '';
-            if ($type !== 'text' && $type !== 'password' && $type !== 'select') {
-                $p[] = "$prefix type must be 'text', 'password', or 'select'.";
-            }
-            if (array_key_exists('required', $field) && !is_bool($field['required'])) {
-                $p[] = "$prefix 'required' must be a boolean.";
-            }
-            if ($type === 'select') {
-                $optionValues = [];
-                if (!isset($field['options']) || !is_array($field['options']) || $field['options'] === []) {
-                    $p[] = "$prefix (type=select) must have a non-empty 'options' array.";
-                } else {
-                    $validCount = 0;
-                    foreach ($field['options'] as $j => $opt) {
-                        if (!is_array($opt) || !isset($opt['value']) || !is_string($opt['value']) || $opt['value'] === '') {
-                            $p[] = "$prefix options[$j] must have a non-empty string 'value'.";
-                        } else {
-                            $validCount++;
-                            $optionValues[$opt['value']] = true;
-                        }
-                    }
-                    if ($validCount === 0 && empty($p)) {
-                        $p[] = "$prefix (type=select) has no valid options.";
-                    }
-                }
-                if (array_key_exists('default', $field)) {
-                    if (!is_string($field['default']) || $field['default'] === '') {
-                        $p[] = "$prefix 'default' must be a non-empty string.";
-                    } elseif (!isset($optionValues[$field['default']])) {
-                        $p[] = "$prefix 'default' must match an option value.";
-                    }
-                }
-            } elseif (array_key_exists('default', $field)) {
-                $p[] = "$prefix 'default' is only valid for type=select.";
-            }
-        }
-        return $p;
+        $problems = [];
+        self::sanitizeLoginFields(
+            defined('FILECARTON_LOGIN_UI_EXTRA_FIELDS') ? FILECARTON_LOGIN_UI_EXTRA_FIELDS : [],
+            $problems
+        );
+        return $problems;
     }
 
     /**
@@ -941,6 +952,13 @@ class Auth {
         );
         if ($loginFields !== []) {
             $cfg['loginFields'] = $loginFields;
+        }
+        if ($user === null) {
+            $motd = defined('FILECARTON_MOTD') ? FILECARTON_MOTD : '';
+            $motdSanitized = self::sanitizeLabel($motd, true);
+            if ($motdSanitized !== '' && $motdSanitized !== []) {
+                $cfg['motd'] = $motdSanitized;
+            }
         }
         if (self::$inlineError !== '') {
             $cfg['error'] = self::$inlineError;

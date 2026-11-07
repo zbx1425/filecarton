@@ -1,6 +1,4 @@
 #<?php exit;?>
-# Rendered at container start by /opt/filecarton/bootstrap.php.
-# Placeholders are substituted once. Do not edit the running copy.
 
 [auth]
 auth_providers = [
@@ -13,6 +11,7 @@ grant_resolvers = [
 static_user_list = [
   { id = "demo", display_name = "Demo", password_hash = "__PASSWORD_HASH__" }
 ]
+motd = { file = "/opt/filecarton/motd.md" }
 
 [repo]
 # verifyAllSet() requires these four. A partial [repo] table replaces the
@@ -32,7 +31,7 @@ theme_primary = ""
 theme_toolbar = "sky-solid"
 
 [limits]
-upload_chunk_size = "16M"
+upload_chunk_size = "8M"
 upload_max_file_size = "256M"
 
 [deployment]

@@ -1,11 +1,6 @@
 <?php
 
-/**
- * Cloud Run / local-docker entrypoint.
- *
- * Runs as root, prepares the shared folder and config, proves that the
- * Apache worker user can write them, then replaces this process with Apache.
- */
+// This script is supposed to be ran on PHP 8.2+.
 
 const FILECARTON_DEMO_DATA = '/data';
 const FILECARTON_DEMO_ROOT = '/data/demo';
@@ -178,11 +173,6 @@ function filecarton_demo_probe_file(string $dir): int {
     return 0;
 }
 
-/**
- * Drop to www-data and prove both directories accept new files and that an
- * existing file in the demo root can be opened for write. Returns the child
- * exit code. Does not change ownership itself.
- */
 function filecarton_demo_probe(string $demo, string $tmp, int $uid, int $gid): int {
     $pid = pcntl_fork();
     if ($pid === -1) {

@@ -157,10 +157,42 @@ All redirect providers (OAuth and `LinkAuth`) support structured labels. The `la
 | i18n key | `{ key = "auth.register" }` | Resolved via the frontend's locale files. |
 | i18n key + params | `{ key = "auth.oauth_continue", params = { service = "GitHub" } }` | "Continue with GitHub" (localized). |
 | Per-language | `{ langs = { en = "Sign up", zh = "注册" } }` | Picked by the user's locale. |
+| File (MOTD only) | `{ file = "${CONFIG_DIR}/motd.md" }` | Contents of the specified file. |
 
 The per-language format also accepts an optional `params` key for `{placeholder}` interpolation.
 
+The `{ file = "..." }` format is only available for the `motd` setting. When used inside a `langs` table, each per-language value may also be a `{ file = "..." }` table (see [MOTD](#motd-message-of-the-day) below).
+
 Built-in OAuth providers use the `auth.oauth_continue` key by default, so their button text is localizable.
+
+### MOTD (Message of the Day)
+
+The `motd` setting under `[auth]` displays a Markdown-rendered message on the login page.
+
+```toml
+[auth]
+# Inline Markdown
+motd = """
+# Welcome
+Welcome to **FileCarton**. Please sign in to continue.
+"""
+
+# Read from a file (supports ${CONFIG_DIR} and ${ENTRY_POINT_SCRIPT_DIR})
+motd = { file = "${CONFIG_DIR}/motd.md" }
+
+# i18n key (resolved by the frontend's locale files)
+motd = { key = "motd.welcome" }
+
+# Per-language, with file or inline values
+motd = { langs = {
+  en = { file = "${CONFIG_DIR}/motd_en.md" },
+  zh = "# 欢迎\n欢迎使用 **FileCarton**。"
+} }
+```
+
+The MOTD uses [label formats](#label-formats) with an additional `{ file = "..." }` option.
+
+The MOTD is currently only shown on the login page.
 
 ## The user list
 

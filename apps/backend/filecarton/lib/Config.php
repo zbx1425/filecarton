@@ -60,6 +60,7 @@ class Config {
             'asset_url'                     => '',
             'http_client_proxy'             => '',
             'login_ui_extra_fields'         => [],
+            'motd'                          => '',
             'session_name'                  => 'FILECARTON',
             'dev_server'                    => false,
         ];
@@ -121,7 +122,9 @@ class Config {
                 ? ($v === false || is_string($v) || is_array($v))
                 : (($k === 'dev_server')
                     ? ($v === false || is_string($v))
-                    : (gettype($v) === gettype($defaults[$k])));
+                    : (($k === 'motd')
+                        ? (is_string($v) || is_array($v))
+                        : (gettype($v) === gettype($defaults[$k]))));
             if (!$ok) {
                 throw new \RuntimeException("Invalid config value for: {$k}");
             }

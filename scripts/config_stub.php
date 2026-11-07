@@ -12,6 +12,7 @@ define('FILECARTON_GRANT_RESOLVERS', [['class' => \FileCarton\StaticGrantResolve
 define('FILECARTON_PUBLIC_ORIGIN', '');
 define('FILECARTON_SESSION_NAME', 'FILECARTON');
 define('FILECARTON_LOGIN_UI_EXTRA_FIELDS', []);
+define('FILECARTON_MOTD', '');
 
 define('FILECARTON_REPO_SETTING', [
     'root_path' => '',

@@ -11,7 +11,8 @@ require_once FILECARTON_SCRIPT_DIR . '/lib/Polyfill.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/Platform.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/Toml.php';
 require_once FILECARTON_SCRIPT_DIR . '/lib/Config.php';
-Config::load(__DIR__ . '/filecarton.config.toml.php');
+if (!defined("FILECARTON_CONFIG_PATH")) define("FILECARTON_CONFIG_PATH", __DIR__ . '/filecarton.config.toml.php');
+Config::load(FILECARTON_CONFIG_PATH);
 
 /**
  * SCRIPT_NAME only, for asset URLs so they stay globally cacheable

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
@@ -11,8 +11,9 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import { LogIn } from '@lucide/vue'
+import { InfoIcon, LogIn } from '@lucide/vue'
 import type { FileCartonAuthPluginIcon, PluginLabel } from '@/api/types'
+import { renderMarkdown } from '@/composables/useMarkdown'
 
 const { t, locale, fallbackLocale } = useI18n()
 const auth = useAuthStore()
@@ -60,6 +61,14 @@ function iconMaskStyle(icon: FileCartonAuthPluginIcon) {
   }
 }
 
+const motdHtml = computed(() => {
+  const raw = auth.motd
+  if (!raw) return ''
+  const text = resolvePluginLabel(raw)
+  if (!text) return ''
+  return renderMarkdown(text)
+})
+
 const username = ref('')
 const password = ref('')
 const extraFields = reactive<Record<string, string>>({})
@@ -104,11 +113,69 @@ function handleRedirect(pluginId: string) {
 <template>
   <div class="flex min-h-screen">
     <!-- Left: gradient background (lg+ only) -->
-    <div class="hidden lg:flex w-[55%] relative overflow-hidden bg-gradient-to-br from-login-from via-login-via to-login-to">
-      <div class="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/5"></div>
-      <div class="absolute top-1/3 -right-20 w-80 h-80 rounded-full bg-white/5"></div>
-      <div class="absolute -bottom-16 left-1/4 w-64 h-64 rounded-full bg-white/5"></div>
-      <p class="absolute bottom-12 left-16 text-white text-base">FileCarton by Zbx1425</p>
+    <div class="hidden lg:flex w-[55%] relative overflow-hidden bg-gradient-to-br from-login-from via-login-via to-login-to flex-col justify-between p-12 xl:p-16">
+    
+      <!-- Decorations -->
+      <!-- Glows -->
+      <div class="pointer-events-none absolute -top-32 -left-32 w-[30rem] h-[30rem] rounded-full bg-sky-400/15 blur-3xl"></div>
+      <div class="pointer-events-none absolute top-1/3 -right-24 w-96 h-96 rounded-full bg-teal-300/10 blur-3xl"></div>
+      <div class="pointer-events-none absolute -bottom-24 left-1/4 w-80 h-80 rounded-full bg-indigo-400/15 blur-3xl"></div>
+      <!-- Grid -->
+      <div class="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,#000_60%,transparent_100%)]">
+        <div class="absolute top-[8rem] left-[12rem] w-16 h-16 bg-white/[0.03] border border-white/10"></div>
+        <div class="absolute top-[16rem] left-[24rem] w-16 h-16 bg-sky-400/[0.05] border border-sky-300/15"></div>
+      </div>
+      <!-- Some Isometric Stuff -->
+      <svg
+        class="pointer-events-none absolute -right-16 -bottom-16 w-[28rem] h-[28rem] text-white/[0.04] stroke-current"
+        viewBox="0 0 200 200"
+        fill="none"
+        stroke-width="1"
+      >
+        <polygon points="100,10 180,55 180,145 100,190 20,145 20,55" />
+        <polyline points="20,55 100,100 180,55" />
+        <line x1="100" y1="100" x2="100" y2="190" />
+        <polygon points="100,40 150,68 150,125 100,153 50,125 50,68" stroke-dasharray="3 3" />
+      </svg>
+
+      <div class="relative z-10 w-full max-w-xl my-auto flex flex-col justify-between min-h-[calc(100vh-6rem)] xl:min-h-[calc(100vh-10rem)]">
+        <!-- Push motd lower -->
+        <div></div>
+
+        <div v-if="motdHtml" class="my-auto -translate-y-4 w-full">
+          <div
+            class="border border-white/15 bg-white/[0.07] backdrop-blur-md shadow-2xl shadow-black/20"
+          >
+            <div class="flex items-center gap-2 px-3 py-1 border-b border-white/10 bg-white/[0.03] text-white">
+              <InfoIcon></InfoIcon>
+            </div>
+            <div class="px-4 py-3 xl:px-6 xl:py-4">
+              <div
+                class="max-h-[60vh] overflow-y-auto pr-2 
+                      [&::-webkit-scrollbar]:w-1.5 
+                      [&::-webkit-scrollbar-track]:bg-transparent 
+                      [&::-webkit-scrollbar-thumb]:rounded-full 
+                      [&::-webkit-scrollbar-thumb]:bg-white/20 
+                      hover:[&::-webkit-scrollbar-thumb]:bg-white/30
+                      prose prose-sm prose-invert max-w-none
+                      prose-headings:text-white prose-headings:font-semibold
+                      prose-p:text-white/85 prose-p:leading-relaxed
+                      prose-a:text-sky-300 hover:prose-a:text-sky-200 prose-a:underline-offset-4
+                      prose-strong:text-white
+                      prose-code:bg-black/25 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
+                      prose-pre:bg-black/30 prose-pre:border prose-pre:border-white/10
+                      prose-hr:border-white/15
+                      prose-blockquote:border-l-sky-400/60 prose-blockquote:text-white/70"
+                v-html="motdHtml"
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-white/70 text-sm font-medium tracking-wide">
+          FileCarton by Zbx1425
+        </p>
+      </div>
     </div>
 
     <!-- Right: login form -->
@@ -123,6 +190,14 @@ function handleRedirect(pluginId: string) {
             {{ ui.branding }}
           </div>
           <h2 class="text-2xl font-semibold tracking-tight text-foreground">{{ $t('auth.sign_in') }}</h2>
+
+          
+          <!-- Narrow screen MOTD -->
+          <div
+            v-if="motdHtml"
+            class="lg: hidden mt-6 bg-muted/40 p-4 -mx-4 max-h-48 overflow-y-auto prose prose-sm dark:prose-invert max-w-none"
+            v-html="motdHtml"
+          />
         </div>
 
         <!-- Error -->

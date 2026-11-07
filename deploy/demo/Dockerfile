@@ -68,6 +68,7 @@ COPY --from=compile /src/dist/singlefile/filecarton.php /var/www/html/index.php
 COPY deploy/demo/bootstrap.php /opt/filecarton/bootstrap.php
 COPY deploy/demo/demo_grant.php /opt/filecarton/demo_grant.php
 COPY deploy/demo/filecarton.config.toml.php.template /opt/filecarton/filecarton.config.toml.php.template
+COPY deploy/demo/motd.md /opt/filecarton/motd.md
 COPY --from=seed /src/seed /opt/filecarton/seed
 ARG IMAGE_SOURCE=https://github.com/local/filecarton
 LABEL org.opencontainers.image.source="${IMAGE_SOURCE}"
