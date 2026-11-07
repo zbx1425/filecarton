@@ -142,7 +142,7 @@ function startResize(e: MouseEvent) {
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="border-b bg-muted/30 sticky top-0 z-10 relative" @click="handleEmptyClick">
+    <div v-if="!ui.isMobile" class="border-b bg-muted/30 sticky top-0 z-10 relative" @click="handleEmptyClick">
       <div class="flex items-center px-3 text-sm font-medium text-muted-foreground h-(--fc-row-height) max-w-(--fc-table-max-w)">
         <div class="w-6 shrink-0" />
         <div
@@ -204,22 +204,26 @@ function startResize(e: MouseEvent) {
             <!-- Go up row -->
             <div
               v-if="!isRoot"
-              class="flex items-center px-3 text-sm text-muted-foreground cursor-pointer hover:bg-muted/50 h-(--fc-row-height) max-w-(--fc-table-max-w)"
+              class="flex items-center px-3 text-sm text-muted-foreground cursor-pointer hover:bg-muted/50"
+              :class="ui.isMobile ? 'min-h-14 touch-manipulation' : 'h-(--fc-row-height) max-w-(--fc-table-max-w)'"
               data-file-row
               @click="view.goUp"
               @contextmenu="contextTarget = null"
             >
-              <div class="w-6 shrink-0" />
-              <div class="flex items-center gap-2 flex-1">
+              <div class="shrink-0" :class="ui.isMobile ? 'w-11' : 'w-6'" />
+              <div class="flex min-w-0 flex-1 items-center gap-2">
                 <CornerLeftUp class="size-4" />
                 <span>..</span>
               </div>
-              <div class="w-22" />
-              <div class="w-28" />
-              <template v-if="view.showUnixPerm">
+              <template v-if="!ui.isMobile">
+                <div class="w-22" />
                 <div class="w-28" />
-                <div class="w-36" />
+                <template v-if="view.showUnixPerm">
+                  <div class="w-28" />
+                  <div class="w-36" />
+                </template>
               </template>
+              <div v-else class="w-11 shrink-0" />
             </div>
 
             <FileRow
@@ -274,12 +278,13 @@ function startResize(e: MouseEvent) {
     <BatchActionBar v-if="view.hasSelection" />
     <div
       v-else-if="!view.loading && !view.error"
-      class="flex items-center h-9 px-3 text-sm shrink-0 bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
+      class="flex min-w-0 items-center h-9 px-3 text-sm shrink-0 bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
     >
-      {{ $t('files.status.summary', { folders: view.filteredDirs.length, files: view.filteredFiles.length }) }}
-      <span class="ml-1">({{ formatSize(view.filteredTotalSize) }})</span>
-      <span class="flex-1"></span>
-      <span class="text-muted-foreground/60">FileCarton by Zbx1425</span>
+      <span class="min-w-0 truncate">
+        {{ $t('files.status.summary', { folders: view.filteredDirs.length, files: view.filteredFiles.length }) }}
+        <span class="ml-1">({{ formatSize(view.filteredTotalSize) }})</span>
+      </span>
+      <span class="ml-auto shrink-0 text-muted-foreground/60">FileCarton by Zbx1425</span>
     </div>
   </div>
 </template>

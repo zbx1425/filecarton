@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { computed, inject, reactive, ref, onBeforeUnmount } from 'vue'
-import { ChevronRight, Loader2 } from '@lucide/vue'
+import { ChevronRight, EllipsisVertical, Loader2 } from '@lucide/vue'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { useUiStore } from '@/stores/ui'
+import TreeMenuBody from './TreeMenuBody.vue'
 import { useTreeNavigation } from '@/composables/useTreeNavigation'
 import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
 import { joinPath } from '@/utils/path'
@@ -16,10 +24,16 @@ const props = defineProps<{
 }>()
 
 const panelCtx = inject(TREE_PANEL_KEY)!
+const ui = useUiStore()
 const tn = reactive(useTreeNavigation({
   path: () => props.path,
   name: () => props.name,
   type: () => props.type,
+}))
+const treeTarget = computed(() => ({
+  name: props.name,
+  path: props.path,
+  isDir: tn.isDir,
 }))
 
 const icon = computed(() => getFileIcon(props.name, tn.isDir, tn.isExpanded))
@@ -34,7 +48,7 @@ function handleChevronClick(e: Event) {
 }
 
 function handleDragOver(e: DragEvent) {
-  if (!tn.isDir || !isInternalDrag(e)) return
+  if (ui.isMobile || !tn.isDir || !isInternalDrag(e)) return
   e.preventDefault()
   if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
   dropHover.value = true
@@ -43,7 +57,7 @@ function handleDragOver(e: DragEvent) {
 const rowRef = ref<HTMLElement | null>(null)
 
 function handleDragEnter(e: DragEvent) {
-  if (!tn.isDir || !isInternalDrag(e)) return
+  if (ui.isMobile || !tn.isDir || !isInternalDrag(e)) return
   if (!tn.isExpanded && expandTimer === null) {
     expandTimer = setTimeout(() => {
       tn.handleToggle()
@@ -70,6 +84,7 @@ onBeforeUnmount(() => {
 })
 
 async function handleDrop(e: DragEvent) {
+  if (ui.isMobile) return
   dropHover.value = false
   if (expandTimer) {
     clearTimeout(expandTimer)
@@ -93,11 +108,12 @@ function handleContextMenu() {
     <div
       ref="rowRef"
       data-tree-node
-      class="flex items-center h-7 pl-1 cursor-pointer select-none group"
+      class="flex items-center pl-1 cursor-pointer select-none group"
       :class="[
         dropHover ? 'bg-primary/10' :
         tn.isActive ? 'bg-accent text-accent-foreground font-medium' : 'hover:bg-muted/50',
         tn.isCut ? 'opacity-50' : '',
+        ui.isMobile ? 'min-h-11 touch-manipulation' : 'h-7'
       ]"
       @click="tn.handleClick"
       @contextmenu="handleContextMenu"
@@ -123,6 +139,27 @@ function handleContextMenu() {
 
       <component :is="icon" class="size-4 mx-1.5 shrink-0" :class="iconColor" />
       <span class="truncate text-sm" :title="name">{{ name }}</span>
+      <DropdownMenu v-if="ui.isMobile">
+        <DropdownMenuTrigger as-child>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            class="ml-auto size-11 shrink-0 touch-manipulation"
+            :aria-label="$t('common.a11y.more')"
+            @click.stop
+          >
+            <EllipsisVertical class="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" class="w-52">
+          <TreeMenuBody
+            surface="dropdown"
+            :show-shortcuts="false"
+            :flatten-subs="true"
+            :context-target="treeTarget"
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
 
     <template v-if="tn.isDir && tn.isExpanded">

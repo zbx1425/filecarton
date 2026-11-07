@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, inject, onBeforeUnmount } from 'vue'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { EllipsisVertical } from '@lucide/vue'
+import FileListMenuBody from './FileListMenuBody.vue'
 import { useUiStore } from '@/stores/ui'
 import { getFileIcon, getFileIconColor, canPreviewImage } from '@/composables/useFileType'
 import { formatSize, formatTime, formatTimeLocalISO8601, formatUnixMode } from '@/utils/format'
@@ -55,6 +63,22 @@ function handleDblClick() {
     ctx.openFile(props.name)
   }
 }
+
+function prepareKebab() {
+  if (!ctx.isSelected(props.name)) {
+    ctx.clearSelection()
+    ctx.toggleSelect(props.name)
+  }
+}
+
+const menuTarget = computed(() => ({
+  name: props.name,
+  isDir: props.isDir,
+  size: props.size,
+  mode: props.mode,
+  owner: props.owner,
+  group: props.group,
+}))
 
 // ── Drag & drop ──
 
@@ -127,6 +151,52 @@ const thumbnailUrl = computed(() => {
 
 <template>
   <div
+    v-if="ui.isMobile"
+    data-file-row
+    :data-name="name"
+    class="flex items-center min-h-14 touch-manipulation text-sm border-b border-transparent cursor-default select-none"
+    :class="[isSelected ? 'bg-selected' : '', isCut ? 'opacity-50' : '']"
+  >
+    <div class="flex w-11 shrink-0 items-center justify-center self-stretch" @click.stop="ctx.toggleSelect(name)">
+      <Checkbox :model-value="isSelected" class="size-3.5 pointer-events-none" />
+    </div>
+    <div class="flex me-3">
+      <component :is="icon" class="size-5 shrink-0" :class="iconColor" />
+    </div>
+    <div class="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-1.5" @click="handleDblClick">
+      <div class="flex min-w-0 items-center gap-2">
+        <span class="truncate text-sm" :class="isDir ? 'font-medium' : ''" :title="name">{{ name }}</span>
+      </div>
+      <div class="flex min-w-0 items-center text-xs text-muted-foreground">
+        <span class="w-17 shrink-0 tabular-nums">{{ isDir ? '—' : formatSize(size ?? 0) }}</span>
+        <span class="min-w-0 truncate" :title="formatTimeLocalISO8601(mtime)">{{ formatTime(mtime) }}</span>
+      </div>
+    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger as-child>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          class="size-11 shrink-0 touch-manipulation"
+          :aria-label="$t('common.a11y.more')"
+          @click.stop="prepareKebab"
+        >
+          <EllipsisVertical class="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" class="w-52">
+        <FileListMenuBody
+          surface="dropdown"
+          :show-shortcuts="false"
+          :flatten-subs="true"
+          :context-target="menuTarget"
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  </div>
+
+  <div
+    v-else
     data-file-row
     :data-name="name"
     class="flex items-center px-3 text-sm group border-b border-transparent cursor-default select-none h-(--fc-row-height) max-w-(--fc-table-max-w)"
