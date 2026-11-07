@@ -280,6 +280,12 @@ export const usePreferencesStore = defineStore('preferences', () => {
     persist()
   }
 
+  function setSort(column: SortColumn, asc: boolean) {
+    sortBy.value = column
+    sortAsc.value = asc
+    persist()
+  }
+
   function setTableMaxWidth(width: number | null) {
     if (width !== null && width > windowWidth.value - 48) {
       tableMaxWidth.value = null
@@ -348,6 +354,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
     sortAsc,
     locale,
     toggleSort,
+    setSort,
     setTableMaxWidth,
   }
 })

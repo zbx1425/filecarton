@@ -1,4 +1,5 @@
-import type { InjectionKey } from 'vue'
+import type { InjectionKey, Reactive } from 'vue'
+import type { useFileListView } from '@/composables/useFileListView'
 
 /**
  * An item targeted by a right-click in the file list.
@@ -37,19 +38,9 @@ export interface FileListContext {
 export const FILE_LIST_KEY: InjectionKey<FileListContext> = Symbol('fileListContext')
 
 /**
- * Session-wide file list. Menus inject this instead of FILE_LIST_KEY so they
- * can render outside FileTable. The object must stay intact; do not destructure it.
+ * The one reactive file-list model owned by AppShell.
+ * Inject the object whole. Do not wrap it in reactive() again, and do not destructure it.
  */
-export interface FileListViewContext {
-  selectedCount: number
-  canPaste: boolean
-  isAllSelected: boolean
-  currentPath: readonly string[]
-  currentPathStr: string
-  isSelected: (name: string) => boolean
-  navigateTo: (path: string[]) => unknown
-  openFile: (fileName: string) => unknown
-  toggleSelectAll: () => void
-}
+export type FileListViewModel = Reactive<ReturnType<typeof useFileListView>>
 
-export const FILE_LIST_VIEW_KEY: InjectionKey<FileListViewContext> = Symbol('fileListView')
+export const FILE_LIST_VIEW_KEY: InjectionKey<FileListViewModel> = Symbol('fileListView')

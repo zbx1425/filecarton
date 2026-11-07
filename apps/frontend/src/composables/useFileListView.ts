@@ -142,9 +142,17 @@ export function useFileListView() {
     return clipboard.isCutItem(currentPathStr.value, name)
   }
 
+  // Same condition as ContentPanel.showRecursiveSearch.
+  const showRecursiveSearch = computed(
+    () => viewMode.value === 'list' && searchRecursive.value && searchQuery.value.trim().length > 0,
+  )
+
   // ── Watch: prune selection and adjust focus when filtered entries change ──
+  // This composable is created once for the session. Skip while the list is not
+  // on screen, or the watch would edit selection during preview and recursive search.
 
   watch(filteredEntries, (entries) => {
+    if (viewMode.value !== 'list' || showRecursiveSearch.value) return
     const len = entries.length
     if (len === 0) {
       navigation.setFocusIndex(-1)
@@ -156,6 +164,10 @@ export function useFileListView() {
       const validPaths = new Set(entries.map(e => joinPath(curPath, e.name)))
       navigation.pruneSelection(validPaths)
     }
+  })
+
+  watch(showRecursiveSearch, (active) => {
+    if (active) navigation.clearSelection()
   })
 
   // ── Query helpers ──

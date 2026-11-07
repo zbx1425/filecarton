@@ -278,6 +278,11 @@ export function useArchiveExplorer(
     }
   }
 
+  function setSort(column: ArchiveSortColumn, asc: boolean) {
+    sortBy.value = column
+    sortAsc.value = asc
+  }
+
   const currentChildren = computed(() => childrenByParent.value.get(currentPathStr.value) ?? [])
   const currentDirs = computed(() => currentChildren.value.filter(c => c.isDir))
   const currentFiles = computed(() => currentChildren.value.filter(c => !c.isDir))
@@ -391,6 +396,7 @@ export function useArchiveExplorer(
     openEntryNode,
     backToArchiveList,
     toggleSort,
+    setSort,
     downloadEntry,
   }
 }

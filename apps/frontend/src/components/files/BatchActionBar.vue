@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive } from 'vue'
+import { computed, inject } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useUiStore } from '@/stores/ui'
-import { useFileListView } from '@/composables/useFileListView'
+import { FILE_LIST_VIEW_KEY } from './fileListContext'
 import {
   copySelected, cutSelected, deleteSelected,
   openPermissionsSelected, canModifySelectedPermissions,
@@ -22,8 +22,12 @@ import { toast } from 'vue-sonner'
 import { ref } from 'vue'
 import { Copy, Scissors, Trash2, X, FileArchive, Shield, Download } from '@lucide/vue'
 
-const view = reactive(useFileListView())
+const view = inject(FILE_LIST_VIEW_KEY) ?? missingFileListView()
 const ui = useUiStore()
+
+function missingFileListView(): never {
+  throw new Error('BatchActionBar requires FILE_LIST_VIEW_KEY')
+}
 const downloading = ref(false)
 
 /** Strip directory prefix from absolute-path selection set to get bare filenames */

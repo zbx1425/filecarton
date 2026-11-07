@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { computed, provide, reactive, ref } from 'vue'
+import { computed, inject, provide, ref } from 'vue'
 import { ArrowUp, ArrowDown, CornerLeftUp, Loader2 } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { useUiStore } from '@/stores/ui'
-import { useFileListView } from '@/composables/useFileListView'
 import { formatSize } from '@/utils/format'
 import { joinPath } from '@/utils/path'
 import FileRow from './FileRow.vue'
@@ -13,8 +12,12 @@ import BatchActionBar from './BatchActionBar.vue'
 import ReadmePane from './ReadmePane.vue'
 import { FILE_LIST_KEY, FILE_LIST_VIEW_KEY, type FileListContext, type ContextTargetItem } from './fileListContext'
 
-const view = reactive(useFileListView())
+const view = inject(FILE_LIST_VIEW_KEY) ?? missingFileListView()
 const ui = useUiStore()
+
+function missingFileListView(): never {
+  throw new Error('FileTable requires FILE_LIST_VIEW_KEY')
+}
 
 // ── Provide context to child components ──
 
@@ -37,7 +40,6 @@ const fileListContext: FileListContext = {
 }
 
 provide(FILE_LIST_KEY, fileListContext)
-provide(FILE_LIST_VIEW_KEY, view)
 
 // ── Computed state ──
 

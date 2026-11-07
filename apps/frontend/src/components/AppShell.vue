@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch } from 'vue'
+import { provide, reactive, watch } from 'vue'
 import { useNavigationStore } from '@/stores/navigation'
 import { useFileTreeCacheStore } from '@/stores/fileTreeCache'
 import { useUiStore } from '@/stores/ui'
@@ -18,6 +18,8 @@ import UploadDialog from '@/components/upload/UploadDialog.vue'
 import UploadErrorDialog from '@/components/upload/UploadErrorDialog.vue'
 import SettingsDialog from '@/components/modal/SettingsDialog.vue'
 import { useKeyboard } from '@/composables/useKeyboard'
+import { useFileListView } from '@/composables/useFileListView'
+import { FILE_LIST_VIEW_KEY } from '@/components/files/fileListContext'
 
 if (import.meta.env.DEV) import('vue-sonner/style.css')
 
@@ -25,6 +27,9 @@ const ui = useUiStore()
 const navigation = useNavigationStore()
 const cache = useFileTreeCacheStore()
 useKeyboard()
+
+const fileListView = reactive(useFileListView())
+provide(FILE_LIST_VIEW_KEY, fileListView)
 
 watch(
   () => navigation.currentPathStr,
