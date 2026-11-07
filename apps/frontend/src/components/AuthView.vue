@@ -195,7 +195,7 @@ function handleRedirect(pluginId: string) {
           <!-- Narrow screen MOTD -->
           <div
             v-if="motdHtml"
-            class="lg: hidden mt-6 bg-muted/40 p-4 -mx-4 max-h-48 overflow-y-auto prose prose-sm dark:prose-invert max-w-none"
+            class="lg:hidden mt-6 bg-muted/40 p-4 -mx-4 max-h-48 overflow-y-auto prose prose-sm dark:prose-invert max-w-none"
             v-html="motdHtml"
           />
         </div>

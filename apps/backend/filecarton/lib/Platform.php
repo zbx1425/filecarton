@@ -6,15 +6,10 @@ namespace FileCarton;
  * FileCarton Platform Utilities
  *
  * Self-contained filesystem operations with cross-platform support.
- * On Linux, uses native shell commands (rm -rf, cp -r) for performance
- * when exec() is available. Falls back to pure PHP on Windows or when
- * exec() is disabled.
  */
 
 class Platform {
 
-    /** @var bool|null */
-    private static $canExec = null;
     /** @var bool|null */
     private static $isWindows = null;
 
@@ -26,11 +21,6 @@ class Platform {
         if (!file_exists($path) && !is_link($path)) {
             return true;
         }
-
-        if (self::useNativeCommands()) {
-            return self::nativeDelete($path);
-        }
-
         return self::phpDelete($path);
     }
 
@@ -46,55 +36,8 @@ class Platform {
         if (!is_dir($source)) {
             return false;
         }
-
-        if (self::useNativeCommands() && $fileFilter === null) {
-            return self::nativeCopy($source, $dest);
-        }
-
         return self::phpCopy($source, $dest, $fileFilter);
     }
-
-    // ------------------------------------------------------------------
-    // Native (Linux) implementations
-    // ------------------------------------------------------------------
-
-    private static function nativeDelete(string $path): bool {
-        $escaped = escapeshellarg($path);
-        $output = [];
-        $exitCode = -1;
-        @exec('rm -rf ' . $escaped . ' 2>/dev/null', $output, $exitCode);
-
-        if ($exitCode === 0) {
-            return true;
-        }
-
-        return self::phpDelete($path);
-    }
-
-    private static function nativeCopy(string $source, string $dest): bool {
-        if (!is_dir($dest)) {
-            if (!@mkdir($dest, 0755, true) && !is_dir($dest)) {
-                return false;
-            }
-        }
-
-        $cpSource = escapeshellarg(rtrim($source, '/') . '/.');
-        $cpDest = escapeshellarg($dest);
-        $output = [];
-        $exitCode = -1;
-        @exec('cp -rfp ' . $cpSource . ' ' . $cpDest . ' 2>/dev/null', $output, $exitCode);
-
-        if ($exitCode === 0) {
-            return true;
-        }
-
-        return self::phpCopy($source, $dest);
-    }
-
-    // ------------------------------------------------------------------
-    // Pure PHP implementations (fallback, always available)
-    // ------------------------------------------------------------------
-
     private static function phpDelete(string $path): bool {
         if (is_link($path) || !is_dir($path)) {
             return @unlink($path);
@@ -285,38 +228,6 @@ class Platform {
             case 'k': return $value * 1024;
             default:  return $value;
         }
-    }
-
-    private static function useNativeCommands(): bool {
-        if (self::$isWindows === null) {
-            self::$isWindows = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN');
-        }
-
-        if (self::$isWindows) {
-            return false;
-        }
-
-        if (self::$canExec === null) {
-            self::$canExec = self::detectExec();
-        }
-
-        return self::$canExec;
-    }
-
-    private static function detectExec(): bool {
-        if (!function_exists('exec')) {
-            return false;
-        }
-
-        $disabled = ini_get('disable_functions');
-        if ($disabled !== false && $disabled !== '') {
-            $list = array_map('trim', explode(',', strtolower($disabled)));
-            if (in_array('exec', $list, true)) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     /**
