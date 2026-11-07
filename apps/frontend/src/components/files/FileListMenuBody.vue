@@ -3,9 +3,10 @@ import { computed, inject } from 'vue'
 import {
   FolderOpen, Eye, Copy, Scissors, ClipboardPaste, Pencil, Trash2, Download,
   PackageOpen, FileArchive, Shield, Hash, RefreshCw, File, Folder,
-  CloudDownload, CheckSquare, Square, Link,
+  CloudDownload, CheckSquare, Square, Link, Upload,
 } from '@lucide/vue'
 import { useUiStore } from '@/stores/ui'
+import { useUploadStore } from '@/stores/upload'
 import {
   copySelected, cutSelected, pasteItems, deleteSelected, downloadSelected,
   renameItem, openPermissionsSelected, canModifySelectedPermissions,
@@ -26,6 +27,7 @@ const props = defineProps<{
   showShortcuts: boolean
   flattenSubs: boolean
   contextTarget: ContextTargetItem | null
+  showUpload?: boolean
 }>()
 
 const { t } = useI18n()
@@ -36,6 +38,7 @@ function missingFileListView(): never {
   throw new Error('FileListMenuBody requires FILE_LIST_VIEW_KEY')
 }
 const ui = useUiStore()
+const upload = useUploadStore()
 
 const isBulkDownload = computed(() => {
   if (!props.contextTarget) return false
@@ -245,6 +248,10 @@ async function handleCopyDirectLink() {
         <component :is="menu.Shortcut" v-if="showShortcuts">{{ $t('common.shortcut.paste') }}</component>
       </component>
       <component :is="menu.Separator" v-if="ctx.canPaste" />
+      <component :is="menu.Item" v-if="showUpload" @select="upload.openUploadDialog()">
+        <Upload class="size-4" />
+        {{ $t('common.action.upload') }}
+      </component>
       <component :is="menu.Item" @select="createItem('file')">
         <File class="size-4" />
         {{ $t('files.action.new_file') }}

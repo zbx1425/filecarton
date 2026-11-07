@@ -365,6 +365,7 @@ function setSortAsc(asc: boolean) {
                 :show-shortcuts="false"
                 :flatten-subs="true"
                 :context-target="null"
+                show-upload
               />
               <DropdownMenuSeparator />
               <DropdownMenuItem @select="sortOpen = true">

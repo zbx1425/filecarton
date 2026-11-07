@@ -91,9 +91,9 @@ function handleEditorConflictOpenChange(open: boolean) {
   <AlertDialog :open="dialogState.confirm.open">
     <AlertDialogContent @escapeKeyDown="resolveConfirm(false)" @openAutoFocus="handleConfirmAutoFocus">
       <form @submit.prevent="resolveConfirm(true)">
-        <AlertDialogHeader>
+        <AlertDialogHeader class="min-w-0">
           <AlertDialogTitle>{{ dialogState.confirm.title }}</AlertDialogTitle>
-          <AlertDialogDescription class="whitespace-pre-line">{{ dialogState.confirm.message }}</AlertDialogDescription>
+          <AlertDialogDescription class="min-w-0 whitespace-pre-line [overflow-wrap:anywhere]">{{ dialogState.confirm.message }}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter class="mt-4">
           <Button v-if="!dialogState.confirm.hideCancel" variant="outline" type="button" @click="resolveConfirm(false)">{{ $t('common.action.cancel') }}</Button>

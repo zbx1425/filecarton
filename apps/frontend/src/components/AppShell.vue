@@ -18,7 +18,6 @@ import UploadDialog from '@/components/upload/UploadDialog.vue'
 import UploadErrorDialog from '@/components/upload/UploadErrorDialog.vue'
 import SettingsDialog from '@/components/modal/SettingsDialog.vue'
 import MobileDrawer from '@/components/layout/MobileDrawer.vue'
-import MobileFab from '@/components/layout/MobileFab.vue'
 import { useKeyboard } from '@/composables/useKeyboard'
 import { useFileListView } from '@/composables/useFileListView'
 import { FILE_LIST_VIEW_KEY } from '@/components/files/fileListContext'
@@ -68,6 +67,5 @@ watch(
     <UploadErrorDialog />
     <SettingsDialog />
     <MobileDrawer v-if="ui.isMobile" />
-    <MobileFab />
   </div>
 </template>

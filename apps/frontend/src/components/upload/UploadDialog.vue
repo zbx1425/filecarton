@@ -118,13 +118,13 @@ async function handleDrop(e: DragEvent) {
 
 <template>
   <Dialog :open="upload.uploadDialogOpen" @update:open="handleOpenChange">
-    <DialogContent class="max-w-md" :show-close-button="true">
-      <DialogHeader>
+    <DialogContent class="max-w-[min(28rem,calc(100%-2rem))]" :show-close-button="true">
+      <DialogHeader class="min-w-0">
         <DialogTitle>{{ $t('common.action.upload') }}</DialogTitle>
-        <DialogDescription>
+        <DialogDescription class="min-w-0">
           <i18n-t keypath="upload.to">
             <template #path>
-              <span class="font-mono text-foreground">/{{ navigation.currentPathStr || '' }}</span>
+              <span class="break-all font-mono text-foreground">/{{ navigation.currentPathStr || '' }}</span>
             </template>
           </i18n-t>
         </DialogDescription>
@@ -155,7 +155,7 @@ async function handleDrop(e: DragEvent) {
         </p>
       </div>
 
-      <div class="flex gap-2">
+      <div class="flex min-w-0 flex-wrap gap-2">
         <Button variant="outline" class="flex-1" @click="fileInputRef?.click()">
           <File class="size-4 mr-1.5" />
           {{ $t('upload.select_files') }}

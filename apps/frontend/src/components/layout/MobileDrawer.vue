@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useNavigationStore } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
 import { logout } from '@/services/authActions'
+import { LogOut, Settings2 } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -45,15 +46,26 @@ watch(
       <SheetHeader class="shrink-0 gap-1 px-4 pt-4 pr-10 pb-3 text-left">
         <SheetTitle class="truncate text-base">{{ title }}</SheetTitle>
         <p v-if="showId" class="truncate text-sm text-muted-foreground">{{ auth.user?.id }}</p>
-        <div class="mt-3 flex gap-2">
-          <Button v-if="auth.showLogout" variant="outline" size="sm" @click="logout">
-            {{ $t('common.action.log_out') }}
-          </Button>
-          <Button variant="outline" size="sm" @click="openSettings">
-            {{ $t('common.action.settings') }}
-          </Button>
-        </div>
       </SheetHeader>
+      <div class="flex flex-col">
+        <Button
+          v-if="auth.showLogout"
+          variant="ghost"
+          class="h-12 w-full justify-start gap-3 px-4 text-sm focus-visible:bg-accent"
+          @click="logout"
+        >
+          <LogOut class="size-5" />
+          {{ $t('common.action.log_out') }}
+        </Button>
+        <Button
+          variant="ghost"
+          class="h-12 w-full justify-start gap-3 px-4 text-sm focus-visible:bg-accent"
+          @click="openSettings"
+        >
+          <Settings2 class="size-5" />
+          {{ $t('common.action.settings') }}
+        </Button>
+      </div>
       <Separator />
       <div class="min-h-0 flex-1">
         <TreePanel />

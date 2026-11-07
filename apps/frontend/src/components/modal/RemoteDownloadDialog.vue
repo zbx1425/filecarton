@@ -93,12 +93,12 @@ function handleSubmit() {
   <Dialog :open="state.open" @update:open="(v: boolean) => { if (!v) closeDialog() }">
     <DialogContent class="sm:max-w-md">
       <form @submit.prevent="handleSubmit">
-        <DialogHeader>
+        <DialogHeader class="min-w-0">
           <DialogTitle>{{ $t('files.action.remote_download') }}</DialogTitle>
-          <DialogDescription>
+          <DialogDescription class="min-w-0">
             <i18n-t keypath="remote_download.to" tag="span">
               <template #path>
-                <span class="font-mono text-foreground">/{{ state.targetDir || '' }}</span>
+                <span class="break-all font-mono text-foreground">/{{ state.targetDir || '' }}</span>
               </template>
             </i18n-t>
           </DialogDescription>

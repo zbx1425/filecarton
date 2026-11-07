@@ -10,11 +10,9 @@ import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
 import { formatSize } from '@/utils/format'
 import { splitPath, joinPath } from '@/utils/path'
 import { Loader2, Search } from '@lucide/vue'
-import { useShowMobileFab } from '@/composables/useShowMobileFab'
 
 const navigation = useNavigationStore()
 const prefs = usePreferencesStore()
-const showMobileFab = useShowMobileFab()
 
 const rawResults = ref<SearchResult[]>([])
 const results = computed(() => {
@@ -121,7 +119,7 @@ function navigateToDir(path: string) {
       {{ $t('files.search.no_results') }}
     </div>
 
-    <div v-else class="flex-1 overflow-auto" :class="showMobileFab ? 'pb-[4.25rem]' : ''">
+    <div v-else class="flex-1 overflow-auto">
       <div
         v-for="result in results"
         :key="result.path + '/' + result.name"

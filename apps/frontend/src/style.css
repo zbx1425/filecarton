@@ -221,6 +221,19 @@
   }
 }
 
+[data-sonner-toaster] {
+  z-index: 40 !important;
+}
+
+@media (max-width: 600px) {
+  [data-sonner-toaster] {
+    width: calc(100% - var(--mobile-offset-left)) !important;
+  }
+  [data-sonner-toaster] [data-sonner-toast] {
+    width: calc(100% - var(--mobile-offset-left)) !important;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

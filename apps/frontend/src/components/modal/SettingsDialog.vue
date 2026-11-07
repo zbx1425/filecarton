@@ -66,9 +66,9 @@ function setEditorFontSize(val: number | undefined) {
 <template>
   <Dialog v-model:open="ui.settingsOpen">
     <DialogContent class="sm:max-w-2xl max-h-[85vh] overflow-hidden p-0">
-      <div class="flex flex-col sm:flex-row h-full sm:min-h-105 max-h-[85vh]">
+      <div class="flex flex-col sm:flex-row h-full sm:min-h-105 max-h-[85vh] min-w-0">
         <!-- Top navigation (narrow screens) -->
-        <nav class="flex sm:hidden border-b bg-muted/30 px-3 pt-4 pb-0 gap-1 overflow-x-auto shrink-0">
+        <nav class="flex sm:hidden min-w-0 shrink-0 border-b bg-muted/30 px-3 pt-4 pb-0 gap-1 overflow-x-auto scrollbar-none">
           <Button
             v-for="item in navItems"
             :key="item.id"
@@ -104,7 +104,7 @@ function setEditorFontSize(val: number | undefined) {
         </nav>
 
         <!-- Right content -->
-        <div class="flex-1 overflow-y-auto p-4 pt-4 sm:p-6 sm:pt-5">
+        <div class="min-w-0 flex-1 overflow-y-auto p-4 pt-4 sm:p-6 sm:pt-5">
           <DialogHeader class="mb-5">
             <DialogTitle>
               <Breadcrumb>
@@ -139,16 +139,16 @@ function setEditorFontSize(val: number | undefined) {
               <div class="flex items-center gap-3 px-4 py-3 border rounded-md bg-muted/20
                           cursor-pointer transition-all duration-200
                           hover:shadow-md hover:-translate-y-0.5">
-                <div class="flex-1">
+                <div class="min-w-0 flex-1">
                   <div class="font-semibold text-sm">
                     FileCarton
                     <span class="font-medium">by Zbx1425</span>
                   </div>
-                  <div class="text-sm text-muted-foreground">
+                  <div class="text-sm text-muted-foreground break-words">
                     {{ $t('app.tagline') }}
                   </div>
                 </div>
-                <Badge variant="secondary">v{{ appVersion }}</Badge>
+                <Badge variant="secondary" class="shrink-0">v{{ appVersion }}</Badge>
               </div>
             </a>
 
@@ -252,7 +252,7 @@ function setEditorFontSize(val: number | undefined) {
                   </span>
                 </div>
 
-                <div class="grid grid-cols-8 sm:grid-cols-11 gap-1.5">
+                <div class="flex flex-wrap gap-1.5">
                   <button
                     v-for="entry in COLOR_FAMILY_LIST"
                     :key="entry.name"
@@ -286,7 +286,7 @@ function setEditorFontSize(val: number | undefined) {
                 <div class="space-y-2">
                   <div class="space-y-1">
                     <div class="text-sm text-muted-foreground">{{ $t('settings.tone.subtle') }}</div>
-                    <div class="grid grid-cols-8 sm:grid-cols-11 gap-1.5">
+                    <div class="flex flex-wrap gap-1.5">
                       <button
                         v-for="entry in COLOR_FAMILY_LIST"
                         :key="entry.name"
@@ -303,7 +303,7 @@ function setEditorFontSize(val: number | undefined) {
 
                   <div class="space-y-1">
                     <div class="text-sm text-muted-foreground">{{ $t('settings.tone.solid') }}</div>
-                    <div class="grid grid-cols-8 sm:grid-cols-11 gap-1.5">
+                    <div class="flex flex-wrap gap-1.5">
                       <button
                         v-for="entry in COLOR_FAMILY_LIST"
                         :key="`${entry.name}-solid`"
