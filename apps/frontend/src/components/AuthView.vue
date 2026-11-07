@@ -111,7 +111,7 @@ function handleRedirect(pluginId: string) {
 </script>
 
 <template>
-  <div class="flex min-h-screen">
+  <div class="flex min-h-dvh">
     <!-- Left: gradient background (lg+ only) -->
     <div class="hidden lg:flex w-[55%] relative overflow-hidden bg-gradient-to-br from-login-from via-login-via to-login-to flex-col justify-between p-12 xl:p-16">
     

@@ -134,9 +134,14 @@ function setSortAsc(asc: boolean) {
       <PanelLeft class="size-4" />
     </Button>
 
-    <span v-if="ui.branding" class="text-base font-semibold tracking-tight shrink-0 mr-1">
+    <button
+      v-if="ui.branding"
+      type="button"
+      class="text-base font-semibold tracking-tight shrink-0 mr-1 cursor-pointer"
+      @click="navigation.navigateTo([])"
+    >
       {{ ui.branding }}
-    </span>
+    </button>
 
     <Breadcrumb class="flex-1 min-w-0 overflow-x-auto scrollbar-none" :ref="(el: any) => breadcrumbNav = el?.$el ?? el">
       <BreadcrumbList class="flex-nowrap w-max">
@@ -311,10 +316,14 @@ function setSortAsc(asc: boolean) {
         >
           <Menu class="size-4" />
         </Button>
-        <div class="min-w-0 ms-2">
+        <button
+          type="button"
+          class="block min-w-0 max-w-full ms-2 cursor-pointer text-left"
+          @click="navigation.navigateTo([])"
+        >
           <div v-if="ui.branding" class="truncate text-base font-semibold leading-tight">{{ ui.branding }}</div>
           <div v-if="ui.repoName" class="truncate text-xs leading-tight text-muted-foreground">{{ ui.repoName }}</div>
-        </div>
+        </button>
         <div class="flex-1" />
         <template v-if="navigation.viewMode === 'list'">
           <Button
