@@ -4,7 +4,7 @@ import { computed, ref } from 'vue'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Fab } from '@/components/ui/fab'
 import { cn } from '@/lib/utils'
-import { Plus } from 'lucide-vue-next'
+import { Plus } from '@lucide/vue'
 
 export interface SpeedDialAction {
   icon: Component
