@@ -11,7 +11,7 @@ import FileRow from './FileRow.vue'
 import FileListContextMenu from './FileListContextMenu.vue'
 import BatchActionBar from './BatchActionBar.vue'
 import ReadmePane from './ReadmePane.vue'
-import { FILE_LIST_KEY, type FileListContext, type ContextTargetItem } from './fileListContext'
+import { FILE_LIST_KEY, FILE_LIST_VIEW_KEY, type FileListContext, type ContextTargetItem } from './fileListContext'
 
 const view = reactive(useFileListView())
 const ui = useUiStore()
@@ -37,6 +37,7 @@ const fileListContext: FileListContext = {
 }
 
 provide(FILE_LIST_KEY, fileListContext)
+provide(FILE_LIST_VIEW_KEY, view)
 
 // ── Computed state ──
 

@@ -35,3 +35,21 @@ export interface FileListContext {
 }
 
 export const FILE_LIST_KEY: InjectionKey<FileListContext> = Symbol('fileListContext')
+
+/**
+ * Session-wide file list. Menus inject this instead of FILE_LIST_KEY so they
+ * can render outside FileTable. The object must stay intact; do not destructure it.
+ */
+export interface FileListViewContext {
+  selectedCount: number
+  canPaste: boolean
+  isAllSelected: boolean
+  currentPath: readonly string[]
+  currentPathStr: string
+  isSelected: (name: string) => boolean
+  navigateTo: (path: string[]) => unknown
+  openFile: (fileName: string) => unknown
+  toggleSelectAll: () => void
+}
+
+export const FILE_LIST_VIEW_KEY: InjectionKey<FileListViewContext> = Symbol('fileListView')

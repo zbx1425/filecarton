@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount } from 'vue'
-import { ArrowUp, ArrowDown, CornerLeftUp, FolderOpen, Eye, Download } from '@lucide/vue'
+import { ArrowUp, ArrowDown, CornerLeftUp } from '@lucide/vue'
 import {
   ContextMenu,
   ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
+import ArchiveEntryMenuBody from './ArchiveEntryMenuBody.vue'
 import { buildArchiveRawUrl } from '@/api/client'
 import { usePreferencesStore } from '@/stores/preferences'
 import { getFileIcon, getFileIconColor, canPreviewImage } from '@/composables/useFileType'
@@ -203,18 +202,15 @@ onBeforeUnmount(() => {
         </ContextMenuTrigger>
 
         <ContextMenuContent class="w-48">
-          <ContextMenuItem @select="emit('openNode', item)">
-            <FolderOpen v-if="item.isDir" class="size-4" />
-            <Eye v-else class="size-4" />
-            {{ $t('common.action.open') }}
-          </ContextMenuItem>
-          <template v-if="!item.isDir && randomAccess">
-            <ContextMenuSeparator />
-            <ContextMenuItem @select="emit('downloadNode', item)">
-              <Download class="size-4" />
-              {{ $t('common.action.download') }}
-            </ContextMenuItem>
-          </template>
+          <ArchiveEntryMenuBody
+            surface="context"
+            :show-shortcuts="false"
+            :flatten-subs="false"
+            :is-dir="item.isDir"
+            :random-access="randomAccess"
+            @open="emit('openNode', item)"
+            @download="emit('downloadNode', item)"
+          />
         </ContextMenuContent>
       </ContextMenu>
 

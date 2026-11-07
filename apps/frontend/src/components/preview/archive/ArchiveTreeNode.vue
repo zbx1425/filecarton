@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ChevronRight, FolderOpen, Eye, Download } from '@lucide/vue'
+import { ChevronRight } from '@lucide/vue'
 import {
   ContextMenu,
   ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
+import ArchiveEntryMenuBody from './ArchiveEntryMenuBody.vue'
 import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
 import type { ArchiveTreeItem } from '@/composables/useArchiveExplorer'
 
@@ -82,18 +81,15 @@ function handleClick() {
       </ContextMenuTrigger>
 
       <ContextMenuContent class="w-48">
-        <ContextMenuItem @select="handleClick">
-          <FolderOpen v-if="node.isDir" class="size-4" />
-          <Eye v-else class="size-4" />
-          {{ $t('common.action.open') }}
-        </ContextMenuItem>
-        <template v-if="!node.isDir && randomAccess">
-          <ContextMenuSeparator />
-          <ContextMenuItem @select="emit('downloadNode', node)">
-            <Download class="size-4" />
-            {{ $t('common.action.download') }}
-          </ContextMenuItem>
-        </template>
+        <ArchiveEntryMenuBody
+          surface="context"
+          :show-shortcuts="false"
+          :flatten-subs="false"
+          :is-dir="node.isDir"
+          :random-access="randomAccess"
+          @open="handleClick"
+          @download="emit('downloadNode', node)"
+        />
       </ContextMenuContent>
     </ContextMenu>
 
