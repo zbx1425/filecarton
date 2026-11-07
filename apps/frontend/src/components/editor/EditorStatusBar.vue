@@ -11,6 +11,8 @@ import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { usePreferencesStore } from '@/stores/preferences'
+import { useUiStore } from '@/stores/ui'
+import { IndentIncrease, WrapText } from '@lucide/vue'
 
 const props = defineProps<{
   editor: Monaco.editor.IStandaloneCodeEditor | null
@@ -19,6 +21,7 @@ const props = defineProps<{
 }>()
 
 const prefs = usePreferencesStore()
+const ui = useUiStore()
 const { t } = useI18n()
 
 const cursorLine = ref(1)
@@ -151,7 +154,9 @@ onBeforeUnmount(() => {
     class="flex items-center h-9 px-2 text-sm select-none shrink-0 gap-0.5 bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
   >
     <span class="px-2 tabular-nums">
-      {{ $t('editor.status.cursor', { line: cursorLine, column: cursorCol }) }}
+      {{ ui.isMobile
+        ? $t('editor.status.cursor_compact', { line: cursorLine, column: cursorCol })
+        : $t('editor.status.cursor', { line: cursorLine, column: cursorCol }) }}
     </span>
 
     <div class="flex-1" />
@@ -169,17 +174,21 @@ onBeforeUnmount(() => {
       class="px-2 h-full transition-colors rounded-sm hover:bg-statusbar-hover"
       :class="wordWrap ? 'opacity-100' : 'opacity-50'"
       :title="$t('editor.a11y.toggle_word_wrap')"
+      :aria-label="$t('editor.a11y.toggle_word_wrap')"
       @click="toggleWordWrap"
     >
-      {{ $t('editor.status.wrap') }}
+      <WrapText v-if="ui.isMobile" class="size-4" />
+      <template v-else>{{ $t('editor.status.wrap') }}</template>
     </button>
 
     <Popover v-if="!readonly">
       <PopoverTrigger as-child>
         <button
           class="px-2 h-full transition-colors rounded-sm hover:bg-statusbar-hover"
+          :aria-label="indentLabel"
         >
-          {{ indentLabel }}
+          <IndentIncrease v-if="ui.isMobile" class="size-4" />
+          <template v-else>{{ indentLabel }}</template>
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" :side-offset="4" class="w-52 p-3 space-y-3">
@@ -238,7 +247,7 @@ onBeforeUnmount(() => {
       </PopoverContent>
     </Popover>
 
-    <span class="px-2">
+    <span class="min-w-0 truncate px-2">
       {{ displayLanguage }}
     </span>
   </div>

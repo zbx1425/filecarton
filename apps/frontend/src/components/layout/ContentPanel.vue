@@ -30,13 +30,14 @@ const isMarkdownFile = computed(
         <SearchResults v-if="showRecursiveSearch" />
         <FileTable v-else />
       </template>
+      <!-- :mev / :ev is to make linter happy, otherwise it'll think there are duplicate keys -->
       <MarkdownEditorView
         v-else-if="isMarkdownFile && (navigation.viewMode === 'editor' || navigation.viewMode === 'preview')"
-        :key="navigation.activeFilePath ?? ''"
+        :key="(navigation.activeFilePath ?? '') + ':mev'"
       />
       <EditorView
         v-else-if="navigation.viewMode === 'editor' || (navigation.viewMode === 'preview' && isCodeFile)"
-        :key="navigation.activeFilePath ?? ''"
+        :key="(navigation.activeFilePath ?? '') + ':ev'"
       />
       <PreviewShell v-else-if="navigation.viewMode === 'preview'" />
     </div>

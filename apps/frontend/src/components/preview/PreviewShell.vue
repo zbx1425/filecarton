@@ -7,8 +7,15 @@ import { useUiStore } from '@/stores/ui'
 import { isEditable, isImage, isAudio, isVideo, isArchive, isPdf } from '@/composables/useFileType'
 import { isFilenameBlocked } from '@/utils/pathValidation'
 import { buildDownloadUrl } from '@/api/client'
-import { parentPath, pathName } from '@/utils/path'
-import { ArrowLeft, Pencil, Download } from '@lucide/vue'
+import { archiveSubdirName, parentPath, pathName } from '@/utils/path'
+import { ArrowLeft, Pencil, Download, EllipsisVertical } from '@lucide/vue'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { extractArchive } from '@/composables/useArchive'
 import ImagePreview from './ImagePreview.vue'
 import AudioPreview from './AudioPreview.vue'
 import VideoPreview from './VideoPreview.vue'
@@ -50,11 +57,48 @@ const previewType = computed(() => {
 function handleDownload() {
   window.open(buildDownloadUrl(filePath.value), '_blank')
 }
+
+const extractSubdir = computed(() => archiveSubdirName(fileName.value))
+
+function handleExtract(createSubdir: boolean) {
+  extractArchive(filePath.value, parentPath(filePath.value), createSubdir)
+}
 </script>
 
 <template>
   <div class="flex flex-col h-full">
-    <div class="flex items-center h-10 px-3 border-b gap-2 shrink-0">
+    <div v-if="ui.isMobile" class="flex items-center h-10 border-b shrink-0">
+      <Button variant="ghost" size="icon-sm" class="shrink-0" :aria-label="$t('common.action.back')" @click="navigation.backToList()">
+        <ArrowLeft class="size-4" />
+      </Button>
+      <span class="min-w-0 flex-1 truncate text-sm font-mono text-muted-foreground">{{ fileName }}</span>
+      <DropdownMenu>
+        <DropdownMenuTrigger as-child>
+          <Button variant="ghost" size="icon-sm" class="shrink-0" :aria-label="$t('common.a11y.more')">
+            <EllipsisVertical class="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem v-if="canEdit" @select="navigation.openEditor()">
+            <Pencil class="size-4" />
+            {{ $t('common.action.edit') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem @select="handleDownload">
+            <Download class="size-4" />
+            {{ $t('common.action.download') }}
+          </DropdownMenuItem>
+          <template v-if="previewType === 'archive' && !ui.readonly && ui.features.archive && (archivePreviewRef?.canExtract ?? true)">
+            <DropdownMenuItem @select="handleExtract(false)">
+              {{ $t('archive.extract.here') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem v-if="extractSubdir" @select="handleExtract(true)">
+              {{ $t('archive.extract.to_folder', { folder: extractSubdir }) }}
+            </DropdownMenuItem>
+          </template>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+    <div v-else class="flex items-center h-10 px-3 border-b gap-2 shrink-0">
       <Button variant="ghost" size="sm" @click="navigation.backToList()">
         <ArrowLeft class="size-4" />
         {{ $t('common.action.back') }}

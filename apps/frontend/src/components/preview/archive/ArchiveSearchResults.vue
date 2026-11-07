@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import { Search } from '@lucide/vue'
+import { EllipsisVertical, Search } from '@lucide/vue'
+import { Button } from '@/components/ui/button'
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { useUiStore } from '@/stores/ui'
 import ArchiveEntryMenuBody from './ArchiveEntryMenuBody.vue'
 import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
 import { formatSize } from '@/utils/format'
@@ -17,6 +24,8 @@ defineProps<{
   results: ArchiveTreeItem[]
   randomAccess: boolean
 }>()
+
+const ui = useUiStore()
 
 const emit = defineEmits<{
   openNode: [node: ArchiveTreeItem]
@@ -47,6 +56,43 @@ function handleDirClick(pathStr: string) {
       <ContextMenu v-for="item in results" :key="item.path">
         <ContextMenuTrigger as-child>
           <div
+            v-if="ui.isMobile"
+            class="flex min-h-14 items-center ps-3 text-sm touch-manipulation"
+            @click="emit('openNode', item)"
+          >
+            <div class="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-1.5">
+              <span class="truncate font-medium">{{ item.name }}</span>
+              <span class="flex min-w-0 items-center text-xs text-muted-foreground">
+                <span
+                  class="min-w-0 flex-1 truncate"
+                  @click.stop="handleDirClick(item.path)"
+                >
+                  /{{ parentPath(item.path) || $t('common.path.root') }}
+                </span>
+                <span v-if="!item.isDir" class="w-14 shrink-0 text-right tabular-nums">{{ formatSize(item.size) }}</span>
+              </span>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger as-child>
+                <Button variant="ghost" size="icon-sm" class="shrink-0" :aria-label="$t('common.a11y.more')" @click.stop>
+                  <EllipsisVertical class="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" class="w-48">
+                <ArchiveEntryMenuBody
+                  surface="dropdown"
+                  :show-shortcuts="false"
+                  :flatten-subs="false"
+                  :is-dir="item.isDir"
+                  :random-access="randomAccess"
+                  @open="emit('openNode', item)"
+                  @download="emit('downloadNode', item)"
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <div
+            v-else
             class="flex items-center px-3 text-sm cursor-pointer hover:bg-muted/50 gap-2 h-(--fc-row-height)"
             @click="emit('openNode', item)"
           >

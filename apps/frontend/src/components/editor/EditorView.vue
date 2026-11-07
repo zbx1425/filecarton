@@ -11,7 +11,13 @@ import { useUiStore } from '@/stores/ui'
 import { loadMonaco } from '@/composables/useMonaco'
 import { monacoLanguage, isEditable } from '@/composables/useFileType'
 import { useEditorSave } from '@/composables/useEditorSave'
-import { ArrowLeft, Save, Loader2, ClipboardCopy, Download, Pencil } from '@lucide/vue'
+import { ArrowLeft, Save, Loader2, ClipboardCopy, Download, Pencil, EllipsisVertical } from '@lucide/vue'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { buildDownloadUrl } from '@/api/client'
 import { usePreferencesStore } from '@/stores/preferences'
 import { isFilenameBlocked } from '@/utils/pathValidation'
@@ -134,7 +140,48 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="flex flex-col h-full">
-    <div class="flex items-center h-10 px-3 border-b gap-2 shrink-0">
+    <div v-if="ui.isMobile" class="flex items-center h-10 border-b shrink-0">
+      <Button variant="ghost" size="icon-sm" class="shrink-0" :aria-label="$t('common.action.back')" @click="navigation.backToList()">
+        <ArrowLeft class="size-4" />
+      </Button>
+      <span class="min-w-0 flex-1 truncate text-sm font-mono text-muted-foreground">
+        {{ fileName }}
+        <span v-if="navigation.editDirty && !isReadonly" class="text-foreground ml-1">*</span>
+      </span>
+      <Button
+        v-if="!isReadonly"
+        size="icon-sm"
+        class="shrink-0"
+        :disabled="!navigation.editDirty || saving"
+        :aria-label="$t('common.action.save')"
+        @click="handleSave"
+      >
+        <Loader2 v-if="saving" class="size-4 animate-spin" />
+        <Save v-else class="size-4" />
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger as-child>
+          <Button variant="ghost" size="icon-sm" class="shrink-0" :aria-label="$t('common.a11y.more')">
+            <EllipsisVertical class="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem v-if="isReadonly && canEdit" @select="navigation.openEditor()">
+            <Pencil class="size-4" />
+            {{ $t('common.action.edit') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem @select="copyAll">
+            <ClipboardCopy class="size-4" />
+            {{ $t('common.action.copy_all') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem as="a" :href="buildDownloadUrl(filePath)" target="_blank">
+            <Download class="size-4" />
+            {{ $t('common.action.download') }}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+    <div v-else class="flex items-center h-10 px-3 border-b gap-2 shrink-0">
       <Button variant="ghost" size="sm" @click="navigation.backToList()">
         <ArrowLeft class="size-4" />
         {{ $t('common.action.back') }}

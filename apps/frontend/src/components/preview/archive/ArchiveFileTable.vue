@@ -1,14 +1,21 @@
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount } from 'vue'
-import { ArrowUp, ArrowDown, CornerLeftUp } from '@lucide/vue'
+import { ArrowUp, ArrowDown, CornerLeftUp, EllipsisVertical } from '@lucide/vue'
+import { Button } from '@/components/ui/button'
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import ArchiveEntryMenuBody from './ArchiveEntryMenuBody.vue'
 import { buildArchiveRawUrl } from '@/api/client'
 import { usePreferencesStore } from '@/stores/preferences'
+import { useUiStore } from '@/stores/ui'
 import { getFileIcon, getFileIconColor, canPreviewImage } from '@/composables/useFileType'
 import { formatSize, formatTime, formatTimeLocalISO8601 } from '@/utils/format'
 import type { ArchiveTreeItem, ArchiveSortColumn } from '@/composables/useArchiveExplorer'
@@ -36,6 +43,7 @@ const emit = defineEmits<{
 }>()
 
 const preferences = usePreferencesStore()
+const ui = useUiStore()
 
 const allRows = computed(() => [...props.dirs, ...props.files])
 
@@ -112,7 +120,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="flex flex-col h-full">
-    <div class="border-b bg-muted/30 sticky top-0 z-10 relative shrink-0" @click="emit('update:selectedName', null)">
+    <div v-if="!ui.isMobile" class="border-b bg-muted/30 sticky top-0 z-10 relative shrink-0" @click="emit('update:selectedName', null)">
       <div
         class="flex items-center px-3 text-sm font-medium text-muted-foreground h-(--fc-row-height) max-w-(--fc-table-max-w)"
       >
@@ -153,15 +161,19 @@ onBeforeUnmount(() => {
       <div
         v-if="!isRoot"
         data-archive-row
-        class="flex items-center px-3 text-sm text-muted-foreground cursor-pointer hover:bg-muted/50 h-(--fc-row-height) max-w-(--fc-table-max-w)"
+        class="flex items-center text-sm text-muted-foreground cursor-pointer hover:bg-muted/50"
+        :class="ui.isMobile ? 'min-h-14 ps-3 touch-manipulation' : 'h-(--fc-row-height) max-w-(--fc-table-max-w) px-3'"
         @click="emit('goUp')"
       >
         <div class="flex items-center gap-2 flex-1">
           <CornerLeftUp class="size-4" />
           <span>..</span>
         </div>
-        <div class="w-22" />
-        <div class="w-28" />
+        <template v-if="!ui.isMobile">
+          <div class="w-22" />
+          <div class="w-28" />
+        </template>
+        <div v-else class="w-8 shrink-0" />
       </div>
 
       <ContextMenu
@@ -171,6 +183,55 @@ onBeforeUnmount(() => {
       >
         <ContextMenuTrigger as-child>
           <div
+            v-if="ui.isMobile"
+            data-archive-row
+            class="flex min-h-14 items-center border-b border-transparent ps-3 text-sm touch-manipulation select-none"
+            :class="selectedName === item.name ? 'bg-selected' : ''"
+            @click="emit('openNode', item)"
+          >
+            <div class="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-1.5">
+              <div class="flex min-w-0 items-center gap-2">
+                <component
+                  :is="getFileIcon(item.name, item.isDir)"
+                  class="size-4 shrink-0"
+                  :class="getFileIconColor(item.name, item.isDir)"
+                />
+                <span class="truncate" :class="item.isDir ? 'font-medium' : ''" :title="item.name">{{ item.name }}</span>
+              </div>
+              <div class="flex min-w-0 items-center text-xs text-muted-foreground">
+                <span class="w-14 shrink-0 tabular-nums">{{ item.isDir ? '—' : formatSize(item.size) }}</span>
+                <span class="min-w-0 truncate" :title="item.mtime ? formatTimeLocalISO8601(item.mtime) : undefined">
+                  {{ item.mtime ? formatTime(item.mtime) : '—' }}
+                </span>
+              </div>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger as-child>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  class="shrink-0"
+                  :aria-label="$t('common.a11y.more')"
+                  @click.stop
+                >
+                  <EllipsisVertical class="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" class="w-48">
+                <ArchiveEntryMenuBody
+                  surface="dropdown"
+                  :show-shortcuts="false"
+                  :flatten-subs="false"
+                  :is-dir="item.isDir"
+                  :random-access="randomAccess"
+                  @open="emit('openNode', item)"
+                  @download="emit('downloadNode', item)"
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <div
+            v-else
             data-archive-row
             class="flex items-center px-3 text-sm group border-b border-transparent cursor-default select-none h-(--fc-row-height) max-w-(--fc-table-max-w)"
             :class="selectedName === item.name ? 'bg-selected' : 'hover:bg-muted/50'"

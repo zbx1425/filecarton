@@ -58,6 +58,7 @@ const {
   openEntryNode,
   backToArchiveList,
   toggleSort,
+  setSort,
   downloadEntry,
 } = useArchiveExplorer(toRef(props, 'path'), toRef(props, 'name'))
 
@@ -110,6 +111,9 @@ defineExpose({ canExtract })
         :active-file-name="activeEntry?.name ?? null"
         :is-at-root="isAtRoot"
         :view-mode="viewMode"
+        :sort-by="sortBy"
+        :sort-asc="sortAsc"
+        @set-sort="(column, asc) => setSort(column, asc)"
         @toggle-tree="treeVisible = !treeVisible"
         @navigate-root="navigateTo([])"
         @navigate-segment="navigateToSegment"
@@ -181,14 +185,13 @@ defineExpose({ canExtract })
       </ResizablePanelGroup>
 
       <div
-        class="flex items-center h-9 px-3 text-sm shrink-0 gap-2 bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
+        class="flex min-w-0 items-center h-9 px-3 text-sm shrink-0 gap-2 bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
       >
-        <span>
+        <span class="min-w-0 flex-1 truncate">
           {{ $t('files.status.summary', { folders: statusDirsCount, files: statusFilesCount }) }}
           <span class="ml-1">({{ formatSize(statusTotalSize) }})</span>
         </span>
-        <span class="flex-1" />
-        <span class="text-muted-foreground/80 truncate">
+        <span class="min-w-0 max-w-[55%] truncate text-right text-muted-foreground/80">
           {{ $t('archive.status.total', { count: data.totalFiles, uncompressed: formatSize(data.totalSize), compressed: formatSize(data.compressedSize) }, data.totalFiles) }}
         </span>
       </div>

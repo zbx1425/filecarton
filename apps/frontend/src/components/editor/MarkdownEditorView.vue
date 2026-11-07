@@ -12,7 +12,14 @@ import { isFilenameBlocked } from '@/utils/pathValidation'
 import { loadMonaco } from '@/composables/useMonaco'
 import { monacoLanguage } from '@/composables/useFileType'
 import { useEditorSave } from '@/composables/useEditorSave'
-import { ArrowLeft, Save, Loader2, ClipboardCopy, Download } from '@lucide/vue'
+import { ArrowLeft, Save, Loader2, ClipboardCopy, Download, Code, Eye, EllipsisVertical, Pencil } from '@lucide/vue'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import IconSegmentedControl from '@/components/layout/IconSegmentedControl.vue'
 import EditorStatusBar from './EditorStatusBar.vue'
 import MarkdownContent from '@/components/preview/MarkdownContent.vue'
 import { toast } from 'vue-sonner'
@@ -142,7 +149,57 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="flex flex-col h-full">
-    <div class="flex items-center h-10 px-3 border-b gap-2 shrink-0">
+    <div v-if="ui.isMobile" class="flex items-center h-10 border-b shrink-0">
+      <Button variant="ghost" size="icon-sm" class="shrink-0" :aria-label="$t('common.action.back')" @click="navigation.backToList()">
+        <ArrowLeft class="size-4" />
+      </Button>
+      <span class="min-w-0 flex-1 truncate text-sm font-mono text-muted-foreground">
+        {{ fileName }}
+        <span v-if="navigation.editDirty && canEdit" class="text-foreground ml-1">*</span>
+      </span>
+      <IconSegmentedControl
+        v-if="canEdit"
+        :model-value="showPreview ? 'preview' : 'code'"
+        :options="[
+          { value: 'code', icon: Code, label: t('editor.mode.code') },
+          { value: 'preview', icon: Eye, label: t('editor.mode.preview') },
+        ]"
+        @update:model-value="showPreview = $event === 'preview'"
+      />
+      <Button
+        v-if="canEdit"
+        size="icon-sm"
+        class="shrink-0 ms-2"
+        :disabled="!navigation.editDirty || saving"
+        :aria-label="$t('common.action.save')"
+        @click="handleSave"
+      >
+        <Loader2 v-if="saving" class="size-4 animate-spin" />
+        <Save v-else class="size-4" />
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger as-child>
+          <Button variant="ghost" size="icon-sm" class="shrink-0" :aria-label="$t('common.a11y.more')">
+            <EllipsisVertical class="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem v-if="!canEdit && !ui.readonly && !isFilenameBlocked(fileName)" @select="navigation.openEditor()">
+            <Pencil class="size-4" />
+            {{ $t('common.action.edit') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem @select="copyAll">
+            <ClipboardCopy class="size-4" />
+            {{ $t('common.action.copy_all') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem as="a" :href="buildDownloadUrl(filePath)" target="_blank">
+            <Download class="size-4" />
+            {{ $t('common.action.download') }}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+    <div v-else class="flex items-center h-10 px-3 border-b gap-2 shrink-0">
       <Button variant="ghost" size="sm" @click="navigation.backToList()">
         <ArrowLeft class="size-4" />
         {{ $t('common.action.back') }}

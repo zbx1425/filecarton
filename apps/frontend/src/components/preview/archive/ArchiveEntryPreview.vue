@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { ArrowLeft, Download } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
+import { useUiStore } from '@/stores/ui'
 import { buildArchiveRawUrl, buildArchiveDownloadUrl } from '@/api/client'
 import { isImage, isAudio, isVideo, isArchive, isEditable, isPdf } from '@/composables/useFileType'
 import type { ArchiveTreeItem } from '@/composables/useArchiveExplorer'
@@ -23,6 +24,8 @@ const emit = defineEmits<{
   download: [entryPath: string]
 }>()
 
+const ui = useUiStore()
+
 const innerPreviewType = computed(() => {
   if (!props.randomAccess) return 'restricted_tar'
   const name = props.entry.name
@@ -41,10 +44,19 @@ const downloadUrl = computed(() => buildArchiveDownloadUrl(props.archivePath, pr
 
 <template>
   <div class="flex flex-col h-full overflow-hidden">
-    <div class="flex items-center h-9 px-3 border-b gap-2 shrink-0 bg-muted/20">
-      <Button variant="ghost" size="sm" class="h-7 text-sm" @click="emit('back')">
-        <ArrowLeft class="size-3.5" />
-        {{ $t('common.action.back') }}
+    <div
+      class="flex items-center h-9 border-b shrink-0 bg-muted/20"
+      :class="ui.isMobile ? '' : 'gap-2 px-3'"
+    >
+      <Button
+        variant="ghost"
+        :size="ui.isMobile ? 'icon-sm' : 'sm'"
+        :class="ui.isMobile ? 'shrink-0' : 'h-7 text-sm'"
+        :aria-label="$t('common.action.back')"
+        @click="emit('back')"
+      >
+        <ArrowLeft :class="ui.isMobile ? 'size-4' : 'size-3.5'" />
+        <template v-if="!ui.isMobile">{{ $t('common.action.back') }}</template>
       </Button>
 
       <span class="text-sm font-mono truncate flex-1 text-muted-foreground">
@@ -53,13 +65,14 @@ const downloadUrl = computed(() => buildArchiveDownloadUrl(props.archivePath, pr
 
       <Button
         v-if="randomAccess"
-        variant="outline"
-        size="sm"
-        class="h-7 text-sm"
+        :variant="ui.isMobile ? 'ghost' : 'outline'"
+        :size="ui.isMobile ? 'icon-sm' : 'sm'"
+        :class="ui.isMobile ? 'shrink-0' : 'h-7 text-sm'"
+        :aria-label="$t('common.action.download')"
         @click="emit('download', entry.path)"
       >
-        <Download class="size-3.5" />
-        {{ $t('common.action.download') }}
+        <Download :class="ui.isMobile ? 'size-4' : 'size-3.5'" />
+        <template v-if="!ui.isMobile">{{ $t('common.action.download') }}</template>
       </Button>
     </div>
 
