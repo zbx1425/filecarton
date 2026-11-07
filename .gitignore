@@ -16,3 +16,4 @@ run/
 
 # Probably shouldn't torture people with them...
 /docs/aislop
+/.cursor/

@@ -61,7 +61,7 @@ const {
   downloadEntry,
 } = useArchiveExplorer(toRef(props, 'path'), toRef(props, 'name'))
 
-const shouldShowTree = computed(() => ui.isMedium && treeVisible.value)
+const shouldShowTree = computed(() => !ui.isMobile && treeVisible.value)
 const canExtract = computed(() => !error.value || error.value.code === 'archive.too_large_to_open')
 
 defineExpose({ canExtract })

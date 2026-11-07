@@ -22,14 +22,14 @@ export const useUiStore = defineStore('ui', () => {
   const settingsOpen = ref(false)
   const dragOverlayVisible = ref(false)
 
-  const isWide = useMediaQuery('(min-width: 900px)')
-  const isMedium = useMediaQuery('(min-width: 700px)')
+  const isMobile = useMediaQuery('(width < 40rem)')
+  const isLarge = useMediaQuery('(width >= 64rem)')
 
   const treePanelVisible = ref(true)
-  const showTreeToggle = computed(() => isMedium.value)
+  const showTreeToggle = computed(() => !isMobile.value)
 
   function initResponsive() {
-    treePanelVisible.value = isWide.value
+    treePanelVisible.value = isLarge.value
   }
 
   function toggleTreePanel() {
@@ -37,8 +37,8 @@ export const useUiStore = defineStore('ui', () => {
   }
 
   const shouldShowTree = computed(() => {
-    if (isMedium.value) return treePanelVisible.value
-    return false
+    if (isMobile.value) return false
+    return treePanelVisible.value
   })
 
   return {
@@ -52,8 +52,8 @@ export const useUiStore = defineStore('ui', () => {
     treePanelVisible,
     showTreeToggle,
     shouldShowTree,
-    isWide,
-    isMedium,
+    isMobile,
+    isLarge,
     initResponsive,
     toggleTreePanel,
   }

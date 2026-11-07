@@ -7,6 +7,7 @@ import {
 import type { ErrorInfo } from '@/api/client'
 import type { ArchiveListResponse, ArchiveEntry } from '@/api/types'
 import { usePreferencesStore } from '@/stores/preferences'
+import { useUiStore } from '@/stores/ui'
 import { splitPath, parentPath, pathName } from '@/utils/path'
 import { sortItems, filterItems, filterDotfiles, naturalCollator } from '@/utils/sorting'
 import { useBrowserState } from '@/composables/useBrowserState'
@@ -33,6 +34,7 @@ export function useArchiveExplorer(
   archivePropName?: Ref<string | undefined>,
 ) {
   const preferences = usePreferencesStore()
+  const ui = useUiStore()
 
   const loading = ref(true)
   const error = ref<ErrorInfo | null>(null)
@@ -43,7 +45,7 @@ export function useArchiveExplorer(
   const activeEntry = ref<ArchiveTreeItem | null>(null)
   const selectedName = ref<string | null>(null)
   const expandedPaths = ref<Set<string>>(new Set())
-  const treeVisible = ref(true)
+  const treeVisible = ref(ui.isLarge)
 
   const browsing = useBrowserState()
   const { searchQuery, searchRecursive } = browsing

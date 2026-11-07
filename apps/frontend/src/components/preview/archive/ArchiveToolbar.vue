@@ -39,7 +39,7 @@ const ui = useUiStore()
 <template>
   <div class="flex items-center h-10 px-3 border-b gap-2 shrink-0 bg-background">
     <Button
-      v-if="ui.isMedium"
+      v-if="!ui.isMobile"
       variant="ghost"
       size="icon-sm"
       :aria-label="$t('archive.a11y.toggle_tree')"

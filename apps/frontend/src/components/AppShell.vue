@@ -34,7 +34,7 @@ watch(
 </script>
 
 <template>
-  <div class="h-screen flex flex-col overflow-hidden">
+  <div class="h-dvh flex flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]">
     <AppToolbar />
 
     <ResizablePanelGroup direction="horizontal" class="flex-1 min-h-0">
