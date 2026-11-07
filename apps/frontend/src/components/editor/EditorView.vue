@@ -140,7 +140,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="flex flex-col h-full">
-    <div v-if="ui.isMobile" class="flex items-center h-10 border-b shrink-0">
+    <div v-if="ui.isMobile" class="flex items-center h-10 border-b shrink-0 px-1">
       <Button variant="ghost" size="icon-sm" class="shrink-0" :aria-label="$t('common.action.back')" @click="navigation.backToList()">
         <ArrowLeft class="size-4" />
       </Button>

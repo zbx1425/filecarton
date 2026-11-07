@@ -50,7 +50,7 @@ const etaText = computed(() => {
 </script>
 
 <template>
-  <div class="select-none min-w-75 w-full">
+  <div class="select-none min-w-0 w-full">
     <!-- Active uploads -->
     <div v-if="upload.hasActive" class="space-y-1.5">
       <div class="flex items-center gap-2.5">

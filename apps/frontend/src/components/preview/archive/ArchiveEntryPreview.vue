@@ -46,7 +46,7 @@ const downloadUrl = computed(() => buildArchiveDownloadUrl(props.archivePath, pr
   <div class="flex flex-col h-full overflow-hidden">
     <div
       class="flex items-center h-9 border-b shrink-0 bg-muted/20"
-      :class="ui.isMobile ? '' : 'gap-2 px-3'"
+      :class="ui.isMobile ? 'px-0.5' : 'gap-2 px-3'"
     >
       <Button
         variant="ghost"

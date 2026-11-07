@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { useMediaQuery } from '@vueuse/core'
 import { Button } from '@/components/ui/button'
 import { apiGet, toErrorInfo, buildDownloadUrl } from '@/api/client'
 import type { ErrorInfo } from '@/api/client'
 import type { ReadResponse } from '@/api/types'
 import { usePreferencesStore } from '@/stores/preferences'
 import { useNavigationStore } from '@/stores/navigation'
+import { useUiStore } from '@/stores/ui'
 import { Download, ExternalLink, ChevronsDown, ChevronsUp, Loader2, FileText } from '@lucide/vue'
 import MarkdownContent from '@/components/preview/MarkdownContent.vue'
 import { pathExtension } from '@/utils/path'
@@ -17,6 +19,8 @@ const props = defineProps<{
 
 const prefs = usePreferencesStore()
 const navigation = useNavigationStore()
+const ui = useUiStore()
+const coarsePointer = useMediaQuery('(pointer: coarse)')
 
 const content = ref('')
 const loading = ref(true)
@@ -131,7 +135,7 @@ onBeforeUnmount(() => {
   >
     <!-- Drag handle -->
     <div
-      v-if="!effectivelyCollapsed"
+      v-if="!effectivelyCollapsed && !ui.isMobile && !coarsePointer"
       class="h-[3px] shrink-0 transition-colors"
       :class="[
         resizing ? 'bg-primary/40 cursor-row-resize' : 'cursor-row-resize hover:bg-primary/30',
@@ -140,11 +144,26 @@ onBeforeUnmount(() => {
     />
 
     <!-- Title bar -->
-    <div class="flex items-center h-10 px-3 gap-2 shrink-0 bg-muted/30">
+    <div
+      class="flex items-center h-10 gap-2 shrink-0 bg-muted/30"
+      :class="ui.isMobile ? 'ps-3 pe-1' : 'px-3'"
+    >
       <FileText class="size-4 text-muted-foreground shrink-0" />
       <span class="text-sm font-mono truncate flex-1 text-muted-foreground">{{ name }}</span>
 
       <Button
+        v-if="ui.isMobile"
+        variant="ghost"
+        size="icon-sm"
+        as="a"
+        :href="buildDownloadUrl(path)"
+        target="_blank"
+        :aria-label="$t('common.action.download')"
+      >
+        <Download class="size-4" />
+      </Button>
+      <Button
+        v-else
         variant="outline"
         size="sm"
         as="a"
@@ -156,6 +175,16 @@ onBeforeUnmount(() => {
       </Button>
 
       <Button
+        v-if="ui.isMobile"
+        variant="ghost"
+        size="icon-sm"
+        :aria-label="$t('common.action.open')"
+        @click="navigation.openFile(path)"
+      >
+        <ExternalLink class="size-4" />
+      </Button>
+      <Button
+        v-else
         variant="outline"
         size="sm"
         @click="navigation.openFile(path)"

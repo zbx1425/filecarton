@@ -162,18 +162,21 @@ onBeforeUnmount(() => {
         v-if="!isRoot"
         data-archive-row
         class="flex items-center text-sm text-muted-foreground cursor-pointer hover:bg-muted/50"
-        :class="ui.isMobile ? 'min-h-14 ps-3 touch-manipulation' : 'h-(--fc-row-height) max-w-(--fc-table-max-w) px-3'"
+        :class="ui.isMobile ? 'min-h-14 touch-manipulation' : 'h-(--fc-row-height) max-w-(--fc-table-max-w) px-3'"
         @click="emit('goUp')"
       >
-        <div class="flex items-center gap-2 flex-1">
-          <CornerLeftUp class="size-4" />
+        <div class="flex min-w-0 flex-1 items-center" :class="ui.isMobile ? '' : 'gap-2'">
+          <div v-if="ui.isMobile" class="flex me-3">
+            <CornerLeftUp class="size-5 shrink-0" />
+          </div>
+          <CornerLeftUp v-else class="size-4" />
           <span>..</span>
         </div>
         <template v-if="!ui.isMobile">
           <div class="w-22" />
           <div class="w-28" />
         </template>
-        <div v-else class="w-8 shrink-0" />
+        <div v-else class="w-11 shrink-0" />
       </div>
 
       <ContextMenu
@@ -185,21 +188,21 @@ onBeforeUnmount(() => {
           <div
             v-if="ui.isMobile"
             data-archive-row
-            class="flex min-h-14 items-center border-b border-transparent ps-3 text-sm touch-manipulation select-none"
+            class="flex min-h-14 items-center border-b border-transparent text-sm touch-manipulation select-none"
             :class="selectedName === item.name ? 'bg-selected' : ''"
             @click="emit('openNode', item)"
           >
+            <div class="flex me-3 ms-4">
+              <component
+                :is="getFileIcon(item.name, item.isDir)"
+                class="size-5 shrink-0"
+                :class="getFileIconColor(item.name, item.isDir)"
+              />
+            </div>
             <div class="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-1.5">
-              <div class="flex min-w-0 items-center gap-2">
-                <component
-                  :is="getFileIcon(item.name, item.isDir)"
-                  class="size-4 shrink-0"
-                  :class="getFileIconColor(item.name, item.isDir)"
-                />
-                <span class="truncate" :class="item.isDir ? 'font-medium' : ''" :title="item.name">{{ item.name }}</span>
-              </div>
+              <span class="truncate text-sm" :class="item.isDir ? 'font-medium' : ''" :title="item.name">{{ item.name }}</span>
               <div class="flex min-w-0 items-center text-xs text-muted-foreground">
-                <span class="w-14 shrink-0 tabular-nums">{{ item.isDir ? '—' : formatSize(item.size) }}</span>
+                <span class="w-17 shrink-0 tabular-nums">{{ item.isDir ? '—' : formatSize(item.size) }}</span>
                 <span class="min-w-0 truncate" :title="item.mtime ? formatTimeLocalISO8601(item.mtime) : undefined">
                   {{ item.mtime ? formatTime(item.mtime) : '—' }}
                 </span>
@@ -210,7 +213,7 @@ onBeforeUnmount(() => {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  class="shrink-0"
+                  class="size-11 shrink-0 touch-manipulation"
                   :aria-label="$t('common.a11y.more')"
                   @click.stop
                 >

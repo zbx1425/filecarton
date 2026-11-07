@@ -6,6 +6,7 @@ import type { ErrorInfo } from '@/api/client'
 import type { SearchResponse, SearchResult } from '@/api/types'
 import { useNavigationStore } from '@/stores/navigation'
 import { usePreferencesStore } from '@/stores/preferences'
+import { useUiStore } from '@/stores/ui'
 import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
 import { formatSize } from '@/utils/format'
 import { splitPath, joinPath } from '@/utils/path'
@@ -13,6 +14,7 @@ import { Loader2, Search } from '@lucide/vue'
 
 const navigation = useNavigationStore()
 const prefs = usePreferencesStore()
+const ui = useUiStore()
 
 const rawResults = ref<SearchResult[]>([])
 const results = computed(() => {
@@ -120,9 +122,34 @@ function navigateToDir(path: string) {
     </div>
 
     <div v-else class="flex-1 overflow-auto">
+      <template v-for="result in results" :key="result.path + '/' + result.name">
       <div
-        v-for="result in results"
-        :key="result.path + '/' + result.name"
+        v-if="ui.isMobile"
+        class="flex min-h-14 cursor-pointer flex-col justify-center gap-0.5 px-3 py-1.5 text-sm"
+        @click="openResult(result)"
+      >
+        <div class="flex min-w-0 items-center gap-2">
+          <component
+            :is="getFileIcon(result.name, result.type === 'dir')"
+            class="size-4 shrink-0"
+            :class="getFileIconColor(result.name, result.type === 'dir')"
+          />
+          <span class="truncate font-medium">{{ result.name }}</span>
+        </div>
+        <div class="flex min-w-0 items-center text-xs text-muted-foreground">
+          <span
+            class="min-w-0 flex-1 truncate hover:underline"
+            @click.stop="navigateToDir(result.path)"
+          >
+            /{{ result.path || $t('common.path.root') }}
+          </span>
+          <span v-if="result.size != null" class="w-14 shrink-0 text-right tabular-nums">
+            {{ formatSize(result.size) }}
+          </span>
+        </div>
+      </div>
+      <div
+        v-else
         class="flex items-center px-3 text-sm cursor-pointer hover:bg-muted/50 gap-2 h-(--fc-row-height)"
         @click="openResult(result)"
       >
@@ -142,6 +169,7 @@ function navigateToDir(path: string) {
           {{ formatSize(result.size) }}
         </span>
       </div>
+      </template>
 
       <div v-if="truncated || scanLimitReached" class="px-3 py-2 text-sm text-muted-foreground text-center border-t space-y-0.5">
         <p v-if="truncated">{{ $t('files.search.truncated') }}</p>

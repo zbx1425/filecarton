@@ -57,10 +57,10 @@ function handleDirClick(pathStr: string) {
         <ContextMenuTrigger as-child>
           <div
             v-if="ui.isMobile"
-            class="flex min-h-14 items-center ps-3 text-sm touch-manipulation"
+            class="flex min-h-14 items-center ps-4 pe-3 text-sm touch-manipulation"
             @click="emit('openNode', item)"
           >
-            <div class="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-1.5">
+            <div class="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-1.5 me-2">
               <span class="truncate font-medium">{{ item.name }}</span>
               <span class="flex min-w-0 items-center text-xs text-muted-foreground">
                 <span

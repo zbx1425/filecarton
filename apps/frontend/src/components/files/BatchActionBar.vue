@@ -147,7 +147,7 @@ watch(layoutKey, () => {
   <div
     ref="barRef"
     class="flex min-w-0 items-center h-9 gap-2 shrink-0 overflow-hidden bg-statusbar text-statusbar-foreground border-t border-statusbar-border"
-    :class="ui.isMobile ? 'ps-3 pe-0' : 'px-3'"
+    :class="ui.isMobile ? 'ps-3 pe-0.5' : 'px-3'"
   >
     <Checkbox
       :model-value="checkboxState"

@@ -57,7 +57,7 @@ function closeMobileSearch() {
   <div
     v-if="ui.isMobile"
     class="flex items-center h-10 border-b shrink-0 bg-background"
-    :class="mobileSearchActive ? '' : 'ps-3'"
+    :class="mobileSearchActive ? 'pe-1' : 'ps-3 pe-1'"
   >
     <MobileSearchField
       v-if="mobileSearchActive"
