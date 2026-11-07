@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
-import { useNavigationStore, checkDirty } from '@/stores/navigation'
+import { useNavigationStore } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
 import { useUploadStore } from '@/stores/upload'
 import { useAuthStore } from '@/stores/auth'
 import { usePreferencesStore } from '@/stores/preferences'
-import { apiPost } from '@/api/client'
+import { useClipboardStore } from '@/stores/clipboard'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -25,40 +25,36 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Separator } from '@/components/ui/separator'
 import {
-  Home,
-  PanelLeft,
-  Plus,
-  Upload,
+  ArrowUpDown,
+  CloudDownload,
+  EllipsisVertical,
   File,
   Folder,
-  CloudDownload,
-  Settings2,
+  Home,
   LogOut,
+  Menu,
+  PanelLeft,
+  Plus,
+  Search,
+  Settings2,
+  Upload,
 } from '@lucide/vue'
 import SearchBox from '@/components/SearchBox.vue'
 import { createItem } from '@/services/fileActions'
 import { showRemoteDownloadDialog } from '@/services/dialogs'
+import { logout } from '@/services/authActions'
 import { isInternalDrag, handleDrop } from '@/composables/useDragDrop'
 import ClipboardBadge from '@/components/ClipboardBadge.vue'
+import FileListMenuBody from '@/components/files/FileListMenuBody.vue'
+import MobileSearchField from '@/components/layout/MobileSearchField.vue'
+import SortDialog from '@/components/files/SortDialog.vue'
 
 const navigation = useNavigationStore()
 const ui = useUiStore()
 const upload = useUploadStore()
 const auth = useAuthStore()
 const prefs = usePreferencesStore()
-
-async function handleLogout() {
-  if (navigation.editDirty) {
-    const leave = await checkDirty(navigation.editDirty)
-    if (!leave) return
-  }
-  navigation.editDirty = false
-  if (upload.hasActive) upload.cancelAll()
-  try {
-    await apiPost('auth_logout', {})
-  } catch { /* session already invalid */ }
-  location.reload()
-}
+const clipboard = useClipboardStore()
 
 const pathSegments = computed(() => navigation.currentPath)
 const isAtRoot = computed(() => pathSegments.value.length === 0 && !navigation.activeFile)
@@ -100,10 +96,29 @@ watch(
   }),
   { immediate: true },
 )
+
+const mobileSearchOpen = ref(false)
+const sortOpen = ref(false)
+const mobileSearchActive = computed(() => mobileSearchOpen.value || navigation.searchQuery !== '')
+const clipboardNames = computed(() => clipboard.items.slice(0, 10))
+
+function closeMobileSearch() {
+  navigation.searchQuery = ''
+  mobileSearchOpen.value = false
+}
+
+function setSortBy(column: 'name' | 'size' | 'mtime') {
+  prefs.setSort(column, prefs.sortAsc)
+}
+
+function setSortAsc(asc: boolean) {
+  prefs.setSort(prefs.sortBy, asc)
+}
 </script>
 
 <template>
   <div
+    v-if="!ui.isMobile"
     data-slot="app-toolbar"
     :data-toolbar-custom="prefs.isToolbarCustom ? 'true' : undefined"
     class="flex items-center h-11 px-3 border-b gap-2 shrink-0 bg-background text-foreground transition-colors"
@@ -178,7 +193,7 @@ watch(
         <SearchBox
           v-model="navigation.searchQuery"
           :placeholder="$t('files.search.placeholder')"
-          input-class="w-36 sm:w-60 max-w-full"
+          input-class="w-40 lg:w-60 max-w-full"
           :input-attrs="{ 'data-search': '' }"
           class="me-1"
         >
@@ -201,7 +216,7 @@ watch(
             <DropdownMenuTrigger as-child>
               <Button variant="outline" size="sm">
                 <Plus class="size-4" />
-                {{ $t('common.action.new') }}
+                <span class="hidden lg:inline">{{ $t('common.action.new') }}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -225,7 +240,7 @@ watch(
 
           <Button variant="outline" size="sm" @click="upload.openUploadDialog()">
             <Upload class="size-4" />
-            {{ $t('common.action.upload') }}
+            <span class="hidden lg:inline">{{ $t('common.action.upload') }}</span>
           </Button>
         </template>
       </template>
@@ -240,7 +255,7 @@ watch(
             <Button
               variant="ghost"
               size="sm"
-              class="max-w-30 overflow-hidden px-2 -ms-2 font-normal text-sm text-muted-foreground"
+              class="max-w-20 lg:max-w-30 overflow-hidden px-2 -ms-2 font-normal text-sm text-muted-foreground"
             >
               <span class="min-w-0 truncate">{{ auth.user?.displayName }}</span>
             </Button>
@@ -249,12 +264,12 @@ watch(
             <DropdownMenuLabel class="font-normal">
               <div class="flex flex-col gap-0.5">
                 <span class="truncate text-sm leading-snug">{{ auth.user?.displayName }}</span>
-                <span class="truncate text-sm leading-snug text-muted-foreground" 
+                <span class="truncate text-sm leading-snug text-muted-foreground"
                   v-if="auth.user?.id != auth.user?.displayName">{{ auth.user?.id }}</span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem @select="handleLogout">
+            <DropdownMenuItem @select="logout">
               <LogOut class="size-4" />
               {{ $t('common.action.log_out') }}
             </DropdownMenuItem>
@@ -266,5 +281,153 @@ watch(
         <Settings2 class="size-4" />
       </Button>
     </div>
+  </div>
+
+  <div
+    v-else
+    data-slot="app-toolbar"
+    :data-toolbar-custom="prefs.isToolbarCustom ? 'true' : undefined"
+    class="flex flex-col shrink-0 bg-background text-foreground transition-colors"
+    :class="prefs.isToolbarCustom ? (prefs.toolbarTone === 'dark' ? 'dark' : 'light') : ''"
+  >
+    <div class="flex items-center h-11">
+      <template v-if="navigation.viewMode === 'list' && mobileSearchActive">
+        <MobileSearchField
+          :model-value="navigation.searchQuery"
+          :recursive="navigation.searchRecursive"
+          :placeholder="$t('files.search.placeholder')"
+          @update:model-value="navigation.searchQuery = $event"
+          @update:recursive="navigation.searchRecursive = $event"
+          @back="closeMobileSearch"
+        />
+      </template>
+      <template v-else>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          class="size-11 shrink-0 touch-manipulation"
+          :aria-label="$t('common.a11y.open_menu')"
+          @click="ui.mobileDrawerOpen = true"
+        >
+          <Menu class="size-4" />
+        </Button>
+        <div class="min-w-0 ms-2">
+          <div v-if="ui.branding" class="truncate text-base font-semibold leading-tight">{{ ui.branding }}</div>
+          <div v-if="ui.repoName" class="truncate text-xs leading-tight text-muted-foreground">{{ ui.repoName }}</div>
+        </div>
+        <div class="flex-1" />
+        <template v-if="navigation.viewMode === 'list'">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            class="size-11 shrink-0 touch-manipulation"
+            :aria-label="$t('common.a11y.search')"
+            @click="mobileSearchOpen = true"
+          >
+            <Search class="size-4" />
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger as-child>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                class="size-11 shrink-0 touch-manipulation"
+                :aria-label="$t('common.a11y.more')"
+              >
+                <EllipsisVertical class="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" class="w-64">
+              <template v-if="clipboard.hasContent">
+                <div class="px-2 py-1.5">
+                  <div class="text-sm font-medium">
+                    {{ clipboard.mode === 'cut' ? $t('files.clipboard.title_cut') : $t('files.clipboard.title_copy') }}
+                  </div>
+                  <div class="text-sm text-muted-foreground">
+                    {{ clipboard.sourcePath ? $t('files.clipboard.from', { path: clipboard.sourcePath }) : $t('files.clipboard.from_root') }}
+                  </div>
+                  <div class="mt-1 max-h-40 space-y-0.5 overflow-auto text-sm">
+                    <div v-for="item in clipboardNames" :key="item.name" class="truncate">
+                      {{ item.name }}{{ item.isDir ? '/' : '' }}
+                    </div>
+                    <div v-if="clipboard.items.length > clipboardNames.length" class="text-muted-foreground">
+                      {{ $t('files.clipboard.more', { count: clipboard.items.length - clipboardNames.length }) }}
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" class="mt-1 w-full" @click="clipboard.clear()">
+                    {{ $t('common.action.clear') }}
+                  </Button>
+                </div>
+                <DropdownMenuSeparator />
+              </template>
+              <FileListMenuBody
+                surface="dropdown"
+                :show-shortcuts="false"
+                :flatten-subs="true"
+                :context-target="null"
+              />
+              <DropdownMenuSeparator />
+              <DropdownMenuItem @select="sortOpen = true">
+                <ArrowUpDown class="size-4" />
+                {{ $t('files.action.sort') }}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </template>
+      </template>
+    </div>
+
+    <div class="flex h-8 items-center border-b px-3 text-xs">
+      <Breadcrumb class="min-w-0 flex-1 overflow-x-auto scrollbar-none" :ref="(el: any) => breadcrumbNav = el?.$el ?? el">
+        <BreadcrumbList class="flex-nowrap w-max">
+          <BreadcrumbItem class="shrink-0">
+            <BreadcrumbPage v-if="isAtRoot" class="flex items-center gap-1.5">
+              <Home class="size-4" />
+              <span v-if="ui.repoName">{{ ui.repoName }}</span>
+            </BreadcrumbPage>
+            <BreadcrumbLink
+              v-else
+              class="flex items-center gap-1.5 cursor-pointer"
+              @click="navigation.navigateTo([])"
+            >
+              <Home class="size-4" />
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+
+          <template v-for="(segment, i) in pathSegments" :key="i">
+            <BreadcrumbSeparator class="shrink-0" />
+            <BreadcrumbItem class="shrink-0">
+              <BreadcrumbLink
+                v-if="i < pathSegments.length - 1 || navigation.activeFile"
+                class="cursor-pointer max-w-40 truncate block"
+                :title="segment"
+                @click="navigateToSegment(i)"
+              >
+                {{ segment }}
+              </BreadcrumbLink>
+              <BreadcrumbPage v-else class="max-w-40 truncate block" :title="segment">{{ segment }}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </template>
+
+          <template v-if="navigation.activeFileName">
+            <BreadcrumbSeparator class="shrink-0" />
+            <BreadcrumbItem class="shrink-0">
+              <BreadcrumbPage class="font-mono max-w-48 truncate block" :title="navigation.activeFileName">
+                {{ navigation.activeFileName }}
+              </BreadcrumbPage>
+            </BreadcrumbItem>
+          </template>
+        </BreadcrumbList>
+      </Breadcrumb>
+    </div>
+
+    <SortDialog
+      :open="sortOpen"
+      :sort-by="prefs.sortBy"
+      :sort-asc="prefs.sortAsc"
+      @update:open="sortOpen = $event"
+      @update:sort-by="setSortBy"
+      @update:sort-asc="setSortAsc"
+    />
   </div>
 </template>

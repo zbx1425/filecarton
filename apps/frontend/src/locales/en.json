@@ -173,6 +173,8 @@
   "common.dialog.unsaved_changes": "Unsaved Changes",
 
   "common.a11y.breadcrumb": "breadcrumb",
+  "common.a11y.open_menu": "Open menu",
+  "common.a11y.search": "Search",
   "common.a11y.more": "More",
   "common.a11y.enter_value": "Enter a value",
   "common.a11y.clear_selection": "Clear selection",
@@ -209,6 +211,10 @@
   "files.empty.drop_hint": "Drag files here to upload",
   "files.status.summary": "{folders} folders, {files} files",
   "files.selection.count": "{count} selected",
+  "files.selection.short": "{count}",
+  "files.action.sort": "Sort",
+  "files.sort.asc": "Ascending",
+  "files.sort.desc": "Descending",
 
   "files.search.placeholder": "Search...",
   "files.search.scope_here": "Here",

@@ -237,7 +237,7 @@ async function handleCopyDirectLink() {
       <RefreshCw class="size-4" />
       {{ $t('common.action.refresh') }}
     </component>
-    <component :is="menu.Separator" />
+    <component :is="menu.Separator" v-if="!ui.readonly || !ctx.showRecursiveSearch" />
     <template v-if="!ui.readonly">
       <component :is="menu.Item" v-if="ctx.canPaste" @select="pasteItems(ctx.currentPathStr)">
         <ClipboardPaste class="size-4" />
@@ -257,9 +257,10 @@ async function handleCopyDirectLink() {
         <CloudDownload class="size-4" />
         {{ $t('files.action.remote_download') }}
       </component>
-      <component :is="menu.Separator" />
+      <component :is="menu.Separator" v-if="!ctx.showRecursiveSearch" />
     </template>
-    <component :is="menu.Item" @select="ctx.toggleSelectAll()">
+    <component :is="menu.Separator" v-if="ui.readonly && !ctx.showRecursiveSearch" />
+    <component :is="menu.Item" v-if="!ctx.showRecursiveSearch" @select="ctx.toggleSelectAll()">
       <CheckSquare v-if="!ctx.isAllSelected" class="size-4" />
       <Square v-else class="size-4" />
       {{ ctx.isAllSelected ? $t('common.action.deselect_all') : $t('common.action.select_all') }}

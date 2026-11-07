@@ -226,6 +226,7 @@ export function useFileListView() {
     // Navigation
     currentPath, currentPathStr, activeFile, activeFileName, viewMode, editDirty,
     searchQuery, searchRecursive,
+    showRecursiveSearch,
 
     // Cross-store derived
     showUnixPerm,

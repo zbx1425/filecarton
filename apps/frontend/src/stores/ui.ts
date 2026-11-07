@@ -21,6 +21,7 @@ export const useUiStore = defineStore('ui', () => {
 
   const settingsOpen = ref(false)
   const dragOverlayVisible = ref(false)
+  const mobileDrawerOpen = ref(false)
 
   const isMobile = useMediaQuery('(width < 40rem)')
   const isLarge = useMediaQuery('(width >= 64rem)')
@@ -49,6 +50,7 @@ export const useUiStore = defineStore('ui', () => {
     unixPermInfo,
     settingsOpen,
     dragOverlayVisible,
+    mobileDrawerOpen,
     treePanelVisible,
     showTreeToggle,
     shouldShowTree,

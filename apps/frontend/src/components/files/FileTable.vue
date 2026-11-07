@@ -11,9 +11,11 @@ import FileListContextMenu from './FileListContextMenu.vue'
 import BatchActionBar from './BatchActionBar.vue'
 import ReadmePane from './ReadmePane.vue'
 import { FILE_LIST_KEY, FILE_LIST_VIEW_KEY, type FileListContext, type ContextTargetItem } from './fileListContext'
+import { useShowMobileFab } from '@/composables/useShowMobileFab'
 
 const view = inject(FILE_LIST_VIEW_KEY) ?? missingFileListView()
 const ui = useUiStore()
+const showMobileFab = useShowMobileFab()
 
 function missingFileListView(): never {
   throw new Error('FileTable requires FILE_LIST_VIEW_KEY')
@@ -200,7 +202,7 @@ function startResize(e: MouseEvent) {
       <!-- File list with unified context menu -->
       <ContextMenu v-else>
         <ContextMenuTrigger as-child>
-          <div class="flex-1 min-h-48 overflow-auto relative" @click="handleListClick" @contextmenu="handleAreaContext">
+          <div class="flex-1 min-h-48 overflow-auto relative" :class="showMobileFab ? 'pb-[4.25rem]' : ''" @click="handleListClick" @contextmenu="handleAreaContext">
             <!-- Go up row -->
             <div
               v-if="!isRoot"

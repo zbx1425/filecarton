@@ -173,6 +173,8 @@
   "common.dialog.unsaved_changes": "未儲存的變更",
 
   "common.a11y.breadcrumb": "麵包屑導覽",
+  "common.a11y.open_menu": "開啟選單",
+  "common.a11y.search": "搜尋",
   "common.a11y.more": "更多",
   "common.a11y.enter_value": "輸入值",
   "common.a11y.clear_selection": "清除所選內容",
@@ -209,6 +211,10 @@
   "files.empty.drop_hint": "將檔案拖曳至此上傳",
   "files.status.summary": "{folders} 個資料夾，{files} 個檔案",
   "files.selection.count": "已選取 {count} 項",
+  "files.selection.short": "{count} 項",
+  "files.action.sort": "排序",
+  "files.sort.asc": "升序",
+  "files.sort.desc": "降序",
 
   "files.search.placeholder": "搜尋...",
   "files.search.scope_here": "目前目錄",
