@@ -144,6 +144,7 @@ final class ConfigTest extends TestCase
             ['security' => ['must_readonly' => 'true']],
             ['limits'   => ['upload_max_depth' => '50']],
             ['repo'     => 'not_a_table'],
+            ['misc'     => ['analytics' => ['<script></script>']]],
         ];
 
         foreach ($invalidCases as $raw) {
@@ -154,6 +155,13 @@ final class ConfigTest extends TestCase
                 self::assertStringContainsString('Invalid config value for:', $e->getMessage());
             }
         }
+    }
+
+    public function testAnalyticsIsStoredAsRawHtml(): void
+    {
+        $snippet = "<script data-domain=\"a&b\">\nwindow.x=1</script>";
+        $resolved = Config::resolve(['misc' => ['analytics' => $snippet]], '/cfg', '/scr');
+        self::assertSame($snippet, $resolved['FILECARTON_ANALYTICS']);
     }
 
     public function testLoadBrokenConfigFileFailsClosedInCleanProcess(): void

@@ -63,4 +63,5 @@ define('FILECARTON_SENDFILE', false);
 define('FILECARTON_HTTP_CLIENT_PROXY', '');
 
 define('FILECARTON_DEV_SERVER', false);
+define('FILECARTON_ANALYTICS', '');
 }

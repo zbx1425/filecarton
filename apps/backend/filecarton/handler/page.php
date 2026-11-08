@@ -4,9 +4,6 @@ namespace FileCarton;
 
 /**
  * FileCarton Page Renderer
- *
- * Outputs the HTML shell with injected config and Vite asset references.
- * Supports both Vite dev server mode and production manifest mode.
  */
 
 /**
@@ -149,6 +146,7 @@ if (!$isDevMode) {
         endforeach;
     endif;
 endif; ?>
+<?php if (FILECARTON_ANALYTICS !== '') { echo FILECARTON_ANALYTICS; } ?>
 </head>
 <body>
     <div id="app">

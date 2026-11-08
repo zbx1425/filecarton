@@ -63,6 +63,7 @@ class Config {
             'motd'                          => '',
             'session_name'                  => 'FILECARTON',
             'dev_server'                    => false,
+            'analytics'                     => '',
         ];
     }
 

@@ -209,3 +209,8 @@ session_name = "FILECARTON"
 
 # Vite dev server URL for development. Comment out for production.
 # dev_server = "http://localhost:5173"
+
+# Raw HTML inserted unescaped at the end of <head> on the app page.
+# analytics = """
+# <script defer src="https://example.com"></script>
+# """
