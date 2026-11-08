@@ -174,7 +174,7 @@ onBeforeUnmount(() => {
         v-if="!isRoot"
         data-archive-row
         class="flex items-center text-sm text-muted-foreground cursor-pointer hover:bg-muted/50"
-        :class="ui.isMobile ? 'min-h-14 touch-manipulation' : 'h-(--fc-row-height) max-w-(--fc-table-max-w) px-3'"
+        :class="ui.isMobile ? 'min-h-(--fc-mobile-row-height) touch-manipulation' : 'h-(--fc-row-height) max-w-(--fc-table-max-w) px-3'"
         @click="emit('goUp')"
       >
         <div class="flex min-w-0 flex-1 items-center" :class="ui.isMobile ? '' : 'gap-2'">
@@ -196,7 +196,7 @@ onBeforeUnmount(() => {
             v-if="ui.isMobile"
             data-archive-row
             data-archive-file
-            class="flex min-h-14 items-center border-b border-transparent text-sm touch-manipulation select-none"
+            class="flex min-h-(--fc-mobile-row-height) items-center border-b border-transparent text-sm touch-manipulation select-none"
             :class="selectedName === item.name ? 'bg-selected' : ''"
             @click="emit('openNode', item)"
             @contextmenu="menuItem = item"

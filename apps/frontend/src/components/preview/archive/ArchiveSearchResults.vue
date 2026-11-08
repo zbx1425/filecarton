@@ -70,7 +70,7 @@ function handleDirClick(pathStr: string) {
           <div
             v-if="ui.isMobile"
             data-archive-file
-            class="flex min-h-14 items-center ps-4 pe-3 text-sm touch-manipulation"
+            class="flex min-h-(--fc-mobile-row-height) items-center ps-4 pe-3 text-sm touch-manipulation"
             @click="emit('openNode', item)"
             @contextmenu="menuItem = item"
           >

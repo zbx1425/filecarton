@@ -16,6 +16,12 @@ export const DENSITY_ROW_HEIGHT_REM: Record<Density, number> = {
   comfortable: 2.5,
 }
 
+export const DENSITY_MOBILE_ROW_HEIGHT_REM: Record<Density, number> = {
+  compact: 3,
+  default: 3.5,
+  comfortable: 4,
+}
+
 export function applyTheme(
   resolvedTheme: 'light' | 'dark',
   primaryColor: TailwindColorFamily | null,
@@ -77,10 +83,9 @@ export function applyTypography(baseFontSize: number): void {
 }
 
 export function applyDensity(density: Density): void {
-  document.documentElement.style.setProperty(
-    '--fc-row-height',
-    `${DENSITY_ROW_HEIGHT_REM[density]}rem`,
-  )
+  const root = document.documentElement.style
+  root.setProperty('--fc-row-height', `${DENSITY_ROW_HEIGHT_REM[density]}rem`)
+  root.setProperty('--fc-mobile-row-height', `${DENSITY_MOBILE_ROW_HEIGHT_REM[density]}rem`)
 }
 
 export function applyTableMaxWidth(maxWidth: number | null): void {

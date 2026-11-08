@@ -147,7 +147,7 @@ const thumbnailUrl = computed(() => {
     v-if="ui.isMobile"
     data-file-row
     :data-name="name"
-    class="flex items-center min-h-14 touch-manipulation text-sm border-b border-transparent cursor-default select-none"
+    class="flex items-center min-h-(--fc-mobile-row-height) touch-manipulation text-sm border-b border-transparent cursor-default select-none"
     :class="[isSelected ? 'bg-selected' : '', isCut ? 'opacity-50' : '']"
     @contextmenu="emit('contextmenu', $event)"
   >

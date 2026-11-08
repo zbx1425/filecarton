@@ -125,7 +125,7 @@ function navigateToDir(path: string) {
       <template v-for="result in results" :key="result.path + '/' + result.name">
       <div
         v-if="ui.isMobile"
-        class="flex min-h-14 cursor-pointer flex-col justify-center gap-0.5 px-3 py-1.5 text-sm"
+        class="flex min-h-(--fc-mobile-row-height) cursor-pointer flex-col justify-center gap-0.5 px-3 py-1.5 text-sm"
         @click="openResult(result)"
       >
         <div class="flex min-w-0 items-center gap-2">

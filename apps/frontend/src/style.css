@@ -64,6 +64,7 @@
   --fc-size: 16px;
   --fc-leading: 1.5;
   --fc-row-height: 2rem;
+  --fc-mobile-row-height: 3.5rem;
   --fc-table-max-w: none;
   --fc-table-resize-left: 0px;
   --fc-success: oklch(62.7% 0.194 149.214);

@@ -216,7 +216,7 @@ function startResize(e: MouseEvent) {
             <div
               v-if="!isRoot"
               class="flex items-center px-3 text-sm text-muted-foreground cursor-pointer hover:bg-muted/50"
-              :class="ui.isMobile ? 'min-h-14 touch-manipulation' : 'h-(--fc-row-height) max-w-(--fc-table-max-w)'"
+              :class="ui.isMobile ? 'min-h-(--fc-mobile-row-height) touch-manipulation' : 'h-(--fc-row-height) max-w-(--fc-table-max-w)'"
               data-file-row
               @click="view.goUp"
               @contextmenu="contextTarget = null"
