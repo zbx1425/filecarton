@@ -2,13 +2,8 @@
 import { computed, ref, inject, onBeforeUnmount } from 'vue'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { EllipsisVertical } from '@lucide/vue'
-import FileListMenuBody from './FileListMenuBody.vue'
+import { openContextMenu } from '@/utils/openContextMenu'
 import { useUiStore } from '@/stores/ui'
 import { getFileIcon, getFileIconColor, canPreviewImage } from '@/composables/useFileType'
 import { formatSize, formatTime, formatTimeLocalISO8601, formatUnixMode } from '@/utils/format'
@@ -64,21 +59,13 @@ function handleDblClick() {
   }
 }
 
-function prepareKebab() {
+function openRowMenu(e: MouseEvent) {
   if (!ctx.isSelected(props.name)) {
     ctx.clearSelection()
     ctx.toggleSelect(props.name)
   }
+  openContextMenu(e)
 }
-
-const menuTarget = computed(() => ({
-  name: props.name,
-  isDir: props.isDir,
-  size: props.size,
-  mode: props.mode,
-  owner: props.owner,
-  group: props.group,
-}))
 
 // ── Drag & drop ──
 
@@ -156,6 +143,7 @@ const thumbnailUrl = computed(() => {
     :data-name="name"
     class="flex items-center min-h-14 touch-manipulation text-sm border-b border-transparent cursor-default select-none"
     :class="[isSelected ? 'bg-selected' : '', isCut ? 'opacity-50' : '']"
+    @contextmenu="emit('contextmenu', $event)"
   >
     <div class="flex w-11 shrink-0 items-center justify-center self-stretch" @click.stop="ctx.toggleSelect(name)">
       <Checkbox :model-value="isSelected" class="size-3.5 pointer-events-none" />
@@ -172,27 +160,15 @@ const thumbnailUrl = computed(() => {
         <span class="min-w-0 truncate" :title="formatTimeLocalISO8601(mtime)">{{ formatTime(mtime) }}</span>
       </div>
     </div>
-    <DropdownMenu>
-      <DropdownMenuTrigger as-child>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          class="size-11 shrink-0 touch-manipulation"
-          :aria-label="$t('common.a11y.more')"
-          @click.stop="prepareKebab"
-        >
-          <EllipsisVertical class="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" class="w-52">
-        <FileListMenuBody
-          surface="dropdown"
-          :show-shortcuts="false"
-          :flatten-subs="true"
-          :context-target="menuTarget"
-        />
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      class="size-11 shrink-0 touch-manipulation"
+      :aria-label="$t('common.a11y.more')"
+      @click.stop="openRowMenu"
+    >
+      <EllipsisVertical class="size-4" />
+    </Button>
   </div>
 
   <div

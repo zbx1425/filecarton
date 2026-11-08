@@ -1,12 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, inject } from 'vue'
 import { ChevronRight } from '@lucide/vue'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuTrigger,
-} from '@/components/ui/context-menu'
-import ArchiveEntryMenuBody from './ArchiveEntryMenuBody.vue'
+import { ARCHIVE_TREE_MENU_KEY } from './archiveTreeContext'
 import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
 import type { ArchiveTreeItem } from '@/composables/useArchiveExplorer'
 
@@ -37,6 +32,7 @@ const isActive = computed(() => {
   return props.activeFilePath === props.node.path
 })
 
+const setMenuNode = inject(ARCHIVE_TREE_MENU_KEY)
 const icon = computed(() => getFileIcon(props.node.name, props.node.isDir, isExpanded.value))
 const iconColor = computed(() => getFileIconColor(props.node.name, props.node.isDir, isExpanded.value))
 
@@ -54,12 +50,12 @@ function handleClick() {
 
 <template>
   <div>
-    <ContextMenu>
-      <ContextMenuTrigger as-child>
         <div
+          data-archive-tree-node
           class="flex items-center h-7 pl-1 cursor-pointer select-none group"
           :class="isActive ? 'bg-accent text-accent-foreground font-medium' : 'hover:bg-muted/50'"
           @click="handleClick"
+          @contextmenu="setMenuNode?.(props.node)"
         >
           <span v-for="i in depth" :key="i" class="w-4 shrink-0" />
           <span
@@ -78,20 +74,6 @@ function handleClick() {
           <component :is="icon" class="size-4 mx-1.5 shrink-0" :class="iconColor" />
           <span class="truncate text-sm">{{ node.name }}</span>
         </div>
-      </ContextMenuTrigger>
-
-      <ContextMenuContent class="w-48">
-        <ArchiveEntryMenuBody
-          surface="context"
-          :show-shortcuts="false"
-          :flatten-subs="false"
-          :is-dir="node.isDir"
-          :random-access="randomAccess"
-          @open="handleClick"
-          @download="emit('downloadNode', node)"
-        />
-      </ContextMenuContent>
-    </ContextMenu>
 
     <template v-if="node.isDir && isExpanded">
       <ArchiveTreeNode

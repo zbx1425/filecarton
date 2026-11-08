@@ -13,9 +13,10 @@ export interface DirectoryData {
 }
 
 export const useFileTreeCacheStore = defineStore('fileSystemCache', () => {
-  // ── Directory listing cache (multi-directory, keyed by absolute path) ──
+  // ── Directory listing cache. Foreground navigation keeps one path. ──
   const directoryCache = ref(new Map<string, DirectoryData>())
   const pendingDirRequests = new Map<string, { abort: AbortController; promise: Promise<void> }>()
+  let foregroundSeq = 0
 
   // ── Tree children cache (keyed by absolute path) ──
   const treeChildrenCache = ref(new Map<string, TreeChild[]>())
@@ -71,37 +72,39 @@ export const useFileTreeCacheStore = defineStore('fileSystemCache', () => {
     return [...dirs, ...files]
   }
 
+  function hasListing(data: DirectoryData | undefined): boolean {
+    return !!data && data.error == null && !data.loading
+  }
+
   async function fetchDirectory(path: string, opts?: { background?: boolean }): Promise<void> {
     const background = opts?.background ?? false
-
-    const existing = pendingDirRequests.get(path)
-    if (existing && !background) {
-      existing.abort.abort()
-    }
-
     const abort = new AbortController()
     const signal = abort.signal
-
-    const current = directoryCache.value.get(path)
+    const seq = background ? foregroundSeq : ++foregroundSeq
 
     if (!background) {
-      // Single-slot: create a fresh Map containing only this path's entry
-      const newCache = new Map<string, DirectoryData>()
-      newCache.set(path, {
-        dirs: current?.dirs ?? [],
-        files: current?.files ?? [],
-        loading: true,
-        error: null,
-      })
-      directoryCache.value = newCache
+      for (const req of pendingDirRequests.values()) req.abort.abort()
+      // Another path, or this path has nothing to show: spinner until this response.
+      // Same-path refresh keeps the rows until the new list arrives.
+      const current = directoryCache.value.get(path)
+      const refreshingSamePath = directoryCache.value.size === 1 && hasListing(current)
+      if (!refreshingSamePath) {
+        directoryCache.value = new Map([[path, {
+          dirs: [],
+          files: [],
+          loading: true,
+          error: null,
+        }]])
+      }
     }
 
     const promise = (async () => {
       try {
         const data = await apiGet<ListResponse>('list', { path }, signal)
-        if (signal.aborted) return
+        if (signal.aborted || (!background && seq !== foregroundSeq)) return
+        if (background && !directoryCache.value.has(path)) return
 
-        const newCache = new Map<string, DirectoryData>()
+        const newCache = new Map(background ? directoryCache.value : undefined)
         newCache.set(path, {
           dirs: data.dirs,
           files: data.files,
@@ -110,34 +113,28 @@ export const useFileTreeCacheStore = defineStore('fileSystemCache', () => {
         })
         directoryCache.value = newCache
 
-        // Derive tree children from list data and update tree cache
         const newTreeCache = new Map(treeChildrenCache.value)
         newTreeCache.set(path, deriveTreeChildren(data))
         treeChildrenCache.value = newTreeCache
       } catch (e: unknown) {
-        if (signal.aborted) return
-        if (background) {
-          // Background failure: preserve old data but record the error
-          const oldData = directoryCache.value.get(path)
-          if (oldData) {
-            const newCache = new Map(directoryCache.value)
-            newCache.set(path, { ...oldData, loading: false, error: toErrorInfo(e) })
-            directoryCache.value = newCache
-          }
+        if (signal.aborted || (!background && seq !== foregroundSeq)) return
+        if (background && !directoryCache.value.has(path)) return
+        const oldData = directoryCache.value.get(path)
+        const newCache = new Map(background ? directoryCache.value : undefined)
+        if (oldData && hasListing(oldData)) {
+          newCache.set(path, { ...oldData, loading: false, error: toErrorInfo(e) })
         } else {
-          const newCache = new Map<string, DirectoryData>()
           newCache.set(path, {
             dirs: [],
             files: [],
             loading: false,
             error: toErrorInfo(e),
           })
-          directoryCache.value = newCache
         }
+        directoryCache.value = newCache
       } finally {
-        if (!signal.aborted) {
-          pendingDirRequests.delete(path)
-        }
+        const pending = pendingDirRequests.get(path)
+        if (pending?.abort === abort) pendingDirRequests.delete(path)
       }
     })()
 
@@ -181,8 +178,8 @@ export const useFileTreeCacheStore = defineStore('fileSystemCache', () => {
       treeChildrenCache.value = newCache
       return data.children
     }).finally(() => {
+      if (pendingTreeRequests.get(path) === promise) pendingTreeRequests.delete(path)
       if (getGeneration(path) !== gen) return
-      pendingTreeRequests.delete(path)
       const l2 = new Set(treeLoading.value)
       l2.delete(path)
       treeLoading.value = l2
@@ -275,6 +272,9 @@ export const useFileTreeCacheStore = defineStore('fileSystemCache', () => {
     treeChildrenCache.value = newTreeCache
 
     pendingTreeRequests.delete(path)
+    const stillLoading = new Set(treeLoading.value)
+    stillLoading.delete(path)
+    treeLoading.value = stillLoading
     const dirReq = pendingDirRequests.get(path)
     if (dirReq) {
       dirReq.abort.abort()
@@ -317,11 +317,14 @@ export const useFileTreeCacheStore = defineStore('fileSystemCache', () => {
     }
 
     // Cancel pending requests regardless
+    const stillLoading = new Set(treeLoading.value)
     for (const key of pendingTreeRequests.keys()) {
       if (key === path || key.startsWith(prefix)) {
         pendingTreeRequests.delete(key)
+        stillLoading.delete(key)
       }
     }
+    treeLoading.value = stillLoading
     for (const [key, req] of pendingDirRequests.entries()) {
       if (key === path || key.startsWith(prefix)) {
         req.abort.abort()

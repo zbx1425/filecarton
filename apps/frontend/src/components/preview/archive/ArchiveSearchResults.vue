@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { EllipsisVertical, Search } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import {
@@ -6,12 +7,8 @@ import {
   ContextMenuContent,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { useUiStore } from '@/stores/ui'
+import { openContextMenu } from '@/utils/openContextMenu'
 import ArchiveEntryMenuBody from './ArchiveEntryMenuBody.vue'
 import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
 import { formatSize } from '@/utils/format'
@@ -26,6 +23,11 @@ defineProps<{
 }>()
 
 const ui = useUiStore()
+const menuItem = ref<ArchiveTreeItem | null>(null)
+
+function onListContextMenu(e: MouseEvent) {
+  if (!(e.target as HTMLElement).closest('[data-archive-file]')) e.preventDefault()
+}
 
 const emit = defineEmits<{
   openNode: [node: ArchiveTreeItem]
@@ -52,13 +54,16 @@ function handleDirClick(pathStr: string) {
       {{ $t('files.search.no_results') }}
     </div>
 
-    <div v-else class="flex-1 overflow-auto">
-      <ContextMenu v-for="item in results" :key="item.path">
-        <ContextMenuTrigger as-child>
+    <ContextMenu v-else>
+    <ContextMenuTrigger as-child>
+    <div class="flex-1 overflow-auto" @contextmenu="onListContextMenu">
+      <template v-for="item in results" :key="item.path">
           <div
             v-if="ui.isMobile"
+            data-archive-file
             class="flex min-h-14 items-center ps-4 pe-3 text-sm touch-manipulation"
             @click="emit('openNode', item)"
+            @contextmenu="menuItem = item"
           >
             <div class="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-1.5 me-2">
               <span class="truncate font-medium">{{ item.name }}</span>
@@ -72,29 +77,22 @@ function handleDirClick(pathStr: string) {
                 <span v-if="!item.isDir" class="w-14 shrink-0 text-right tabular-nums">{{ formatSize(item.size) }}</span>
               </span>
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger as-child>
-                <Button variant="ghost" size="icon-sm" class="shrink-0" :aria-label="$t('common.a11y.more')" @click.stop>
-                  <EllipsisVertical class="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" class="w-48">
-                <ArchiveEntryMenuBody
-                  surface="dropdown"
-                  :show-shortcuts="false"
-                  :flatten-subs="false"
-                  :is-dir="item.isDir"
-                  :random-access="randomAccess"
-                  @open="emit('openNode', item)"
-                  @download="emit('downloadNode', item)"
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              class="shrink-0"
+              :aria-label="$t('common.a11y.more')"
+              @click.stop="(e: MouseEvent) => { menuItem = item; openContextMenu(e) }"
+            >
+              <EllipsisVertical class="size-4" />
+            </Button>
           </div>
           <div
             v-else
+            data-archive-file
             class="flex items-center px-3 text-sm cursor-pointer hover:bg-muted/50 gap-2 h-(--fc-row-height)"
             @click="emit('openNode', item)"
+            @contextmenu="menuItem = item"
           >
             <component
               :is="getFileIcon(item.name, item.isDir)"
@@ -112,19 +110,20 @@ function handleDirClick(pathStr: string) {
               {{ formatSize(item.size) }}
             </span>
           </div>
-        </ContextMenuTrigger>
-        <ContextMenuContent class="w-48">
-          <ArchiveEntryMenuBody
-            surface="context"
-            :show-shortcuts="false"
-            :flatten-subs="false"
-            :is-dir="item.isDir"
-            :random-access="randomAccess"
-            @open="emit('openNode', item)"
-            @download="emit('downloadNode', item)"
-          />
-        </ContextMenuContent>
-      </ContextMenu>
+      </template>
     </div>
+    </ContextMenuTrigger>
+    <ContextMenuContent v-if="menuItem" class="w-48">
+      <ArchiveEntryMenuBody
+        surface="context"
+        :show-shortcuts="false"
+        :flatten-subs="false"
+        :is-dir="menuItem.isDir"
+        :random-access="randomAccess"
+        @open="emit('openNode', menuItem)"
+        @download="emit('downloadNode', menuItem)"
+      />
+    </ContextMenuContent>
+    </ContextMenu>
   </div>
 </template>

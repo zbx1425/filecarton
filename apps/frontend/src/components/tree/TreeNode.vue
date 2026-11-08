@@ -2,13 +2,8 @@
 import { computed, inject, reactive, ref, onBeforeUnmount } from 'vue'
 import { ChevronRight, EllipsisVertical, Loader2 } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { useUiStore } from '@/stores/ui'
-import TreeMenuBody from './TreeMenuBody.vue'
+import { openContextMenu } from '@/utils/openContextMenu'
 import { useTreeNavigation } from '@/composables/useTreeNavigation'
 import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
 import { joinPath } from '@/utils/path'
@@ -30,11 +25,7 @@ const tn = reactive(useTreeNavigation({
   name: () => props.name,
   type: () => props.type,
 }))
-const treeTarget = computed(() => ({
-  name: props.name,
-  path: props.path,
-  isDir: tn.isDir,
-}))
+
 
 const icon = computed(() => getFileIcon(props.name, tn.isDir, tn.isExpanded))
 const iconColor = computed(() => getFileIconColor(props.name, tn.isDir, tn.isExpanded))
@@ -139,27 +130,16 @@ function handleContextMenu() {
 
       <component :is="icon" class="size-4 mx-1.5 shrink-0" :class="iconColor" />
       <span class="truncate text-sm" :title="name">{{ name }}</span>
-      <DropdownMenu v-if="ui.isMobile">
-        <DropdownMenuTrigger as-child>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            class="ml-auto size-11 shrink-0 touch-manipulation"
-            :aria-label="$t('common.a11y.more')"
-            @click.stop
-          >
-            <EllipsisVertical class="size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" class="w-52">
-          <TreeMenuBody
-            surface="dropdown"
-            :show-shortcuts="false"
-            :flatten-subs="true"
-            :context-target="treeTarget"
-          />
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <Button
+        v-if="ui.isMobile"
+        variant="ghost"
+        size="icon-sm"
+        class="ml-auto size-11 shrink-0 touch-manipulation"
+        :aria-label="$t('common.a11y.more')"
+        @click.stop="openContextMenu"
+      >
+        <EllipsisVertical class="size-4" />
+      </Button>
     </div>
 
     <template v-if="tn.isDir && tn.isExpanded">

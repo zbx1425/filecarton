@@ -7,12 +7,8 @@ import {
   ContextMenuContent,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import ArchiveEntryMenuBody from './ArchiveEntryMenuBody.vue'
+import { openContextMenu } from '@/utils/openContextMenu'
 import { buildArchiveRawUrl } from '@/api/client'
 import { usePreferencesStore } from '@/stores/preferences'
 import { useUiStore } from '@/stores/ui'
@@ -44,6 +40,11 @@ const emit = defineEmits<{
 
 const preferences = usePreferencesStore()
 const ui = useUiStore()
+const menuItem = ref<ArchiveTreeItem | null>(null)
+
+function onListContextMenu(e: MouseEvent) {
+  if (!(e.target as HTMLElement).closest('[data-archive-file]')) e.preventDefault()
+}
 
 const allRows = computed(() => [...props.dirs, ...props.files])
 
@@ -157,7 +158,9 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div class="flex-1 overflow-auto relative" @click="handleListBlankClick">
+    <ContextMenu>
+    <ContextMenuTrigger as-child>
+    <div class="flex-1 overflow-auto relative" @click="handleListBlankClick" @contextmenu="onListContextMenu">
       <div
         v-if="!isRoot"
         data-archive-row
@@ -179,18 +182,15 @@ onBeforeUnmount(() => {
         <div v-else class="w-11 shrink-0" />
       </div>
 
-      <ContextMenu
-        v-for="item in allRows"
-        :key="item.path"
-        @update:open="(open: boolean) => { if (open) emit('update:selectedName', item.name) }"
-      >
-        <ContextMenuTrigger as-child>
+      <template v-for="item in allRows" :key="item.path">
           <div
             v-if="ui.isMobile"
             data-archive-row
+            data-archive-file
             class="flex min-h-14 items-center border-b border-transparent text-sm touch-manipulation select-none"
             :class="selectedName === item.name ? 'bg-selected' : ''"
             @click="emit('openNode', item)"
+            @contextmenu="menuItem = item"
           >
             <div class="flex me-3 ms-4">
               <component
@@ -208,38 +208,25 @@ onBeforeUnmount(() => {
                 </span>
               </div>
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger as-child>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  class="size-11 shrink-0 touch-manipulation"
-                  :aria-label="$t('common.a11y.more')"
-                  @click.stop
-                >
-                  <EllipsisVertical class="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" class="w-48">
-                <ArchiveEntryMenuBody
-                  surface="dropdown"
-                  :show-shortcuts="false"
-                  :flatten-subs="false"
-                  :is-dir="item.isDir"
-                  :random-access="randomAccess"
-                  @open="emit('openNode', item)"
-                  @download="emit('downloadNode', item)"
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              class="size-11 shrink-0 touch-manipulation"
+              :aria-label="$t('common.a11y.more')"
+              @click.stop="(e: MouseEvent) => { menuItem = item; openContextMenu(e) }"
+            >
+              <EllipsisVertical class="size-4" />
+            </Button>
           </div>
           <div
             v-else
             data-archive-row
+            data-archive-file
             class="flex items-center px-3 text-sm group border-b border-transparent cursor-default select-none h-(--fc-row-height) max-w-(--fc-table-max-w)"
             :class="selectedName === item.name ? 'bg-selected' : 'hover:bg-muted/50'"
             @click="emit('update:selectedName', item.name)"
             @dblclick="emit('openNode', item)"
+            @contextmenu="menuItem = item"
           >
             <div
               class="flex items-center gap-2 flex-1 min-w-0 pr-4"
@@ -263,20 +250,7 @@ onBeforeUnmount(() => {
               {{ item.mtime ? formatTime(item.mtime) : '—' }}
             </div>
           </div>
-        </ContextMenuTrigger>
-
-        <ContextMenuContent class="w-48">
-          <ArchiveEntryMenuBody
-            surface="context"
-            :show-shortcuts="false"
-            :flatten-subs="false"
-            :is-dir="item.isDir"
-            :random-access="randomAccess"
-            @open="emit('openNode', item)"
-            @download="emit('downloadNode', item)"
-          />
-        </ContextMenuContent>
-      </ContextMenu>
+      </template>
 
       <div v-if="isFilteredEmpty" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <p v-if="searchQuery.trim()" class="text-sm">{{ $t('files.empty.no_matches', { query: searchQuery }) }}</p>
@@ -286,6 +260,19 @@ onBeforeUnmount(() => {
         <p class="text-sm">{{ $t('files.empty.empty') }}</p>
       </div>
     </div>
+    </ContextMenuTrigger>
+    <ContextMenuContent v-if="menuItem" class="w-48">
+      <ArchiveEntryMenuBody
+        surface="context"
+        :show-shortcuts="false"
+        :flatten-subs="false"
+        :is-dir="menuItem.isDir"
+        :random-access="randomAccess"
+        @open="emit('openNode', menuItem)"
+        @download="emit('downloadNode', menuItem)"
+      />
+    </ContextMenuContent>
+    </ContextMenu>
 
     <Teleport to="body">
       <div
