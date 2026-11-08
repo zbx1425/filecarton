@@ -19,3 +19,5 @@ export interface TreePanelContext {
 }
 
 export const TREE_PANEL_KEY: InjectionKey<TreePanelContext> = Symbol('treePanelContext')
+
+export const TREE_OVERFLOW_KEY: InjectionKey<(target: TreeContextTarget) => void> = Symbol('treeOverflow')

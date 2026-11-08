@@ -9,11 +9,15 @@ import { useNavigationStore } from '@/stores/navigation'
 import { RefreshCw } from '@lucide/vue'
 import TreeNode from '@/components/tree/TreeNode.vue'
 import TreeContextMenu from '@/components/tree/TreeContextMenu.vue'
-import { TREE_PANEL_KEY, type TreeContextTarget } from '@/components/tree/treeContext'
+import TreeMenuBody from '@/components/tree/TreeMenuBody.vue'
+import { TREE_PANEL_KEY, TREE_OVERFLOW_KEY, type TreeContextTarget } from '@/components/tree/treeContext'
+import { AnchoredMenu, ANCHORED_MENU_KEY, type AnchoredMenuHandle } from '@/components/ui/anchored-menu'
+import { useUiStore } from '@/stores/ui'
 
 const cache = useFileTreeCacheStore()
 const treePanel = useTreeUiStore()
 const navigation = useNavigationStore()
+const ui = useUiStore()
 
 cache.fetchTreeChildren('').catch(() => {
   treePanel.rootError = true
@@ -32,7 +36,17 @@ watch(
 // ── Context menu ──
 
 const contextTarget = ref<TreeContextTarget | null>(null)
+const overflowTarget = ref<TreeContextTarget | null>(null)
+const treeMenu = ref<AnchoredMenuHandle | null>(null)
 const ROOT_TARGET: TreeContextTarget = { name: '', path: '', isDir: true }
+
+provide(TREE_OVERFLOW_KEY, (target) => { overflowTarget.value = target })
+provide(ANCHORED_MENU_KEY, {
+  isExpanded: (key) => treeMenu.value?.isExpanded(key) ?? false,
+  onPointerDown: (key, event) => treeMenu.value?.onPointerDown(key, event),
+  onClick: (key, event, commitTarget) => treeMenu.value?.onClick(key, event, commitTarget),
+  release: (key) => treeMenu.value?.release(key),
+})
 
 provide(TREE_PANEL_KEY, {
   setContextTarget: (target) => { contextTarget.value = target },
@@ -72,4 +86,13 @@ function handleAreaContext(e: MouseEvent) {
 
     <TreeContextMenu :context-target="contextTarget" />
   </ContextMenu>
+  <AnchoredMenu v-if="ui.isMobile" ref="treeMenu" content-class="w-52">
+    <TreeMenuBody
+      v-if="overflowTarget"
+      surface="dropdown"
+      :show-shortcuts="false"
+      :flatten-subs="true"
+      :context-target="overflowTarget"
+    />
+  </AnchoredMenu>
 </template>

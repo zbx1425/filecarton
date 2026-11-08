@@ -3,7 +3,7 @@ import { computed, ref, inject, onBeforeUnmount } from 'vue'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { EllipsisVertical } from '@lucide/vue'
-import { openContextMenu } from '@/utils/openContextMenu'
+import { ANCHORED_MENU_KEY } from '@/components/ui/anchored-menu'
 import { useUiStore } from '@/stores/ui'
 import { getFileIcon, getFileIconColor, canPreviewImage } from '@/composables/useFileType'
 import { formatSize, formatTime, formatTimeLocalISO8601, formatUnixMode } from '@/utils/format'
@@ -26,9 +26,11 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   contextmenu: [event: MouseEvent]
+  overflow: []
 }>()
 
 const ctx = inject(FILE_LIST_KEY) as FileListContext
+const rowMenu = inject(ANCHORED_MENU_KEY, null)
 const ui = useUiStore()
 
 const isSelected = computed(() => ctx.isSelected(props.name))
@@ -59,13 +61,17 @@ function handleDblClick() {
   }
 }
 
-function openRowMenu(e: MouseEvent) {
+function onKebabClick(e: MouseEvent) {
   if (!ctx.isSelected(props.name)) {
     ctx.clearSelection()
     ctx.toggleSelect(props.name)
   }
-  openContextMenu(e)
+  rowMenu?.onClick(props.name, e, () => emit('overflow'))
 }
+
+onBeforeUnmount(() => {
+  rowMenu?.release(props.name)
+})
 
 // ── Drag & drop ──
 
@@ -163,9 +169,12 @@ const thumbnailUrl = computed(() => {
     <Button
       variant="ghost"
       size="icon-sm"
-      class="size-11 shrink-0 touch-manipulation"
+      class="pointer-events-auto size-11 shrink-0 touch-manipulation"
       :aria-label="$t('common.a11y.more')"
-      @click.stop="openRowMenu"
+      aria-haspopup="menu"
+      :aria-expanded="rowMenu?.isExpanded(name) ?? false"
+      @pointerdown="rowMenu?.onPointerDown(name, $event)"
+      @click.stop="onKebabClick"
     >
       <EllipsisVertical class="size-4" />
     </Button>

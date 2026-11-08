@@ -152,8 +152,8 @@ endif; ?>
 </head>
 <body>
     <div id="app">
-        <div id="app-splash" style="margin-left: 4em; margin-top: 4em; font-family: Arial, Helvetica, sans-serif;">
-            <h1>FileCarton Loading</h1>
+        <div id="app-splash" style="margin: 4em; font-family: Arial, Helvetica, sans-serif;">
+            <p>FileCarton Loading</p>
             <p>Please wait while FileCarton is being loaded.</p>
         </div>
     </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { EllipsisVertical, Search } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import {
@@ -8,14 +8,14 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import { useUiStore } from '@/stores/ui'
-import { openContextMenu } from '@/utils/openContextMenu'
+import { AnchoredMenu, type AnchoredMenuHandle } from '@/components/ui/anchored-menu'
 import ArchiveEntryMenuBody from './ArchiveEntryMenuBody.vue'
 import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
 import { formatSize } from '@/utils/format'
 import { parentPath, splitPath } from '@/utils/path'
 import type { ArchiveTreeItem } from '@/composables/useArchiveExplorer'
 
-defineProps<{
+const props = defineProps<{
   currentPathStr: string
   searchQuery: string
   results: ArchiveTreeItem[]
@@ -24,6 +24,15 @@ defineProps<{
 
 const ui = useUiStore()
 const menuItem = ref<ArchiveTreeItem | null>(null)
+const overflowItem = ref<ArchiveTreeItem | null>(null)
+const rowMenu = ref<AnchoredMenuHandle | null>(null)
+
+watch(() => props.results.map(item => item.path), (paths) => {
+  const current = overflowItem.value
+  if (current && rowMenu.value?.isExpanded(current.path) && !paths.includes(current.path)) {
+    rowMenu.value.release(current.path)
+  }
+})
 
 function onListContextMenu(e: MouseEvent) {
   if (!(e.target as HTMLElement).closest('[data-archive-file]')) e.preventDefault()
@@ -80,9 +89,12 @@ function handleDirClick(pathStr: string) {
             <Button
               variant="ghost"
               size="icon-sm"
-              class="shrink-0"
+              class="pointer-events-auto shrink-0"
               :aria-label="$t('common.a11y.more')"
-              @click.stop="(e: MouseEvent) => { menuItem = item; openContextMenu(e) }"
+              aria-haspopup="menu"
+              :aria-expanded="rowMenu?.isExpanded(item.path) ?? false"
+              @pointerdown="rowMenu?.onPointerDown(item.path, $event)"
+              @click.stop="(e: MouseEvent) => rowMenu?.onClick(item.path, e, () => { overflowItem = item })"
             >
               <EllipsisVertical class="size-4" />
             </Button>
@@ -125,5 +137,17 @@ function handleDirClick(pathStr: string) {
       />
     </ContextMenuContent>
     </ContextMenu>
+    <AnchoredMenu v-if="ui.isMobile" ref="rowMenu" content-class="w-48">
+      <ArchiveEntryMenuBody
+        v-if="overflowItem"
+        surface="dropdown"
+        :show-shortcuts="false"
+        :flatten-subs="false"
+        :is-dir="overflowItem.isDir"
+        :random-access="randomAccess"
+        @open="emit('openNode', overflowItem)"
+        @download="emit('downloadNode', overflowItem)"
+      />
+    </AnchoredMenu>
   </div>
 </template>

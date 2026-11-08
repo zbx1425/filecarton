@@ -3,7 +3,8 @@ import { computed, inject, reactive, ref, onBeforeUnmount } from 'vue'
 import { ChevronRight, EllipsisVertical, Loader2 } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { useUiStore } from '@/stores/ui'
-import { openContextMenu } from '@/utils/openContextMenu'
+import { ANCHORED_MENU_KEY } from '@/components/ui/anchored-menu'
+import { TREE_OVERFLOW_KEY } from './treeContext'
 import { useTreeNavigation } from '@/composables/useTreeNavigation'
 import { getFileIcon, getFileIconColor } from '@/composables/useFileType'
 import { joinPath } from '@/utils/path'
@@ -19,6 +20,8 @@ const props = defineProps<{
 }>()
 
 const panelCtx = inject(TREE_PANEL_KEY)!
+const rowMenu = inject(ANCHORED_MENU_KEY, null)
+const setOverflowTarget = inject(TREE_OVERFLOW_KEY, null)
 const ui = useUiStore()
 const tn = reactive(useTreeNavigation({
   path: () => props.path,
@@ -92,6 +95,20 @@ function handleContextMenu() {
     isDir: tn.isDir,
   })
 }
+
+function onKebabClick(e: MouseEvent) {
+  rowMenu?.onClick(props.path, e, () => {
+    setOverflowTarget?.({
+      name: props.name,
+      path: props.path,
+      isDir: tn.isDir,
+    })
+  })
+}
+
+onBeforeUnmount(() => {
+  rowMenu?.release(props.path)
+})
 </script>
 
 <template>
@@ -134,9 +151,12 @@ function handleContextMenu() {
         v-if="ui.isMobile"
         variant="ghost"
         size="icon-sm"
-        class="ml-auto size-11 shrink-0 touch-manipulation"
+        class="pointer-events-auto ml-auto size-11 shrink-0 touch-manipulation"
         :aria-label="$t('common.a11y.more')"
-        @click.stop="openContextMenu"
+        aria-haspopup="menu"
+        :aria-expanded="rowMenu?.isExpanded(path) ?? false"
+        @pointerdown="rowMenu?.onPointerDown(path, $event)"
+        @click.stop="onKebabClick"
       >
         <EllipsisVertical class="size-4" />
       </Button>

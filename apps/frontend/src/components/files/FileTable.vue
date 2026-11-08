@@ -11,6 +11,8 @@ import FileListContextMenu from './FileListContextMenu.vue'
 import BatchActionBar from './BatchActionBar.vue'
 import ReadmePane from './ReadmePane.vue'
 import { FILE_LIST_KEY, FILE_LIST_VIEW_KEY, type FileListContext, type ContextTargetItem } from './fileListContext'
+import { AnchoredMenu, ANCHORED_MENU_KEY, type AnchoredMenuHandle } from '@/components/ui/anchored-menu'
+import FileListMenuBody from './FileListMenuBody.vue'
 
 const view = inject(FILE_LIST_VIEW_KEY) ?? missingFileListView()
 const ui = useUiStore()
@@ -79,6 +81,15 @@ const readmePath = computed(() => {
 // ── Context menu target ──
 
 const contextTarget = ref<ContextTargetItem | null>(null)
+const overflowTarget = ref<ContextTargetItem | null>(null)
+const rowMenu = ref<AnchoredMenuHandle | null>(null)
+
+provide(ANCHORED_MENU_KEY, {
+  isExpanded: (key) => rowMenu.value?.isExpanded(key) ?? false,
+  onPointerDown: (key, event) => rowMenu.value?.onPointerDown(key, event),
+  onClick: (key, event, commitTarget) => rowMenu.value?.onClick(key, event, commitTarget),
+  release: (key) => rowMenu.value?.release(key),
+})
 
 function handleRowContext(_e: MouseEvent, item: ContextTargetItem) {
   if (!view.isSelected(item.name)) {
@@ -236,6 +247,7 @@ function startResize(e: MouseEvent) {
               :owner="d.owner"
               :group="d.group"
               @contextmenu="handleRowContext($event, { name: d.name, isDir: true, mode: d.mode, owner: d.owner, group: d.group })"
+              @overflow="overflowTarget = { name: d.name, isDir: true, mode: d.mode, owner: d.owner, group: d.group }"
             />
             <FileRow
               v-for="f in view.filteredFiles"
@@ -248,6 +260,7 @@ function startResize(e: MouseEvent) {
               :owner="f.owner"
               :group="f.group"
               @contextmenu="handleRowContext($event, { name: f.name, isDir: false, size: f.size, mode: f.mode, owner: f.owner, group: f.group })"
+              @overflow="overflowTarget = { name: f.name, isDir: false, size: f.size, mode: f.mode, owner: f.owner, group: f.group }"
             />
 
             <!-- Empty state -->
@@ -265,6 +278,16 @@ function startResize(e: MouseEvent) {
 
         <FileListContextMenu :context-target="contextTarget" />
       </ContextMenu>
+
+      <AnchoredMenu v-if="ui.isMobile" ref="rowMenu" content-class="w-52">
+        <FileListMenuBody
+          v-if="overflowTarget"
+          surface="dropdown"
+          :show-shortcuts="false"
+          :flatten-subs="true"
+          :context-target="overflowTarget"
+        />
+      </AnchoredMenu>
 
       <!-- README preview pane -->
       <ReadmePane
