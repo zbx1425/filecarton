@@ -7,6 +7,10 @@
 
 **FileCarton** is deeply inspired by the incredible work of [TinyFileManager (TFM)](https://github.com/prasathmani/tinyfilemanager), and *aims* to be a modern alternative to it.
 
+## 🎥 Demo
+
+- **https://fc-demo.zulubox.me**
+
 <p>
 <img src="images/fc-demo-1.png" width="640" alt="FileCarton Demo 1 showing the folder view" />
 <img src="images/fc-demo-2.png" width="640" alt="FileCarton Demo 2 showing the editor" />
@@ -17,9 +21,9 @@
 ## ✨ Why FileCarton?
 
 *   🚀 **SPA Experience**: By packing a decoupled frontend and backend architecture into a single file, FileCarton has a snappy user experience without page reloads.
-*   🧩 **Built to Embed**: Easily embed and integrate FileCarton into your existing logic or custom dashboards with minimal configuration.
-*   🛠️ **Effortless Deployment**: Simple to set up and highly configurable.
+*   🧩 **Built to Embed**: Easily embed and integrate FileCarton into your existing logic or custom dashboards. Simple to set up and highly configurable.
 *   💅 **Sleek & Modern UI**: A clean interface with careful thought to make common operations intuitive.
+*   📱 **Mobile-friendly**: The interface adapts to phones and tablets with a touch-optimized layout.
 *   📝 **Monaco Editor Integration**: Features the Monaco Editor (the one behind VS Code) for a better code and text editing experience in your browser.
 *   🔒 **Built-in Auth**: Authentication support out of the box with customizable implementations.
 *   ⚖️ **MIT Licensed**: You can freely embed it into your projects.
