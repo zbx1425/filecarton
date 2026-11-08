@@ -76,6 +76,16 @@ const etaText = computed(() => {
         <span class="text-center">{{ speedText }}</span>
         <span class="text-right">{{ etaText }}</span>
       </div>
+      <div v-if="upload.prepareDepth > 0" class="text-xs text-muted-foreground">
+        {{ $t('upload.toast.preparing_more') }}
+      </div>
+    </div>
+
+    <div v-else-if="upload.prepareDepth > 0" class="flex items-center gap-2.5">
+      <Loader2 class="size-4 animate-spin text-primary shrink-0" />
+      <div class="min-w-0 flex-1 text-sm font-medium">
+        {{ upload.preparePhase === 'reading' ? $t('upload.toast.reading') : $t('upload.toast.checking') }}
+      </div>
     </div>
 
     <!-- Done: show latest batch result -->

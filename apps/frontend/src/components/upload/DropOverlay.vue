@@ -1,14 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { useUploadStore } from '@/stores/upload'
 import { useNavigationStore } from '@/stores/navigation'
 import { useUiStore } from '@/stores/ui'
 import { Upload } from '@lucide/vue'
-import { readEntryRecursive } from '@/utils/fileEntry'
-import { toast } from 'vue-sonner'
 
-const { t } = useI18n()
 const upload = useUploadStore()
 const navigation = useNavigationStore()
 const ui = useUiStore()
@@ -82,15 +78,13 @@ function handleKeyDown(e: KeyboardEvent) {
   }
 }
 
-async function handleDrop(e: DragEvent) {
+function handleDrop(e: DragEvent) {
   e.preventDefault()
   dragCounter = 0
   syncOverlay(false)
-
   if (ui.readonly) return
 
   const targetDir = navigation.currentPathStr
-
   const items = e.dataTransfer?.items
   if (!items || items.length === 0) return
 
@@ -102,32 +96,10 @@ async function handleDrop(e: DragEvent) {
 
   if (entries.length === 0) {
     const files = e.dataTransfer?.files
-    if (files && files.length > 0) {
-      upload.addFiles(files, targetDir)
-    }
+    if (files && files.length > 0) upload.addFiles(files, targetDir)
     return
   }
-
-  const allFiles: { file: File; relativePath: string }[] = []
-  let readErrors = 0
-  for (const entry of entries) {
-    try {
-      allFiles.push(...(await readEntryRecursive(entry, '')))
-    } catch {
-      readErrors++
-    }
-  }
-
-  if (readErrors > 0 && allFiles.length === 0) {
-    toast.error(t('upload.read_failed'))
-    return
-  }
-  if (readErrors > 0) {
-    toast.warning(t('upload.read_skipped', { count: readErrors }, readErrors))
-  }
-  if (allFiles.length > 0) {
-    upload.addFilesWithPaths(allFiles, targetDir)
-  }
+  upload.addDroppedEntries(entries, targetDir)
 }
 
 onMounted(() => {

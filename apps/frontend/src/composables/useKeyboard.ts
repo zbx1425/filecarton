@@ -16,8 +16,6 @@ import {
   refreshCurrent,
 } from '@/services/fileActions'
 import { useUploadStore } from '@/stores/upload'
-import { errorMessage } from '@/utils/errorMessage'
-import { toast } from 'vue-sonner'
 import { useClipboardStore } from '@/stores/clipboard'
 import { joinPath } from '@/utils/path'
 import { sortItems, filterItems } from '@/utils/sorting'
@@ -167,9 +165,7 @@ export function useKeyboard() {
     if (e.key === 'F6') {
       e.preventDefault()
       if (navigation.hasSelection) {
-        downloadSelected().catch((err) => {
-          toast.error(errorMessage(err))
-        })
+        downloadSelected()
       }
       return
     }

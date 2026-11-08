@@ -456,7 +456,13 @@ export async function downloadSelected() {
   }
 
   if (!ui.features.archive) return
-  await fetchBatchDownload(curPath, names)
+  const toastId = toast.loading(t('toast.preparing_download'))
+  try {
+    await fetchBatchDownload(curPath, names)
+    toast.dismiss(toastId)
+  } catch (e: unknown) {
+    toast.error(errorMessage(e), { id: toastId })
+  }
 }
 
 export async function requestChecksum(filePath: string) {

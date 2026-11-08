@@ -18,6 +18,7 @@ import { uploadViaTus } from '@/services/tusUploader'
 import { useSpeedSampling } from '@/composables/useSpeedSampling'
 import { CHUNK_SIZE as DEFAULT_CHUNK_SIZE, MAX_CONCURRENT_UPLOADS } from '@/utils/constants'
 import { formatSize } from '@/utils/format'
+import { readEntryRecursive } from '@/utils/fileEntry'
 
 export interface UploadTask {
   id: string
@@ -86,6 +87,9 @@ export const useUploadStore = defineStore('upload', () => {
 
   // ── Upload progress toast ──
   let dismissTimer: ReturnType<typeof setTimeout> | null = null
+  let borrowedExistingToast = false
+  const prepareDepth = ref(0)
+  const preparePhase = ref<'reading' | 'checking' | null>(null)
 
   const uploadToastOptions = {
     id: 'upload-progress',
@@ -105,6 +109,7 @@ export const useUploadStore = defineStore('upload', () => {
 
   function dismissUploadToast() {
     if (toastId == null) return
+    if (prepareDepth.value > 0) return
     if (errorTasks.value.length > 0) return
     dismissTimer = setTimeout(() => {
       dismissTimer = null
@@ -127,6 +132,31 @@ export const useUploadStore = defineStore('upload', () => {
   function remeasureToast() {
     if (toastId == null) return
     toast(markRaw(UploadToast), uploadToastOptions)
+  }
+
+  function beginPrepare(phase: 'reading' | 'checking') {
+    prepareDepth.value += 1
+    preparePhase.value = phase
+    if (prepareDepth.value === 1) borrowedExistingToast = toastId != null
+    showUploadToast()
+    if (toastId != null && borrowedExistingToast) remeasureToast()
+  }
+
+  function endPrepare() {
+    prepareDepth.value = Math.max(0, prepareDepth.value - 1)
+    if (prepareDepth.value > 0) return
+    preparePhase.value = null
+    if (toastId == null) return
+    if (hasActive.value) {
+      remeasureToast()
+      return
+    }
+    if (borrowedExistingToast && (errorTasks.value.length > 0 || latestBatchResult.value)) {
+      remeasureToast()
+      dismissUploadToast()
+      return
+    }
+    forceCloseToast()
   }
 
   // ── Path helpers ──
@@ -266,23 +296,28 @@ export const useUploadStore = defineStore('upload', () => {
 
     if (!await checkOversized(deduped.map(e => e.file))) return
 
-    const conflictEntries = deduped.map(e => ({
-      fileName: e.file.name,
-      relativePath: e.relativePath,
-      targetDir,
-    }))
-    if (!await checkConflicts(conflictEntries)) return
+    beginPrepare('checking')
+    try {
+      const conflictEntries = deduped.map(e => ({
+        fileName: e.file.name,
+        relativePath: e.relativePath,
+        targetDir,
+      }))
+      if (!await checkConflicts(conflictEntries)) return
 
-    const batchId = crypto.randomUUID()
-    enqueueTasks(batchId, deduped.map(({ file, relativePath }) => ({
-      id: crypto.randomUUID(),
-      batchId,
-      file,
-      relativePath,
-      targetDir,
-      progress: 0,
-      status: 'pending' as const,
-    })))
+      const batchId = crypto.randomUUID()
+      enqueueTasks(batchId, deduped.map(({ file, relativePath }) => ({
+        id: crypto.randomUUID(),
+        batchId,
+        file,
+        relativePath,
+        targetDir,
+        progress: 0,
+        status: 'pending' as const,
+      })))
+    } finally {
+      endPrepare()
+    }
   }
 
   // ── Public entry points ──
@@ -316,6 +351,33 @@ export const useUploadStore = defineStore('upload', () => {
     )
     const filtered = filterEntries(nonJunk)
     await prepareAndEnqueue(filtered, targetDir)
+  }
+
+  async function addDroppedEntries(entries: FileSystemEntry[], targetDir: string) {
+    if (entries.length === 0) return
+    beginPrepare('reading')
+    try {
+      const allFiles: { file: File; relativePath: string }[] = []
+      let readErrors = 0
+      for (const entry of entries) {
+        try {
+          allFiles.push(...(await readEntryRecursive(entry, '')))
+        } catch {
+          readErrors++
+        }
+      }
+      if (readErrors > 0 && allFiles.length === 0) {
+        toast.error(translate('upload.read_failed'))
+        return
+      }
+      if (readErrors > 0) {
+        toast.warning(translate('upload.read_skipped', { count: readErrors }, readErrors))
+      }
+      if (allFiles.length === 0) return
+      await addFilesWithPaths(allFiles, targetDir)
+    } finally {
+      endPrepare()
+    }
   }
 
   // ── Upload execution ──
@@ -510,6 +572,8 @@ export const useUploadStore = defineStore('upload', () => {
     activeTasks,
     activeTotal,
     hasActive,
+    prepareDepth,
+    preparePhase,
     errorTasks,
     oldErrorCount,
     totalBytes,
@@ -526,6 +590,7 @@ export const useUploadStore = defineStore('upload', () => {
     addFiles,
     addFolderFiles,
     addFilesWithPaths,
+    addDroppedEntries,
     retry,
     retryAllErrors,
     remove,

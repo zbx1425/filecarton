@@ -14,12 +14,9 @@ import { FILE_LIST_VIEW_KEY } from './fileListContext'
 import {
   copySelected, cutSelected, deleteSelected,
   openPermissionsSelected, canModifySelectedPermissions,
+  downloadSelected as downloadSelectedAction,
 } from '@/services/fileActions'
 import { createArchive } from '@/composables/useArchive'
-import { fetchBatchDownload, buildDownloadUrl } from '@/api/client'
-import { joinPath } from '@/utils/path'
-import { errorMessage } from '@/utils/errorMessage'
-import { toast } from 'vue-sonner'
 import { Copy, Scissors, Trash2, X, FileArchive, Shield, Download, EllipsisVertical } from '@lucide/vue'
 
 const view = inject(FILE_LIST_VIEW_KEY) ?? missingFileListView()
@@ -51,18 +48,12 @@ const isSingleFile = computed(() => {
 async function downloadSelected() {
   const names = selectedNames()
   if (names.length === 0) return
-  if (isSingleFile.value) {
-    const filePath = joinPath(view.currentPathStr, names[0])
-    window.open(buildDownloadUrl(filePath), '_blank')
-    return
-  }
-  downloading.value = true
+  const batch = !isSingleFile.value
+  if (batch) downloading.value = true
   try {
-    await fetchBatchDownload(view.currentPathStr, names)
-  } catch (e) {
-    toast.error(errorMessage(e))
+    await downloadSelectedAction()
   } finally {
-    downloading.value = false
+    if (batch) downloading.value = false
   }
 }
 
