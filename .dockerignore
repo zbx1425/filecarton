@@ -1,5 +1,5 @@
 # Build context is the repository root.
-# The seed stage copies /README.md into the image. Do not ignore it.
+# deploy/demo/content is the demo seed. Do not ignore it.
 .git
 **/.git
 node_modules

@@ -1,0 +1,13 @@
+# Original demo code, CC0.
+
+type Star {
+  name: String!
+  bayer: String!
+  magnitude: Float!
+  zh: String!
+}
+
+type Query {
+  stars(brighterThan: Float = 6): [Star!]!
+  star(name: String!): Star
+}

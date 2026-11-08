@@ -1,0 +1,18 @@
+// Original demo code, CC0.
+$paper: #f4efe6;
+$ink: #1c1915;
+
+.sky-chart {
+  background: $paper;
+  color: $ink;
+  padding: 1rem;
+
+  figcaption {
+    font-variant: small-caps;
+    letter-spacing: 0.08em;
+  }
+
+  li {
+    list-style: "✶ ";
+  }
+}

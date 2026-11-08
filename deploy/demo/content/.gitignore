@@ -1,0 +1,4 @@
+# Dotfile, so the hidden-files toggle has something to reveal.
+*.tmp
+.DS_Store
+Thumbs.db

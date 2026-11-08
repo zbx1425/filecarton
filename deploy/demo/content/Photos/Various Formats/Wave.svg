@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 200" role="img" aria-label="Original geometric wave">
+  <title>Wave</title>
+  <rect width="480" height="200" fill="#f3e6cf"/>
+  <path d="M0 120 C40 80 80 80 120 120 S200 160 240 120 320 80 360 120 440 160 480 120 V200 H0 Z" fill="#1d4e89"/>
+  <path d="M0 142 C40 112 80 112 120 142 S200 172 240 142 320 112 360 142 440 172 480 142 V200 H0 Z" fill="#0e7490"/>
+  <circle cx="390" cy="48" r="16" fill="#e8b931"/>
+</svg>

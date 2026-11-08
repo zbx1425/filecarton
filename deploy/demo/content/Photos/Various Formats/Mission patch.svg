@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="Lumen field kit mission patch">
+  <title>Lumen field kit</title>
+  <rect width="240" height="240" fill="#141821"/>
+  <circle cx="120" cy="112" r="78" fill="#1d3a5f"/>
+  <circle cx="148" cy="104" r="62" fill="#141821"/>
+  <g fill="#f4efe6">
+    <circle cx="78" cy="78" r="1.6"/>
+    <circle cx="96" cy="64" r="1.2"/>
+    <circle cx="70" cy="108" r="1.1"/>
+    <circle cx="112" cy="86" r="1.4"/>
+    <circle cx="88" cy="96" r="0.9"/>
+  </g>
+  <path d="M40 168c28-18 52-18 80 0s52 18 80 0" fill="none" stroke="#e8b931" stroke-width="3"/>
+  <text x="120" y="196" text-anchor="middle" fill="#f4efe6" font-family="Georgia, serif" font-size="16" letter-spacing="3">LUMEN</text>
+  <text x="120" y="214" text-anchor="middle" fill="#e8b931" font-family="Georgia, serif" font-size="10" letter-spacing="2">FIELD KIT</text>
+</svg>

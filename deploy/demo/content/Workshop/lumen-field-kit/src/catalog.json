@@ -1,0 +1,12 @@
+{
+  "catalog": "lumen",
+  "note": "Approximate visual magnitudes for a demo. CC0.",
+  "stars": [
+    {"name": "Sirius", "zh": "天狼", "magnitude": -1.46},
+    {"name": "Canopus", "zh": "老人", "magnitude": -0.74},
+    {"name": "Vega", "zh": "织女", "magnitude": 0.03},
+    {"name": "Betelgeuse", "zh": "参宿四", "magnitude": 0.5},
+    {"name": "Altair", "zh": "牛郎", "magnitude": 0.76},
+    {"name": "Polaris", "zh": "勾陈一", "magnitude": 1.98}
+  ]
+}

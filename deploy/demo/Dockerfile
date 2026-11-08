@@ -18,22 +18,6 @@ COPY scripts/compile_single_file.php scripts/compile_single_file.php
 COPY --from=frontend /src/apps/frontend/dist apps/frontend/dist
 RUN php scripts/compile_single_file.php
 
-FROM debian:bookworm-slim AS seed
-ARG TEST_DATA_REF=edab36d2e6360524b0c044ea35a587a963fa967d
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates git \
-    && rm -rf /var/lib/apt/lists/*
-WORKDIR /src
-RUN set -eu; \
-    ref="$TEST_DATA_REF"; \
-    git clone https://github.com/owncloud/test-data.git /src/seed; \
-    git -C /src/seed checkout --detach "$ref"; \
-    test "$(git -C /src/seed rev-parse HEAD)" = "$ref"; \
-    rm -rf /src/seed/.git; \
-    test -f /src/seed/README.md; \
-    mv /src/seed/README.md /src/seed/README_OWNCLOUD.md
-COPY README.md /src/seed/README.md
-
 FROM php:8.4-apache
 RUN set -eu; \
     apt-get update; \
@@ -69,7 +53,10 @@ COPY deploy/demo/bootstrap.php /opt/filecarton/bootstrap.php
 COPY deploy/demo/demo_grant.php /opt/filecarton/demo_grant.php
 COPY deploy/demo/filecarton.config.toml.php.template /opt/filecarton/filecarton.config.toml.php.template
 COPY deploy/demo/motd.md /opt/filecarton/motd.md
-COPY --from=seed /src/seed /opt/filecarton/seed
+COPY deploy/demo/content /opt/filecarton/seed
+RUN test -f /opt/filecarton/seed/README.md \
+    && test -f /opt/filecarton/seed/CREDITS.md \
+    && test -d /opt/filecarton/seed/Photos
 ARG IMAGE_SOURCE=https://github.com/local/filecarton
 LABEL org.opencontainers.image.source="${IMAGE_SOURCE}"
 ENV PORT=8080

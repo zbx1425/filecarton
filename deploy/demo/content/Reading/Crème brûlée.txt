@@ -1,0 +1,7 @@
+Crème brûlée
+
+An original note, written for this demo, so the file list has a name with an accent and an apostrophe-free Unicode letter.
+
+The dessert is a custard under a sheet of caramelized sugar. This file is not a historical recipe. It is here because a file manager should not choke on “è”, “û”, or a space.
+
+Public-domain dedication: CC0, same as the other notes written for this folder.

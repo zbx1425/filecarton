@@ -1,0 +1,11 @@
+# Original demo config, CC0.
+
+[catalog]
+name = "lumen"
+limit = 6
+sort = "magnitude"
+
+[[observers]]
+id = "north-roof"
+latitude = 39.9
+longitude = 116.4

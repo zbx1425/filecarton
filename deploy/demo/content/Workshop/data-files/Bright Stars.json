@@ -1,0 +1,23 @@
+{
+  "source": "Approximate visual magnitudes, compiled for this demo from widely published catalog values.",
+  "license": "CC0. Names and magnitudes are facts.",
+  "stars": [
+    {"name": "Sirius", "designation": "alpha Canis Majoris", "magnitude": -1.46},
+    {"name": "Canopus", "designation": "alpha Carinae", "magnitude": -0.74},
+    {"name": "Arcturus", "designation": "alpha Bootis", "magnitude": -0.05},
+    {"name": "Vega", "designation": "alpha Lyrae", "magnitude": 0.03},
+    {"name": "Capella", "designation": "alpha Aurigae", "magnitude": 0.08},
+    {"name": "Rigel", "designation": "beta Orionis", "magnitude": 0.13},
+    {"name": "Procyon", "designation": "alpha Canis Minoris", "magnitude": 0.34},
+    {"name": "Betelgeuse", "designation": "alpha Orionis", "magnitude": 0.50},
+    {"name": "Altair", "designation": "alpha Aquilae", "magnitude": 0.76},
+    {"name": "Aldebaran", "designation": "alpha Tauri", "magnitude": 0.85},
+    {"name": "Antares", "designation": "alpha Scorpii", "magnitude": 1.06},
+    {"name": "Spica", "designation": "alpha Virginis", "magnitude": 0.97},
+    {"name": "Pollux", "designation": "beta Geminorum", "magnitude": 1.14},
+    {"name": "Fomalhaut", "designation": "alpha Piscis Austrini", "magnitude": 1.16},
+    {"name": "Deneb", "designation": "alpha Cygni", "magnitude": 1.25},
+    {"name": "Regulus", "designation": "alpha Leonis", "magnitude": 1.36},
+    {"name": "Polaris", "designation": "alpha Ursae Minoris", "magnitude": 1.98}
+  ]
+}

@@ -1,0 +1,17 @@
+/* Original demo code, CC0. */
+:root {
+  --ink: #1c1915;
+  --paper: #f4efe6;
+  --star: #e8b931;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Source Serif 4", Georgia, serif;
+}
+
+.mag {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  color: var(--star);
+}
