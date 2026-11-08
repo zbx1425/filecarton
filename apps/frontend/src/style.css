@@ -226,6 +226,12 @@
   z-index: 40 !important;
 }
 
+/* Styled title-component toasts do not grow [data-content]. */
+[data-sonner-toast].fc-upload-toast [data-content] {
+  flex: 1;
+  min-width: 0;
+}
+
 @media (max-width: 600px) {
   [data-sonner-toaster] {
     width: calc(100% - var(--mobile-offset-left)) !important;

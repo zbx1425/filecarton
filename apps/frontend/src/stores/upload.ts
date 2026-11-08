@@ -87,17 +87,20 @@ export const useUploadStore = defineStore('upload', () => {
   // ── Upload progress toast ──
   let dismissTimer: ReturnType<typeof setTimeout> | null = null
 
+  const uploadToastOptions = {
+    id: 'upload-progress',
+    duration: Infinity,
+    dismissible: false,
+    class: 'fc-upload-toast',
+  } as const
+
   function showUploadToast() {
     if (dismissTimer) {
       clearTimeout(dismissTimer)
       dismissTimer = null
     }
     if (toastId != null) return
-    toastId = toast(markRaw(UploadToast), {
-      duration: Infinity,
-      dismissible: false,
-      id: 'upload-progress',
-    })
+    toastId = toast(markRaw(UploadToast), uploadToastOptions)
   }
 
   function dismissUploadToast() {
@@ -123,11 +126,7 @@ export const useUploadStore = defineStore('upload', () => {
 
   function remeasureToast() {
     if (toastId == null) return
-    toast(markRaw(UploadToast), {
-      id: 'upload-progress',
-      duration: Infinity,
-      dismissible: false,
-    })
+    toast(markRaw(UploadToast), uploadToastOptions)
   }
 
   // ── Path helpers ──
