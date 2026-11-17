@@ -25,7 +25,7 @@ Settings in `filecarton.config.toml.php` map to PHP constants as follows:
 - **`[repo]` section → `FILECARTON_REPO_SETTING`**  
   The entire `[repo]` table maps to a single associative array constant `FILECARTON_REPO_SETTING`, using the same `snake_case` keys.
 
-- **All other sections (`[auth]`, `[limits]`, `[security]`, `[deployment]`, `[misc]`) → `FILECARTON_<UPPERCASE_KEY>`**  
+- **All other sections (`[auth]`, `[limits]`, `[security]`, `[deployment]`, `[misc]`, `[picker]`) → `FILECARTON_<UPPERCASE_KEY>`**  
   Each key in any section other than `[repo]` maps directly to a constant named `FILECARTON_` followed by the key name in `UPPER_SNAKE_CASE` (the section name itself is not part of the constant name). For example:
   - `must_embed` (`[auth]`) → `FILECARTON_MUST_EMBED`
   - `max_edit_size` (`[limits]`) → `FILECARTON_MAX_EDIT_SIZE`
@@ -192,3 +192,4 @@ location ~ [^/]\.php(/|$) {
 - [getting_started.md](getting_started.md): Quick setup, including a minimal embedded example.
 - [config_auth.md](config_auth.md): Built-in password/OAuth auth (for standalone deployments).
 - [auth_provider.md](auth_provider.md): Writing custom auth providers and grant resolvers.
+- [picker.md](picker.md): Using FileCarton as a file picker in an iframe.
