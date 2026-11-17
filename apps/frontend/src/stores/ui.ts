@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
-import type { FileCartonFeatures } from '@/api/types'
+import type { FileCartonFeatures, FileCartonPickerConfig } from '@/api/types'
 
 export const useUiStore = defineStore('ui', () => {
   const config = window.__FILECARTON__
@@ -18,6 +18,7 @@ export const useUiStore = defineStore('ui', () => {
     copyLink: config.features?.copyLink ?? '',
   })
   const unixPermInfo = ref(config.unixPerm ?? { user: 'unknown', isRoot: false })
+  const picker = ref<FileCartonPickerConfig | undefined>(config.picker)
 
   const settingsOpen = ref(false)
   const dragOverlayVisible = ref(false)
@@ -48,6 +49,7 @@ export const useUiStore = defineStore('ui', () => {
     branding,
     features,
     unixPermInfo,
+    picker,
     settingsOpen,
     dragOverlayVisible,
     mobileDrawerOpen,

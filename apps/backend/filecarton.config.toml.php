@@ -97,6 +97,7 @@ theme_primary = ""
 theme_toolbar = ""
 
 
+
 # ─── Limits ──────────────────────────────────────────────────────────────────
 # max_edit_size and upload_chunk_size should be less than PHP's post_max_size
 # and your web server (e.g. Nginx)'s body size limit.
@@ -199,6 +200,29 @@ asset_url = ""
 
 # Proxy URL for HTTP client (for e.g. OAuth identity fetching and remote downloads).
 http_client_proxy = ""
+
+
+
+# ─── Picker ───────────────────────────────────────────────────────────────────
+# When embedding FileCarton in an iframe as a file/folder picker,
+# use these options to control picker behavior.
+[picker]
+# Picker mode:
+#   false       — disabled (default)
+#   "menu"      — adds "Confirm Selection" to context menu & batch action bar
+#   "exclusive" — same as "menu", plus replaces file open/preview with pick;
+#                 double-click (mobile tap) a file directly triggers pick
+picker_mode = false
+
+# Allow picking multiple items at once.
+# When false, "Confirm Selection" is disabled if more than one item is selected.
+picker_multiple = false
+
+# What types of items can be picked.
+#   "files"       — only files (default)
+#   "directories" — only directories
+#   "any"         — both files and directories
+picker_accept = "files"
 
 
 

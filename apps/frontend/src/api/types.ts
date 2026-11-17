@@ -204,6 +204,12 @@ export interface FileCartonFeatures {
   copyLink: string
 }
 
+export interface FileCartonPickerConfig {
+  mode: 'menu' | 'exclusive'
+  multiple: boolean
+  accept: 'files' | 'directories' | 'any'
+}
+
 export interface FileCartonConfig {
   apiBase: string
   csrfToken: string
@@ -226,4 +232,5 @@ export interface FileCartonConfig {
   }
   filenameBlocklist?: string[]
   auth?: FileCartonAuthConfig
+  picker?: FileCartonPickerConfig
 }

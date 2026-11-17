@@ -19,6 +19,7 @@ import { useUploadStore } from '@/stores/upload'
 import { useClipboardStore } from '@/stores/clipboard'
 import { joinPath } from '@/utils/path'
 import { sortItems, filterItems } from '@/utils/sorting'
+import { isExclusiveMode, isPickable, confirmPick, type PickedFile } from '@/services/picker'
 
 function scrollFocusedRowIntoView(name: string) {
   nextTick(() => {
@@ -198,6 +199,17 @@ export function useKeyboard() {
       if (entry) {
         if (entry.isDir) {
           navigation.navigateTo([...navigation.currentPath, entry.name])
+        } else if (isExclusiveMode() && isPickable(false)) {
+          const cache = useFileTreeCacheStore()
+          const file = cache.getFileByName(curPath, entry.name)
+          const picked: PickedFile = {
+            path: joinPath(curPath, entry.name),
+            name: entry.name,
+            isDir: false,
+            size: file?.size,
+            mtime: file?.mtime ?? 0,
+          }
+          confirmPick([picked])
         } else {
           navigation.openFile(joinPath(curPath, entry.name))
         }

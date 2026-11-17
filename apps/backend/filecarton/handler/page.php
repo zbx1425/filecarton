@@ -94,6 +94,14 @@ $configData['dotfiles'] = [
     'forceVisible' => (bool)FILECARTON_DOTFILES_FORCE_VISIBLE,
 ];
 $configData['filenameBlocklist'] = FILECARTON_FILENAME_BLOCKLIST;
+$pickerMode = defined('FILECARTON_PICKER_MODE') ? FILECARTON_PICKER_MODE : false;
+if ($pickerMode === 'menu' || $pickerMode === 'exclusive') {
+    $configData['picker'] = [
+        'mode'  => $pickerMode,
+        'multiple' => (bool)(defined('FILECARTON_PICKER_MULTIPLE') ? FILECARTON_PICKER_MULTIPLE : false),
+        'accept'   => defined('FILECARTON_PICKER_ACCEPT') ? FILECARTON_PICKER_ACCEPT : 'files',
+    ];
+}
 $configData['auth'] = ['enabled' => false];
 header('Cache-Control: no-store');
 if (!RepoSetting::embed()) {

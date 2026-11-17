@@ -64,4 +64,8 @@ define('FILECARTON_HTTP_CLIENT_PROXY', '');
 
 define('FILECARTON_DEV_SERVER', false);
 define('FILECARTON_ANALYTICS', '');
+
+define('FILECARTON_PICKER_MODE', false);
+define('FILECARTON_PICKER_MULTIPLE', false);
+define('FILECARTON_PICKER_ACCEPT', 'files');
 }

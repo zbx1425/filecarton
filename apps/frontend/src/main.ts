@@ -10,6 +10,7 @@ import { useAuthStore } from './stores/auth'
 import { initTheme } from './utils/themeApplication'
 import { onUnauthorized } from './api/client'
 import { confirm } from './services/dialogs'
+import { isPickerEnabled, sendReady } from './services/picker'
 
 // Consume fc_return_hash / fc_auth_error before SPA routing kicks in
 const startUrl = new URL(window.location.href)
@@ -77,3 +78,5 @@ ui.initResponsive()
 initTheme(preferences)
 
 app.mount('#app')
+
+if (isPickerEnabled()) sendReady()

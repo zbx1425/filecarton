@@ -17,7 +17,9 @@ import {
   downloadSelected as downloadSelectedAction,
 } from '@/services/fileActions'
 import { createArchive } from '@/composables/useArchive'
-import { Copy, Scissors, Trash2, X, FileArchive, Shield, Download, EllipsisVertical } from '@lucide/vue'
+import { Copy, Scissors, Trash2, X, FileArchive, Shield, Download, EllipsisVertical, CircleCheckBig } from '@lucide/vue'
+import { isPickerEnabled, canConfirmPick, confirmPick, type PickedFile } from '@/services/picker'
+import { joinPath } from '@/utils/path'
 
 const view = inject(FILE_LIST_VIEW_KEY) ?? missingFileListView()
 const ui = useUiStore()
@@ -59,6 +61,35 @@ async function downloadSelected() {
 
 const canModifyPermissions = computed(() => canModifySelectedPermissions())
 
+// ── Picker ──
+
+const pickerEnabled = computed(() => isPickerEnabled())
+
+const pickerSelectedItems = computed(() => {
+  const names = selectedNames()
+  return names.map(name => {
+    const dir = view.getDirByName(name)
+    if (dir) return { name, isDir: true as const, mtime: dir.mtime }
+    const file = view.getFileByName(name)
+    return { name, isDir: false as const, size: file?.size, mtime: file?.mtime ?? 0 }
+  })
+})
+
+const canPick = computed(() =>
+  canConfirmPick(pickerSelectedItems.value),
+)
+
+function handleConfirmPick() {
+  const files: PickedFile[] = pickerSelectedItems.value.map(item => ({
+    path: joinPath(view.currentPathStr, item.name),
+    name: item.name,
+    isDir: item.isDir,
+    size: item.isDir ? undefined : item.size,
+    mtime: item.mtime,
+  }))
+  confirmPick(files)
+}
+
 const checkboxState = computed(() => {
   if (view.isAllSelected) return true
   return 'indeterminate' as const
@@ -87,6 +118,7 @@ const layoutKey = computed(() => [
   ui.features.unixPermModify,
   view.selectedCount,
   isSingleFile.value,
+  pickerEnabled.value,
   prefs.locale,
 ].join('|'))
 
@@ -154,6 +186,16 @@ watch(layoutKey, () => {
     <div class="flex-1" />
 
     <template v-if="iconMode">
+      <Button
+        v-if="pickerEnabled"
+        variant="ghost"
+        size="icon-sm"
+        :disabled="!canPick"
+        :aria-label="$t('picker.confirm_selection')"
+        @click="handleConfirmPick"
+      >
+        <CircleCheckBig class="size-4" />
+      </Button>
       <template v-if="!ui.readonly && !foldCopyCut">
         <Button variant="ghost" size="icon-sm" :aria-label="$t('common.action.copy')" @click="copySelected">
           <Copy class="size-4" />
@@ -216,6 +258,16 @@ watch(layoutKey, () => {
     </template>
 
     <template v-else>
+      <Button
+        v-if="pickerEnabled"
+        variant="ghost"
+        size="sm"
+        :disabled="!canPick"
+        @click="handleConfirmPick"
+      >
+        <CircleCheckBig class="size-3.5" />
+        {{ $t('picker.confirm_selection') }}
+      </Button>
       <Button v-if="isSingleFile || ui.features.archive" variant="ghost" size="sm" :disabled="downloading" @click="downloadSelected">
         <Download class="size-3.5" />
         {{ isSingleFile ? $t('common.action.download') : $t('common.action.download_all') }}

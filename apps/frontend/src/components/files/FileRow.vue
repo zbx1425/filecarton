@@ -12,6 +12,7 @@ import { joinPath } from '@/utils/path'
 import {
   isInternalDrag, handleDrop as dndHandleDrop, startDragFromSelection,
 } from '@/composables/useDragDrop'
+import { isExclusiveMode, isPickable, confirmPick, type PickedFile } from '@/services/picker'
 import { FILE_LIST_KEY, type FileListContext } from './fileListContext'
 
 const props = defineProps<{
@@ -56,9 +57,20 @@ function handleRowClick(e: MouseEvent) {
 function handleDblClick() {
   if (props.isDir) {
     ctx.navigateTo([...ctx.currentPath, props.name])
-  } else {
-    ctx.openFile(props.name)
+    return
   }
+  if (isExclusiveMode() && isPickable(false)) {
+    const picked: PickedFile = {
+      path: joinPath(ctx.currentPathStr, props.name),
+      name: props.name,
+      isDir: false,
+      size: props.size,
+      mtime: props.mtime,
+    }
+    confirmPick([picked])
+    return
+  }
+  ctx.openFile(props.name)
 }
 
 function onKebabClick(e: MouseEvent) {

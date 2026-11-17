@@ -427,5 +427,7 @@
   "validation.name.trailing": "名稱不能以點或空格結尾",
 
   "session.unavailable_title": "工作階段已失效",
-  "session.unavailable_message": "您的工作階段已不再有效。請備份所有未儲存的內容，然後重新整理目前頁面。"
+  "session.unavailable_message": "您的工作階段已不再有效。請備份所有未儲存的內容，然後重新整理目前頁面。",
+
+  "picker.confirm_selection": "確認選取"
 }

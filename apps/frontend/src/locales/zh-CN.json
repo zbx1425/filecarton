@@ -427,5 +427,7 @@
   "validation.name.trailing": "名称不能以点或空格结尾",
 
   "session.unavailable_title": "会话已失效",
-  "session.unavailable_message": "您的会话已不再有效。请备份所有未保存的内容，然后刷新当前页面。"
+  "session.unavailable_message": "您的会话已不再有效。请备份所有未保存的内容，然后刷新当前页面。",
+
+  "picker.confirm_selection": "确认选取"
 }

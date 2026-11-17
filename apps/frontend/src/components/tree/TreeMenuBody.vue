@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { FolderPlus, FolderOpen, Eye, Copy, Scissors, ClipboardPaste, Pencil, Trash2, Download, FileArchive, PackageOpen, Link } from '@lucide/vue'
+import { FolderPlus, FolderOpen, Eye, Copy, Scissors, ClipboardPaste, Pencil, Trash2, Download, FileArchive, PackageOpen, Link, CircleCheckBig } from '@lucide/vue'
 import { buildDownloadUrl } from '@/api/client'
 import { useUiStore } from '@/stores/ui'
 import { useClipboardStore } from '@/stores/clipboard'
@@ -15,6 +15,7 @@ import { buildDirectLink } from '@/utils/directLink'
 import { toast } from 'vue-sonner'
 import { useI18n } from 'vue-i18n'
 import { useMenuSurface, type MenuSurfaceName } from '@/components/menuSurface'
+import { isPickerEnabled, isExclusiveMode, canConfirmPick, confirmPick, type PickedFile } from '@/services/picker'
 import type { TreeContextTarget } from './treeContext'
 
 const props = defineProps<{
@@ -108,6 +109,28 @@ async function handleCopyDirectLink() {
     toast.error(t('toast.copy_clipboard_failed'))
   }
 }
+
+// ── Picker ──
+
+const pickerEnabled = computed(() => isPickerEnabled())
+const exclusiveMode = computed(() => isExclusiveMode())
+
+const canPick = computed(() => {
+  if (!props.contextTarget) return false
+  return canConfirmPick([{ isDir: props.contextTarget.isDir }])
+})
+
+function handleConfirmPick() {
+  if (!props.contextTarget) return
+  const item = props.contextTarget
+  const picked: PickedFile = {
+    path: item.path,
+    name: item.name,
+    isDir: item.isDir,
+    mtime: 0,
+  }
+  confirmPick([picked])
+}
 </script>
 
 <template>
@@ -131,11 +154,21 @@ async function handleCopyDirectLink() {
     </template>
   </template>
   <template v-else>
-    <component :is="menu.Item" @select="handleOpen">
-      <FolderOpen v-if="contextTarget.isDir" class="size-4" />
-      <Eye v-else class="size-4" />
-      {{ $t('common.action.open') }}
-    </component>
+    <template v-if="pickerEnabled">
+      <component :is="menu.Item" :disabled="!canPick" @select="handleConfirmPick">
+        <CircleCheckBig class="size-4" />
+        {{ $t('picker.confirm_selection') }}
+      </component>
+      <component :is="menu.Separator" />
+    </template>
+
+    <template v-if="!(exclusiveMode && !contextTarget.isDir)">
+      <component :is="menu.Item" @select="handleOpen">
+        <FolderOpen v-if="contextTarget.isDir" class="size-4" />
+        <Eye v-else class="size-4" />
+        {{ $t('common.action.open') }}
+      </component>
+    </template>
     <component :is="menu.Separator" v-if="!ui.readonly" />
 
     <template v-if="!ui.readonly">

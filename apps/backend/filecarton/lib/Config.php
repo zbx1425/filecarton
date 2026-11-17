@@ -64,6 +64,9 @@ class Config {
             'session_name'                  => 'FILECARTON',
             'dev_server'                    => false,
             'analytics'                     => '',
+            'picker_mode'                        => false,
+            'picker_multiple'               => false,
+            'picker_accept'                 => 'files',
         ];
     }
 
@@ -121,7 +124,7 @@ class Config {
             }
             $ok = ($k === 'sendfile')
                 ? ($v === false || is_string($v) || is_array($v))
-                : (($k === 'dev_server')
+                : (($k === 'dev_server' || $k === 'picker_mode')
                     ? ($v === false || is_string($v))
                     : (($k === 'motd')
                         ? (is_string($v) || is_array($v))

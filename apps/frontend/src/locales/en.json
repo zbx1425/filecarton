@@ -427,5 +427,7 @@
   "validation.name.trailing": "Name cannot end with a dot or space",
 
   "session.unavailable_title": "Session unavailable",
-  "session.unavailable_message": "Your session is no longer valid. Please copy any unsaved content, then refresh this page."
+  "session.unavailable_message": "Your session is no longer valid. Please copy any unsaved content, then refresh this page.",
+
+  "picker.confirm_selection": "Confirm Selection"
 }

@@ -3,7 +3,7 @@ import { computed, inject } from 'vue'
 import {
   FolderOpen, Eye, Copy, Scissors, ClipboardPaste, Pencil, Trash2, Download,
   PackageOpen, FileArchive, Shield, Hash, RefreshCw, File, Folder,
-  CloudDownload, CheckSquare, Square, Link, Upload,
+  CloudDownload, CheckSquare, Square, Link, Upload, CircleCheckBig,
 } from '@lucide/vue'
 import { useUiStore } from '@/stores/ui'
 import { useUploadStore } from '@/stores/upload'
@@ -17,6 +17,7 @@ import { joinPath, archiveSubdirName } from '@/utils/path'
 import { isArchive } from '@/composables/useFileType'
 import { extractArchive, createArchive } from '@/composables/useArchive'
 import { buildDirectLink } from '@/utils/directLink'
+import { isPickerEnabled, isExclusiveMode, canConfirmPick, confirmPick, type PickedFile } from '@/services/picker'
 import { toast } from 'vue-sonner'
 import { useI18n } from 'vue-i18n'
 import { useMenuSurface, type MenuSurfaceName } from '@/components/menuSurface'
@@ -100,11 +101,49 @@ async function handleCopyDirectLink() {
     toast.error(t('toast.copy_clipboard_failed'))
   }
 }
+
+// ── Picker ──
+
+const pickerEnabled = computed(() => isPickerEnabled())
+const exclusiveMode = computed(() => isExclusiveMode())
+
+const pickerItems = computed<Array<{ name: string; isDir: boolean }>>(() => {
+  if (!props.contextTarget) return []
+  if (ctx.selectedCount > 1 && ctx.isSelected(props.contextTarget.name)) {
+    return ctx.filteredEntries.filter(e => ctx.isSelected(e.name))
+  }
+  return [{ name: props.contextTarget.name, isDir: props.contextTarget.isDir }]
+})
+
+const canPick = computed(() => canConfirmPick(pickerItems.value))
+
+function handleConfirmPick() {
+  const files: PickedFile[] = []
+  for (const item of pickerItems.value) {
+    const path = joinPath(ctx.currentPathStr, item.name)
+    if (item.isDir) {
+      const dir = ctx.getDirByName(item.name)
+      files.push({ path, name: item.name, isDir: true, mtime: dir?.mtime ?? 0 })
+    } else {
+      const file = ctx.getFileByName(item.name)
+      files.push({ path, name: item.name, isDir: false, size: file?.size, mtime: file?.mtime ?? 0 })
+    }
+  }
+  confirmPick(files)
+}
 </script>
 
 <template>
   <template v-if="contextTarget">
-    <template v-if="ctx.selectedCount <= 1">
+    <template v-if="pickerEnabled">
+      <component :is="menu.Item" :disabled="!canPick" @select="handleConfirmPick">
+        <CircleCheckBig class="size-4" />
+        {{ $t('picker.confirm_selection') }}
+      </component>
+      <component :is="menu.Separator" />
+    </template>
+
+    <template v-if="ctx.selectedCount <= 1 && !(exclusiveMode && !contextTarget.isDir)">
       <component :is="menu.Item" @select="handleOpen">
         <FolderOpen v-if="contextTarget.isDir" class="size-4" />
         <Eye v-else class="size-4" />
