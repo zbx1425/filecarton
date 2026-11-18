@@ -245,7 +245,7 @@ function setSortAsc(asc: boolean) {
 
           <Button variant="outline" size="sm" @click="upload.openUploadDialog()">
             <Upload class="size-4" />
-            <span class="hidden lg:inline">{{ $t('common.action.upload') }}</span>
+            <span>{{ $t('common.action.upload') }}</span>
           </Button>
         </template>
       </template>
